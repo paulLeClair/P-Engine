@@ -123,7 +123,6 @@ void PEngine::registerGUIComponent(std::function<void()> call) {
 void PEngine::createMainWindow() {
     // this can probably be adapted to a "createwindow" function, which can exist for all platforms 
       /* STEP1 - register window class */
-            // LPCWSTR WINDOW_CLASS_NAME = ; // idk how to make this work :()
             WNDCLASS window_class = { };
             window_class.hInstance = win32_->instance;
             window_class.lpfnWndProc = (WNDPROC) WindowProc; // just using the windows style name for the window procedure (which will be wrapped in the Window object i hopesies)
@@ -140,16 +139,12 @@ void PEngine::createMainWindow() {
             win32_->mainWindow = CreateWindowExW(
                 0, // optional window style
                 L"MainWindowClass", // window class
-                // continue to fill in from that one article u find about creating a windle!!! 
-                    // not gonna do a big deep dive on the win32 api cuz it's not something i want to spend a lot of time
-                    // working with....
                 L"pgame",
                 WS_OVERLAPPEDWINDOW,
-                // ALSO donno what to do for the position/width so im just using simple defaults for now 
                 0, 0, // for now just put it in the top left corner 
                 width, height, // use default sizes, but obviously resizing the window should probably be possible 
                 (HWND) NULL, // no parent/owner window (again make this specifiable)
-                (HMENU) NULL, // class menu used (donno what that is lol)
+                (HMENU) NULL, // no class menu
                 win32_->instance, // instance handle
                 NULL);
 
@@ -209,11 +204,11 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         break;
         case WM_KEYDOWN:
             if( VK_ESCAPE == wParam ) {
-                PostQuitMessage(0); // i guess this is useful????
+                PostQuitMessage(0); 
             }
         break;
         case WM_CLOSE:
-            PostQuitMessage(0); // i guess this is useful????
+            PostQuitMessage(0);
             break;
         default:
             return DefWindowProc( hWnd, uMsg, wParam, lParam );

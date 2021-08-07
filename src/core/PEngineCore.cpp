@@ -41,7 +41,7 @@ PEngine::PEngine() {
 
     // setup any dlls (i think just vulkan)
         // in the future could set up a data structure mapping libraries to identifiers, but for now we just need vulkan so this will work
-    win32_->vulkanLibrary = LoadLibrary((LPCWSTR)"vulkan-1.dll"); 
+    win32_->vulkanLibrary = LoadLibrary((LPCSTR)"vulkan-1.dll"); 
 
     #endif
 
@@ -128,7 +128,7 @@ void PEngine::createMainWindow() {
             window_class.hInstance = win32_->instance;
             window_class.lpfnWndProc = (WNDPROC) WindowProc; // just using the windows style name for the window procedure (which will be wrapped in the Window object i hopesies)
             // this->window_class.lpszClassName = static_cast<LPCWSTR>(WINDOW_CLASS_NAME); // will this work?
-            window_class.lpszClassName = (LPCWSTR)"MainWindowClass";
+            window_class.lpszClassName = (LPCSTR)"MainWindowClass";
 
             RegisterClass(&window_class); // make sure this is right..
 

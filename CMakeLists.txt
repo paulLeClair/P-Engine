@@ -5,6 +5,10 @@ set(CMAKE_CXX_STANDARD 17)
 
 project(PEngine)
 
+# configure CMake to use a "bin" folder for output
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
+
+
 # needs vulkan
 find_package(Vulkan REQUIRED FATAL_ERROR)
 
@@ -24,7 +28,7 @@ file(GLOB_RECURSE GLSL_SOURCE_FILES
 foreach(GLSL ${GLSL_SOURCE_FILES})
     message(STATUS "BUILDING SHADER: ")
     get_filename_component(FILE_NAME ${GLSL} NAME_WE)
-    set(SPIRV "${CMAKE_CURRENT_SOURCE_DIR}/src/core/p_render/backend/shaders/bin/${FILE_NAME}.spv") # we should put these into the backend actually
+    set(SPIRV "${CMAKE_CURRENT_SOURCE_DIR}/bin/shaders/${FILE_NAME}.spv") # we should put these into the backend actually
     message(STATUS ${GLSL})
     ##execute glslang command to compile that specific shader
     add_custom_command(

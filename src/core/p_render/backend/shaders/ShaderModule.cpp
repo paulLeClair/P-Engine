@@ -14,18 +14,22 @@ ShaderModule::ShaderModule(const std::string &shaderFilename, std::shared_ptr<Co
 
     const auto &getShaderFilePathString = [&](const std::string &shaderModuleName) {
         // TODO: come up with a more consistent method of getting the file path string... this isn't a real solution
+            // this seems only to work on one of my computers for obvious reasons, i really need to come up with
+            // a way to get the path of the shader 
 
         // have to excise part of this for now... really ugly, need to come up with a better way of doing this, but for now it should work
         std::string buildDirString = std::filesystem::current_path().string();
-        std::string strToExcise = "build\\src";
-        std::string fixedSrcDirString = buildDirString.substr(0, buildDirString.length() - strToExcise.length());
+        int i = 0;
+        for (auto itr = buildDirString.rbegin(); itr != buildDirString.rend(); itr++) {
+            if (*itr == '\\') {
+                buildDirString = buildDirString.substr(0, buildDirString.size() - i);
+                break;
+            }
+            i++;
+        }
+        std::string shaderBinaryRelativePath = "shaders\\";
         
-        // could probably store this somewhere / make it configurable in the future
-        std::string shaderBinaryRelativePath = "src\\core\\p_render\\backend\\shaders\\bin\\";
-
-        // build and return path string
-        std::string pathString = fixedSrcDirString + shaderBinaryRelativePath + shaderModuleName + ".spv";
-        return pathString;
+        return buildDirString + shaderBinaryRelativePath + shaderModuleName + ".spv";
     };
 
     auto pathString = getShaderFilePathString(shaderFilename);

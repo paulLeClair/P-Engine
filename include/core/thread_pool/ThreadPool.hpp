@@ -12,7 +12,6 @@
 #include <queue>
 #include <functional>
 
-// ill stick a couple macros in here, eventually these will probably get put into the code
 #define MAX_DEDICATED_QUEUES 8
 
 class JobQueue;

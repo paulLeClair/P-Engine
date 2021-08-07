@@ -227,7 +227,7 @@ bool Context::checkSurfacePresentCapabilities(VulkanInstanceData &instance, cons
     VkSurfaceCapabilitiesKHR capabilities;
     auto result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, instance.presentationSurface, &capabilities);
     if (result != VK_SUCCESS) {
-        throw std::runtime_error("unable to get physical device surface capabilities!");
+        throw std::runtime_error("Unable to get physical device surface capabilities!");
         exit(1);
     }
 
@@ -296,10 +296,6 @@ void Context::setSwapchainImageFormat(VulkanInstanceData &instance, const VkPhys
     // instance.desiredSurfaceFormat.format = VK_FORMAT_R8G8B8A8_UNORM; //FEB17- found the problem maybe: incorrect surface format!
     instance.desiredSurfaceFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
     instance.desiredSurfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-
-    // FEB17 - logical device creation is working, but calling vkGetPhysicalDeviceSurfaceFormatsKHR causes the error spam now
-        // might have to try moving the below to later, and use this function just for setting up the desired surface format
-        // for now, gonnna just see if my changes so far help
 
     // get formats using selected physical device
     uint32_t formatsCount;
@@ -403,7 +399,7 @@ void Context::createVulkanInstance(VulkanInstanceData &instance) {
         VK_MAKE_VERSION(1, 2, 141)
     };
 
-    // hardcoding validation layers
+    // hardcoding validation layers until further notice
     std::vector<const char *> enabledLayers = {};
     if (true) {
         // here we could replace the "true" with a "enableLayers" condition and add the layers only in this case
@@ -617,7 +613,6 @@ bool Context::deviceExtensionsCheck(VulkanInstanceData &instance, const VkPhysic
     for (const auto &requiredExtensionName : instance.enabledDeviceExtensionNames) {
         std::string requiredExtensionNameStr(requiredExtensionName);
         for (const auto &extension : availableExtensions) {
-            // hmm maybe i should make them strings
             std::string extensionName(extension.extensionName);
             if (requiredExtensionNameStr == extensionName) {
                 foundExtensions.push_back(extension.extensionName);
@@ -634,7 +629,6 @@ bool Context::deviceExtensionsCheck(VulkanInstanceData &instance, const VkPhysic
     }   
 }
 
-// 
 void Context::setRequiredDeviceExtensions(std::vector<const char *> &nameVectorToFill) {
     nameVectorToFill.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 }
@@ -664,7 +658,6 @@ void Context::selectQueueFamilyIndices(VulkanInstanceData &instance, const VkPhy
     if (queueFamilyPropertyCount == 0) {
         throw std::runtime_error("Unable to get physical device queue family properties!");
     }
-
 
     if (!compute) {
         // look for a suitable graphics queue family

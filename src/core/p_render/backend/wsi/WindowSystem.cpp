@@ -6,7 +6,7 @@
 
 using namespace Backend;
 
-WindowSystem::WindowSystem(PEngine *core, Context *context) { // no reason to pass both of these tbh
+WindowSystem::WindowSystem(PEngine *core, Context *context) {
     // should allocate all resources in the ctor for RAII
 
     // store any required inputs!
@@ -35,47 +35,9 @@ WindowSystem::WindowSystem(PEngine *core, Context *context) { // no reason to pa
     }
 }
 
-// WindowSystem::~WindowSystem() {
-//     // should destroy all relevant data here, following RAII as always
-//     // i think i can just make a dtor for WindowSystemData that cleans it up 
-// }
 
 void WindowSystem::createPresentationSurface(WindowSystemData &wsiData) {
-
-    // #ifdef _WIN32
-    // // auto wos = std::dynamic_pointer_cast<WindowsInterface>(os_);
-    // // WindowData windowData = {
-    // //     wos->getHINSTANCE(),
-    // //     wos->getMainWindowHWND()
-    // // };
-    // // windowData.hinst =
-    // // windowData.hwnd =  wos->getMainWindowHWND();
-
-    // // create win32 surface 
-    // VkWin32SurfaceCreateInfoKHR win32SurfaceCreateInfo = {
-    //     VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
-    //     nullptr,
-    //     0,
-    //     GetModuleHandle(NULL), // just get the current hinstance through win32 api
-    //     wsiData_->mainWindow
-    // };
-    // // win32SurfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-    // // win32SurfaceCreateInfo.pNext = nullptr;
-    // // win32SurfaceCreateInfo.flags = 0;
-    // // win32SurfaceCreateInfo.hinstance = GetModuleHandle(NULL);
-    // // win32SurfaceCreateInfo.hwnd = windowData.hwnd; 
-
-    // wsiData.presentationSurface = VK_NULL_HANDLE;
-    // if (vkCreateWin32SurfaceKHR(context_->getInstance(), &win32SurfaceCreateInfo, nullptr, &wsiData.presentationSurface) != VK_SUCCESS) {
-    //     throw std::runtime_error("unable to create presentation surface :(");
-    //     exit(1);
-    // }
-
-    // if (wsiData.presentationSurface == VK_NULL_HANDLE) {
-    //     throw std::runtime_error("unable to create presentation surface :(");
-    //     exit(1);
-    // }
-    // #endif
+    // #this might be deprecated
 }
 
 void WindowSystem::setSwapchainImageUses(WindowSystemData &wsiData, VkSurfaceCapabilitiesKHR &capabilities) {
@@ -84,7 +46,7 @@ void WindowSystem::setSwapchainImageUses(WindowSystemData &wsiData, VkSurfaceCap
     // now have to check against the possible image usages
     VkImageUsageFlags potentialImageUsages = wsiData.desiredImageUsages & capabilities.supportedUsageFlags;
     if (potentialImageUsages != wsiData.desiredImageUsages) {
-        throw std::runtime_error("desired swapchain image usage not available!");
+        throw std::runtime_error("Desired swapchain image usage not available!");
         exit(1);
     }
     else {
@@ -104,7 +66,7 @@ void WindowSystem::setSwapchainImageTransform(WindowSystemData &wsiData, VkSurfa
         wsiData.surfaceTransform = wsiData.desiredSurfaceTransform;
     }
     else {
-        throw std::runtime_error("desired surface transform unavailable!"); // shouldn't happen
+        throw std::runtime_error("Desired surface transform unavailable!"); // shouldn't happen
         exit(1);
     }
 }
@@ -124,22 +86,18 @@ void WindowSystem::setSwapchainImageFormat(WindowSystemData &wsiData) {
     wsiData.desiredSurfaceFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
     wsiData.desiredSurfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
-    // FEB17 - logical device creation is working, but calling vkGetPhysicalDeviceSurfaceFormatsKHR causes the error spam now
-        // might have to try moving the below to later, and use this function just for setting up the desired surface format
-        // for now, gonnna just see if my changes so far help
-
     // get formats using selected physical device
     uint32_t formatsCount;
     auto result = vkGetPhysicalDeviceSurfaceFormatsKHR(context_->getSelectedPhysicalDevice(), wsiData.presentationSurface, &formatsCount, nullptr);
     if (result != VK_SUCCESS) {
-        throw std::runtime_error("unable to acquire physical device surface formats!");
+        throw std::runtime_error("Unable to acquire physical device surface formats!");
         exit(1);
     }
 
     std::vector<VkSurfaceFormatKHR> surfaceFormats(formatsCount);
     result = vkGetPhysicalDeviceSurfaceFormatsKHR(context_->getSelectedPhysicalDevice(), wsiData.presentationSurface, &formatsCount, surfaceFormats.data()); 
     if (result != VK_SUCCESS) {
-        throw std::runtime_error("jeanine restrepo didn't want this to happen... so it didn't");
+        throw std::runtime_error("Unable to acquire physical device surface formats!");
         exit(1);
     }
 
@@ -163,19 +121,15 @@ void WindowSystem::setSwapchainImageFormat(WindowSystemData &wsiData) {
 
     if (!foundFormat) {
         // just set it to tthe first available format...
-        std::cout << "Unable to find desired surface format :(" << std::endl;
         wsiData.surfaceFormat.format = surfaceFormats[0].format;
         wsiData.surfaceFormat.colorSpace = surfaceFormats[0].colorSpace;
     }
 }
 
 void WindowSystem::setupSwapchain(WindowSystemData &wsiData) {
-    // REWRITE 
-        // gonna try and just get the surface present capabilities once and pass it in
     setSurfacePresentCapabilities(wsiData);
     setPresentationMode(wsiData);
 
-    // should probably just recreate the presentation surface here if it's lost at this point...
     struct WindowData {
         HINSTANCE hinst;
         HWND hwnd;
@@ -194,10 +148,10 @@ void WindowSystem::setupSwapchain(WindowSystemData &wsiData) {
     setSwapchainImageUses(wsiData, capabilities);
     setSwapchainImageTransform(wsiData, capabilities);
     setSwapchainImageFormat(wsiData);
-    // now create the swapchain
-        // recall this is what is actually used to display images on the screen, so it's pretty fundamental
 
-    // hmm i think i need to set up the indices
+    // now create the swapchain
+
+    // i think i need to set up the indices first
     for (uint32_t i = 0; i < wsiData.numSwapchainImages; i++) {
         wsiData.swapchainImageIndices.push_back(i);
     }
@@ -225,8 +179,7 @@ void WindowSystem::setupSwapchain(WindowSystemData &wsiData) {
 
     result = vkCreateSwapchainKHR(wsiData.logicalDevice, &swapchainCreateInfo, nullptr, &wsiData.swapchain);
     if (result != VK_SUCCESS) {
-        throw std::runtime_error("unable to create swapchain :(");
-        exit(1);
+        throw std::runtime_error("Unable to create swapchain!");
     }
 
     // after creating swapchain we'll create the semaphores
@@ -250,14 +203,14 @@ void WindowSystem::setPresentationMode(WindowSystemData &wsiData) {
     VkResult result = VK_SUCCESS;
     result = vkGetPhysicalDeviceSurfacePresentModesKHR(wsiData.selectedPhysicalDevice, wsiData.presentationSurface, &presentationModesCount, nullptr);
     if ((result != VK_SUCCESS) || (presentationModesCount == 0)) {
-        throw std::runtime_error("unable to get physical device surface present modes!");
+        throw std::runtime_error("Unable to get physical device surface present modes!");
         exit(1);
     }
 
     std::vector<VkPresentModeKHR> presentationModes(presentationModesCount);
     result = vkGetPhysicalDeviceSurfacePresentModesKHR(wsiData.selectedPhysicalDevice, wsiData.presentationSurface, &presentationModesCount, presentationModes.data());
     if ((result != VK_SUCCESS) || (presentationModesCount == 0)) {
-        throw std::runtime_error("unable to get physical device surface present modes!");
+        throw std::runtime_error("Unable to get physical device surface present modes!");
         exit(1);
     }
 
@@ -272,7 +225,6 @@ void WindowSystem::setPresentationMode(WindowSystemData &wsiData) {
     }
 
     // set the present mode 
-    // bool mailboxFound = true; // for now
     if (mailboxFound) {
         // set it to MAILBOX
         wsiData.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
@@ -287,7 +239,7 @@ void WindowSystem::setSurfacePresentCapabilities(WindowSystemData &wsiData) {
     VkSurfaceCapabilitiesKHR capabilities;
     auto result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context_->getSelectedPhysicalDevice(), wsiData.presentationSurface, &capabilities);
     if (result != VK_SUCCESS) {
-        throw std::runtime_error("unable to get physical device surface capabilities!");
+        throw std::runtime_error("Unable to get physical device surface capabilities!");
         exit(1);
     }
 
@@ -312,59 +264,33 @@ void WindowSystem::getSwapchainImageHandles(WindowSystemData &wsiData) {
     // get swapchain image handles
     wsiData.swapchainImages.resize(wsiData.numSwapchainImages);
 
-    // also size the imageAcquired/rendering semaphores vector
-    // instance.swapchainImageAcquiredSemaphores.resize(instance.numSwapchainImages);
-   // instance.swapchainRenderingCompleteSemaphores.resize(instance.numSwapchainImages);
-        // APR9 - skipping this for now, using a simpler synchronization method to start 
-
     uint32_t swapchainImageCount = 0;
     auto result = vkGetSwapchainImagesKHR(wsiData.logicalDevice, wsiData.swapchain, &swapchainImageCount, nullptr);
     if ((result != VK_SUCCESS) || (swapchainImageCount == 0)) {
-        throw std::runtime_error("unable to get swapchain image handles...");
+        throw std::runtime_error("Unable to get swapchain image handles!");
     }
 
     result = vkGetSwapchainImagesKHR(wsiData.logicalDevice, wsiData.swapchain, &swapchainImageCount, wsiData.swapchainImages.data());
     if ((result != VK_SUCCESS) || (swapchainImageCount == 0)) {
-        throw std::runtime_error("unable to get swapchain image handles...");
+        throw std::runtime_error("Unable to get swapchain image handles!");
     }
 
 }
 
 void WindowSystem::createSwapchainImageSemaphores(WindowSystemData &wsiData) {
-    
-    // VkSemaphoreCreateInfo genericCreateInfo = {};
-    // genericCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    // genericCreateInfo.flags = 0; // i think we can just have this be 0
-    // genericCreateInfo.pNext = nullptr;
-
-    // VkResult result;
-    // for (int i = 0; i < wsiData.swapchainImageAcquiredSemaphores.size(); i++) {
-    //     result = vkCreateSemaphore(wsiData.logicalDevice, &genericCreateInfo, nullptr, &wsiData.swapchainImageAcquiredSemaphores[i]);
-    //     if (result != VK_SUCCESS) {
-    //         throw std::runtime_error("Unable to create SwapchainImageAcquired semaphore!");
-    //     }
-    // }
-
-    // for (int j = 0; j < wsiData.swapchainRenderCompleteSemaphores.size(); j++) {
-    //     result = vkCreateSemaphore(wsiData.logicalDevice, &genericCreateInfo, nullptr, &wsiData.swapchainRenderCompleteSemaphores[j]);
-    //     if (result != VK_SUCCESS) {
-    //         throw std::runtime_error("Unable to create SwapchainImageAcquired semaphore!");
-    //     }
-    // }
 
     VkSemaphoreCreateInfo semaphoreInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     
     auto result = vkCreateSemaphore(context_->getLogicalDevice(), &semaphoreInfo, nullptr, &wsiData_->swapchainRenderCompleteSemaphore);
     if (result != VK_SUCCESS) {
-        throw std::runtime_error("Unable to create semaphore:(");
+        throw std::runtime_error("Unable to create semaphore!");
     }
 
     result = vkCreateSemaphore(context_->getLogicalDevice(), &semaphoreInfo, nullptr, &wsiData_->swapchainPresentSemaphore);
     if (result != VK_SUCCESS) {
-        throw std::runtime_error("Unable to create semaphore:(");
+        throw std::runtime_error("Unable to create semaphore!");
     }
 
-    // APR9 - skipping these for now
 }
 
 void WindowSystem::getSwapchainImageViews(WindowSystemData &wsiData) {
@@ -388,16 +314,16 @@ void WindowSystem::getSwapchainImageViews(WindowSystemData &wsiData) {
         imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
         // set the subresource ranges...
-        imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // good golly i gotta think about how to organize swapchain stuff better
-        imageViewCreateInfo.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS; // dont know why you use this, but it's kool for now
+        imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // i gotta think about how to organize swapchain stuff better
+        imageViewCreateInfo.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
         imageViewCreateInfo.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-        imageViewCreateInfo.subresourceRange.baseMipLevel = 0; // these base levels are set to 0 which i guess makes sense
+        imageViewCreateInfo.subresourceRange.baseMipLevel = 0; 
         imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
 
         VkImageView newImageView;
         auto result = vkCreateImageView(wsiData.logicalDevice, &imageViewCreateInfo, nullptr, &newImageView);
         if (result != VK_SUCCESS) {
-            throw std::runtime_error("unable to create swapchain image view!");
+            throw std::runtime_error("Unable to create swapchain image view!");
             exit(1);
         }
 

@@ -5,14 +5,11 @@
 // stdlib includes
 #include <string>
 #include <mutex>
-// #include <map> 
 #include <vector>
-
 
 #include <deque>
 #include <functional>
 #include <future>
-
 
 template<typename F, typename... Args> using JobReturnType = typename std::result_of<F(Args...)>::type; 
 

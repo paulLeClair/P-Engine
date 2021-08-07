@@ -6,7 +6,7 @@
 
 #include "../../../../vulkan_memory_allocator/vk_mem_alloc.h"
 
-// gonna restructure this to be similar to Granite, using a ImageCreateInfo which
+// gonna restructure this to be similar to Granite, using an ImageCreateInfo struct which
 // will also have some common usage cases provided as convenience functions; 
 
 namespace Backend {
@@ -16,7 +16,7 @@ class Image : public Resource {
     enum ImageDomain {
         Physical,
         Transient
-        // any others... for now i'm KingISS
+        // any others... for now i'm Keeping It Simple, Stupid
     };
 
     // some quick utilities
@@ -194,7 +194,6 @@ class Image : public Resource {
 
     // we can stick the VMA thing here too
     VmaAllocation _allocation = nullptr;
-
 };
 
 }

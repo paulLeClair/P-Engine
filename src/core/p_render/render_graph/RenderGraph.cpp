@@ -52,7 +52,7 @@ RenderGraph::RenderGraph(const std::string &name, std::shared_ptr<ThreadPool> po
 }
 
 RenderGraph::~RenderGraph() {
-    // hmm
+    // TODO
 }
 
 /* RENDER GRAPH INTERFACE */
@@ -93,31 +93,7 @@ void RenderGraph::bake() {
     };
     setupPassStack();
 
-    /* BUILD PHYSICAL RESOURCES + RMW ALIASES*/
-    // i think probably the first thing to do will be to analyze the resources used in the graph
-    // do the initial aliasing
-        // now this is the tricky part (for me) - i don't really know the best way to alias the resources
-
-    // the idea is that each virtual RG image node corresponds to some actual VkImage + device memory (+ view)
-        // i think buffers work similarly of course
-    // when we create physical resources, we have to map each virtual resource to a physical resource,
-        // but i'm not sure how we pick out resources that can be aliased...
-
-    // maybe we only need to worry about resources that are read-modified-written in a pass; the input and
-    // output pass for such resource should map (alias) to the same physical resource;
-        // that makes sense, since if we RMW a resource numerous times we'll have each usage alias to the same 
-        // resource
-
-    // temporal aliasing is another (separate) step that i think can be included last: if some set of
-    // resources don't overap in their physical pass index ranges (min(firstread, firstwrite) to max(lastread, lastwrite)),
-    // and they share the same DIMENSIONS AND FORMAT (although not necessarily the same queues/layout/access/etc?),
-    // we can alias them too, so that each resource in the set uses the same resource
-        // pretty sure this involves some additional synchronization, but if we use VkEvents we can
-        // (i think) fairly-easily ensure proper resource handling
-
-    
-
-    // i also think we don't have to alias 
+    /* BUILD PHYSICAL RESOURCES + RMW ALIASES */
 
     buildPhysicalResources();
         // MAY28 - REWRITE: here we should prepare all the image resources as well as other input/output data for the pipeline
@@ -130,8 +106,6 @@ void RenderGraph::bake() {
         // need to do more research to make sure i handle the important cases
     buildBarriers();
 
-    // buildPhysicalBarriers(); // might not need this 
-
     buildAliases(); // this refers specifically to TEMPORAL aliasing of images, which allows us to reuse non-overlapping compatible VkImages
     // and that could be helpful when we have large graphs with lots of images
 
@@ -143,10 +117,6 @@ void RenderGraph::execute(Backend::FrameContext &frame) {
     
     // whatever pre-execute setup is required?
     
-    // set the appropriate swapchain image according to the given context 
-    // auto swapchainImg = std::dynamic_pointer_cast<SwapchainImageResource>(resources_[resourceNames_["swapchain"]]);
-    // // swapchainImg->setSwapchainImageHandle(frame.getSwapchainImage());
-
     // handle swapchain
     const auto setupSwapchainImageResourceForFrame = [&](unsigned int index) {
         // auto defaultSwapchainImage = std::dynamic_pointer_cast<SwapchainImageResource>(resources_[resourceNames_["swapchain"]]);
@@ -185,7 +155,7 @@ Pass &RenderGraph::getPass(const std::string &name) {
     const auto find = std::find_if(passes_.begin(), passes_.end(), finderFunction);
     if (find == passes_.end()) {
        // TODO: something here lol
-       throw std::runtime_error("unable to find pass by name :(");
+       throw std::runtime_error("Unable to find pass!");
     }
     return **find;
 }
@@ -212,46 +182,6 @@ std::shared_ptr<Pass> RenderGraph::appendPass(const std::string &name) {
     return pass;
 }
 
-// void RenderGraph::appendPassAtIndex(std::shared_ptr<Pass> pass, unsigned int index) {
-//     if (index >= passes_.size()) {
-//         throw std::runtime_error("Appending pass at invalid index!");
-//     }
-
-//     if (baked_) {
-//         throw std::runtime_error("Attempting to append to a finalized render graph!");
-//     }
-
-//     // make sure that no pass exists with the same name
-//     for (const auto &existingPass : passes_) {
-//         if (existingPass->getName() == pass->getName()) {
-//             throw std::runtime_error("There is already a pass with name " + pass->getName());
-//         }
-//     }
-
-//     // link the sinks of the pass and then add it
-//     // linkSinks(*pass);
-//     passes_.insert(passes_.begin() + index, std::move(pass));
-// }
-
-// void RenderGraph::removePassByName(const std::string &passName) {
-//     const auto finderFunction = [&passName](const std::shared_ptr<Pass> &pass) {
-//         return pass->getName() == passName;
-//     };
-
-//     const auto find = std::find_if(passes_.begin(), passes_.end(), finderFunction);
-//     if (find == passes_.end()) { // pass not found but that's alright cause we're deleting it lol (should prob runtime_error here tbh)
-//         return;
-//     }
-
-//     passes_.erase(find);
-// }
-
-// void RenderGraph::removePassByIndex(unsigned int index) {
-//     if (index >= passes_.size()) {
-//         throw std::runtime_error("Attempting to remove pass using invalid index!");
-//     }
-//     passes_.erase(passes_.begin() + index);
-// }
 #pragma endregion INTERFACE_RG
 
 /* RESOURCES */
@@ -347,17 +277,12 @@ void RenderGraph::analyzeDependencies() {
         auto &pass = *passes_[passIndex];
         traverseDependencies(pass, 0); // traverse each pass recursively
     }
-
-    // for now this stuff is all directly operating on member variables but it might be better to make them side-effect free and
-    // pass in appropriate handles to things 
-
 }
 
 void RenderGraph::traverseDependencies(Pass &pass, unsigned int stackCounter) {
 
     // here we go through each resource type and recursively check their dependencies
 
-    // first depth stencil:
     if (pass.getDepthStencilInput()) {
         recursePassDependencies(pass, pass.getDepthStencilInput()->getWritePasses(), stackCounter, false, false, true);
     }
@@ -367,7 +292,6 @@ void RenderGraph::traverseDependencies(Pass &pass, unsigned int stackCounter) {
             recursePassDependencies(pass, input->getWritePasses(), stackCounter, false, false, true);
     }
 
-    // textures etc:
     for (auto *input : pass.getStorageImageInputs()) {
         if (input) {
             recursePassDependencies(pass, input->getWritePasses(), stackCounter, true, false, false);
@@ -399,7 +323,7 @@ void RenderGraph::recursePassDependencies(const Pass &self, std::unordered_set<u
         throw std::runtime_error("No pass exists which writes to the resource!");
 
     if (stackCounter > passes_.size()) {
-        throw std::runtime_error("Cycle detected! or something!");
+        throw std::runtime_error("Cycle detected, or some other issue with specified graph!");
     }
 
     if (mergeDependency) {
@@ -446,7 +370,6 @@ bool RenderGraph::dependsOnPass(unsigned int destinationPass, unsigned int sourc
 
 void RenderGraph::filterPasses() {
     // i think this should just prune duplicate passes from the graph, but it could do whatever other filtering you want i guess
-    
     std::unordered_set<unsigned int> seenSet;
 
     auto outputItr = passStack_.begin();
@@ -487,16 +410,15 @@ void RenderGraph::reorderPasses() {
         }
     }
 
-    // schnice, now we actually schedule/organize the passes!
-        // should probably make all these functions use an argument instead of the passStack_ member but it should be fine for now
+    // now we actually schedule/organize the passes!
     if (passStack_.size() <= 2) {
         return;
     }
 
+    // empty-swap to clear the passStack_
     std::vector<unsigned int> unscheduledPasses;
     unscheduledPasses.reserve(passes_.size());
-    std::swap(passStack_, unscheduledPasses); // using swap to completely clear passStack_ is kinda side-effect-y, although not
-    // much different from passing in a reference to the pass stack (which would just hold the ref to passStack_ anyway)
+    std::swap(passStack_, unscheduledPasses);
 
     // lambda that will be used for scheduling the actual passes
     const auto schedule = [&](unsigned int index) {
@@ -519,8 +441,6 @@ void RenderGraph::reorderPasses() {
             // for each pass, maintain an overlap factor (scheduling metric)
             unsigned int overlapFactor = 0;
 
-            // BACKEND REWRITE: gonna merge passes actually because
-            // i think it'll help leverage vulkan's automatic subpass synchronization
             if (passMergeDependencies_[unscheduledPasses[i]].count(passStack_.back())) {
                 // in this case, we set the score heuristic to max to ensure this pass should be scheduled next 
                 // (since it can merge with the last scheduled pass)
@@ -648,49 +568,12 @@ ResourceDimensions RenderGraph::getResourceDimensions(ImageResource &resource) c
 }
 
 void RenderGraph::buildPhysicalResources() {
-    // after the passes have been flattened and ordered, we can prepare everything for execution i think
-        // building physical resources is part of that
-    
-    // BACKEND REWRITE - not sure whether i wanna bake the resources initially (which does sound good) or allocate them 
-    // only on first use (which would make baking less bulky by spreading out allocations)
-        // since we're using VMA, could be as easy optionally deferring the creation of the resource until the first access during
-        // physical pass execution
+    // after the passes have been flattened and ordered, we can build the physical resources corresponding to the
+    // high-level graph resources that were specified 
 
-    // for my relatively small render setups which do not rebake often (although ideally the renderer should support big fancy graphs with tons of resources)
-    // i think it's okay to just leave deferred allocation as a todo; 
-        // i think i can reuse physical resources between frame contexts to save memory, but i might implement stuff like transient resources 
-        // which would be freed every frame
-
-    // i think the idea here is to build ResourceDimensions in this stage for each resource being used by the graph (eventually might make sense to add resource/pass culling before this part)
-    
-    // since every appended output to a pass will have either a corresponding named input or a nullptr appended to the pass' input list as well,
-    // we can compare ResourceDimensions at the same indices to query the corresponding input for an output (if one exists)
-
-    // we can do basic aliasing here, where we build up a new list of physical resources plus a mapping from virtual RG resource names to 
-    // indices in the physical resource list (thus allowing us to alias VkImages and VkImageViews i think)
-
-    
     // initialize a variable corresponding to the current index in the physical resources array (which should start from empty)
     unsigned int physicalResourceIndex = 0;
     physicalResourceDimensions_.clear();
-
-    // now that i'm handling swapchain images directly, i'll redo how they're handled here:
-        // actually, maybe we just put a few copies down, and the specific resource that will be used is chosen 
-        // at execute() time... (might be kinda a dumb way to do it tho, might as well just use one dimension
-        // since all swapchain images have the same dimensions)
-    // auto swapchainDimensions = getSwapchainDimensions();
-    
-    // for (auto i = 0; i < context_->WSI().getSwapchainImageCount(); i++) {
-    //     // might need to redo the swapchain image dimensions function so that it builds up the proper ResourceDimensions struct 
-    //     // using info from the WSI?
-    //     physicalResourceDimensions_.push_back(tmp);
-    // }
-    // auto tmp = *swapchainDimensions_;
-    // physicalResourceDimensions_.push_back(tmp);
-        // you know, you might not have to add the swapchain dimensions separately, since
-        // they should just be used as regular resources...
-    // since we check for "name == swapchain" when building the actual phys resource, 
-    // it should already be good to go by then after being added as a ResourceDimensions struct
 
     // here we build up the physicalResourceDimensions_ vector with an entry for each of the physical resources used by each PASS
     for (auto &passIndex : passStack_) {
@@ -875,7 +758,6 @@ void RenderGraph::buildPhysicalResources() {
 
     // at this point, i should probably use these physicalResourceDimensions_ to build actual resources...
     physicalResources_.clear();
-    // physicalResources_.resize(physicalResourceDimensions_.size());
     for (auto i = 0u; i < physicalResourceDimensions_.size(); i++) {
         auto &dim = physicalResourceDimensions_[i];
 
@@ -898,8 +780,6 @@ void RenderGraph::buildPhysicalResources() {
         else {
             // handle swapchain images separately
             if (dim.name == "swapchain") {
-                // might need to specialize a Backend class for this too
-                // since we don't need to create swapchain images
                 std::vector<VkImage> swapchainImages = {};
                 for (int j = 0; j < context_->getSwapchainImageCount(); j++) {
                     swapchainImages.push_back(context_->getSwapchainImage(j));
@@ -950,16 +830,12 @@ void RenderGraph::buildPhysicalResources() {
         }
     }
 
-    // hopefully at this point, all the physical resources should exist...?
-        // TODO: make this true by actually building the physical resources in the last loop here
+    // hopefully at this point, all the physical resources should exist...
 
 }
 
 void RenderGraph::buildPhysicalPasses() {
     // now i think we go on to building actual physical passes!
-        // this is where the actual merging takes place i think, since
-        // i want to build the "minimal" number of actual physical render passes out of 
-        // the abstract graph Passes 
 
     // first we define some handy lambdas that will be used to merge physical passes
         // we'll make one PhysicalPass object for each pass and merge them using these lambdas
@@ -1015,12 +891,6 @@ void RenderGraph::buildPhysicalPasses() {
                 return false;
             }
         }
-
-        // for (auto &input : next.getGenericBuffers()) {
-        //     if (find_buffer(prev.getStorageOutputs(), input.resource)) {
-        //         return false;
-        //     }
-        // }
 
         // TODO: check blit texture inputs
 
@@ -1132,7 +1002,7 @@ void RenderGraph::buildPhysicalPasses() {
         std::vector<unsigned int> passIndices = {};
         passIndices.insert(passIndices.end(), passStack_.begin() + index, passStack_.begin() + mergeEnd);
 
-        // this is where the PhysicalPass object is created, which maintains all 
+        // create the physical pass
         auto tmp = shared_from_this();
         physicalPasses_.push_back(std::make_shared<Backend::PhysicalPass>(passIndices, tmp, context_));
         index = mergeEnd;
@@ -1140,7 +1010,7 @@ void RenderGraph::buildPhysicalPasses() {
 }
 
 void RenderGraph::buildBarriers() {
-
+    // TODO
 }
 
 void RenderGraph::buildAliases() {

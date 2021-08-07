@@ -164,7 +164,6 @@ class Context : public std::enable_shared_from_this<Context> {
     /* rendering  */
         // actually a lot of this should go in the frame context
     std::mutex commandBuffersLock_;
-    // std::vector<VkCommandBuffer> recordedBuffers_;
     VkFence frameFence_;
 
     // immediate submission stuff

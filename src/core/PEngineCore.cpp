@@ -33,7 +33,7 @@ PEngine::PEngine() {
 
 
     win32_ = std::make_shared<Win32Info>();
-    win32_->instance_ = GetModuleHandle(NULL);
+    win32_->instance = GetModuleHandle(NULL);
     
     // create main window 
     createMainWindow(); // try this 
@@ -41,7 +41,7 @@ PEngine::PEngine() {
 
     // setup any dlls (i think just vulkan)
         // in the future could set up a data structure mapping libraries to identifiers, but for now we just need vulkan so this will work
-    win32_->vulkanLibrary_ = LoadLibrary("vulkan-1.dll"); 
+    win32_->vulkanLibrary = LoadLibrary((LPCWSTR)"vulkan-1.dll"); 
 
     #endif
 
@@ -125,10 +125,10 @@ void PEngine::createMainWindow() {
       /* STEP1 - register window class */
             // LPCWSTR WINDOW_CLASS_NAME = ; // idk how to make this work :()
             WNDCLASS window_class = { };
-            window_class.hInstance = win32_->instance_;
+            window_class.hInstance = win32_->instance;
             window_class.lpfnWndProc = (WNDPROC) WindowProc; // just using the windows style name for the window procedure (which will be wrapped in the Window object i hopesies)
             // this->window_class.lpszClassName = static_cast<LPCWSTR>(WINDOW_CLASS_NAME); // will this work?
-            window_class.lpszClassName = "MainWindowClass";
+            window_class.lpszClassName = (LPCWSTR)"MainWindowClass";
 
             RegisterClass(&window_class); // make sure this is right..
 
@@ -137,7 +137,7 @@ void PEngine::createMainWindow() {
             int width = DEFAULT_WINDOW_WIDTH;
             int height = DEFAULT_WINDOW_HEIGHT;
 
-            win32_->mainWindow_ = CreateWindowExW(
+            win32_->mainWindow = CreateWindowExW(
                 0, // optional window style
                 L"MainWindowClass", // window class
                 // continue to fill in from that one article u find about creating a windle!!! 
@@ -150,16 +150,16 @@ void PEngine::createMainWindow() {
                 width, height, // use default sizes, but obviously resizing the window should probably be possible 
                 (HWND) NULL, // no parent/owner window (again make this specifiable)
                 (HMENU) NULL, // class menu used (donno what that is lol)
-                win32_->instance_, // instance handle
+                win32_->instance, // instance handle
                 NULL);
 
-            if (win32_->mainWindow_ == NULL) {
+            if (win32_->mainWindow == NULL) {
                 throw std::runtime_error("Unable to create HWND!"); // like all my error handling, needs to be redone
             }
 }
 
 void PEngine::showMainWindow() {
-    ShowWindow(win32_->mainWindow_, SW_RESTORE); // try this
+    ShowWindow(win32_->mainWindow, SW_RESTORE); // try this
 }
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {

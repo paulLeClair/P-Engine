@@ -18,9 +18,9 @@ CoreMenuMode::~CoreMenuMode() {
 }
 
 void CoreMenuMode::enterMode() {
-    // idea here:
-        // you specify the render graph and bake it in the enterMode() 
-
+    // idea for these "enterMode()" functions
+        // you specify the render graph and bake it, and then the engine will run your baked graph as
+        // part of execution
 
     // register core menu gui call
     _core->registerGUIComponent([&](){
@@ -105,16 +105,14 @@ void CoreMenuMode::mainLoop() {
 
 // TODO: implmt this which should only really be used to transition to another specified mode, the program should just quit from within
 // the current mode if an exit signal is given (whatever form that takes)
-// void CoreMenuMode::exitMode() {
-
-// }
 
 void CoreMenuMode::drawCoreMenu() {
     ImGuiWindowFlags coreWindowFlags = 0;
-    // coreWindowFlags |= ImGuiWindowFlags_NoMove;
-    // coreWindowFlags |= ImGuiWindowFlags_NoResize;
+
+    // some arbitrary flags
+    coreWindowFlags |= ImGuiWindowFlags_NoMove;
+    coreWindowFlags |= ImGuiWindowFlags_NoResize;
     coreWindowFlags |= ImGuiWindowFlags_NoCollapse;
-    // coreWindowFlags |= ImGuiWindowFlags_NoTitleBar;
     
     // size window
     ImGui::SetNextWindowPos({0,0}, ImGuiCond_Always);

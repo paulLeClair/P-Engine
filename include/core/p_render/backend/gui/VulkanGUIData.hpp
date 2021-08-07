@@ -1,17 +1,5 @@
 #pragma once
 
-// base 
-// #include "../../../scene_data/GUIData.hpp" 
-
-// #include "./VulkanGUIHandler.hpp"
-
-// #include "../../../../imgui/imgui.h"
-// #include "../../../../imgui/imgui_internal.h"
-// #include "../../../../imgui/imgui_impl_vulkan.h"
-// #include "../../../../imgui/imgui_impl_win32.h"
-
-// include vulkan stuff
-// #include "../../../../../../vulkan/vulkan.h"
 #include "../../PRender.hpp"
 
 #include <unordered_map>
@@ -22,49 +10,13 @@
 
 
 class RenderGraph;
-
 class Context;
-
-// struct VulkanIMGUICreateInfo {
-//     const VkInstance &vulkanInstance;
-//     const VkDevice &device;
-//     const VkPhysicalDevice &selectedPhysicalDevice;
-//     const unsigned int &queueFamilyIndex;
-//     const VkQueue &queue;
-
-
-//     // const VkSampleCountFlagBits &msaaSamples;
-//     // const VkAllocationCallbacks *allocator;
-//     // const VkDescriptorPool &descriptorPool; 
-//     // const VkPipelineCache &pipelineCache;
-//     const unsigned int &minImageCount;
-//     const unsigned int &imageCount;
-//     // const unsigned int &subpass; 
-
-//     // this a function that handles failed vulkan API calls within the imGUI thing i think
-//     // void (*CheckVkResultFn)(VkResult err);
-
-//     std::shared_ptr<RenderGraph> renderGraph;
-// };
-
-// imgui forward declarations
 class ImGuiContext;
 
-// struct ImGuiData {
-//     ImGuiContext *ctx_;
-//     ImGuiIO *io_;
-//     VkDescriptorPool guiDescriptorPool;
-//     VkRenderPass guiPass;
-
-//     std::vector<VkFramebuffer> guiFramebuffers;
-// };
-    
-
-class VulkanGUIData /* : public GUIData */ {
+class VulkanGUIData {
   public:
     VulkanGUIData(const VulkanIMGUICreateInfo &createInfo); // create info, no parent scene info anymore since GUI is no longer part of the scene itself
     ~VulkanGUIData();
-
 
     // getters
     const VkRenderPass &getRenderPass() const {
@@ -88,9 +40,6 @@ class VulkanGUIData /* : public GUIData */ {
     }
 
   private:
-    // pointer to render graph 
-    // std::shared_ptr<RenderGraph> renderGraph_;
-
     // pointer to vulkan wrapper?
     std::shared_ptr<Backend::Context> context_;
 

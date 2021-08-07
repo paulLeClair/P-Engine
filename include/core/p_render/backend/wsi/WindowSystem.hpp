@@ -1,8 +1,5 @@
 #pragma once
 
-// BACKEND REWRITE 
-    // main idea: take the windowing functionality out of the OS interface and incorporate more closely
-    // into the renderer; it can also handle the VkSwapchain
 #include "../Context.hpp"
 
 #include <vector>
@@ -12,9 +9,6 @@ class PEngine;
 namespace Backend {
 
 struct WindowSystemData {
-    // tbh, this is kinda pointless given that we pass pointers to the core and context; might just make sense
-    // to get all the relevant info from there and have these be regular members? idk
-
     /* WIN32 */
     // i think for now we just support one main window, so i'll hardcode that
     HINSTANCE win32Instance;
@@ -42,7 +36,7 @@ struct WindowSystemData {
     VkSurfaceKHR presentationSurface;
     VkPresentModeKHR desiredPresentMode;
     VkPresentModeKHR presentMode;
-    VkClearValue clearValue = {164.0f/256.0f, 30.0f/256.0f, 34.0f/256.0f, 0.0f}; // rando default
+    VkClearValue clearValue = {164.0f/256.0f, 30.0f/256.0f, 34.0f/256.0f, 0.0f}; // random default
 
     // swapchain stuff
     VkSwapchainKHR swapchain; // for now we're using a single swapchain, but could make this a vector of swapchains when needed
@@ -130,10 +124,6 @@ class WindowSystem {
       return wsiData_->clearValue;
     }
 
-    // const VkImageView &getSwapchainImageView(uint32_t index) const {
-    //   return wsiData_->swapchainImageViews[index];
-    // }
-
     const VkImage &getSwapchainImage(unsigned int index) {
       if (index >= wsiData_->numSwapchainImages)
         throw std::runtime_error("Invalid swapchain index!");
@@ -186,7 +176,6 @@ class WindowSystem {
     void createPresentationSurface(WindowSystemData &wsiData);
 
     void setPresentationMode(WindowSystemData &wsiData);
-    
 
     void setupSwapchain(WindowSystemData &wsiData);
         void setSurfacePresentCapabilities(WindowSystemData &wsiData); 
@@ -196,10 +185,6 @@ class WindowSystem {
         void setSwapchainImageFormat(WindowSystemData &wsiData);
         void createSwapchainImageSemaphores(WindowSystemData &wsiData);
         void getSwapchainImageViews(WindowSystemData &wsiData);
-    
-    // 
-
-    
 
 };
 

@@ -2,8 +2,6 @@
 
 #include "../../../../../include/core/PEngineCore.hpp"
 
-// #include "../../../../../../include/core/p_render/render_graph/pass/gui_pass/GUIPass.hpp"
-
 #include "../../../../../include/core/p_render/backend/gui/VulkanGUIData.hpp"
 
 #include "../../../../../include/core/p_render/render_graph/RenderGraph.hpp"
@@ -13,13 +11,7 @@
 
 #include "../../../../../include/core/p_render/PRender.hpp"
 
-// vulkan include
-    // this is bugged :( might be hard to use this vulkan instance data 
-
 // imgui include
-// #include "../../../../../../include/components/p_render/gui/dearimgui/DearIMGUIHandler.hpp"
-    // FEB24 - honestly i'm kinda thinking that this DearIMGUIHandler thing is unnecessary
-        // maybe separating the gui from the scene is unnecessary too
 #include "../../../../../include/imgui/imgui.h"
 #include "../../../../../include/imgui/imgui_internal.h"
 #include "../../../../../include/imgui/imgui_impl_vulkan.h"
@@ -44,8 +36,6 @@ VulkanGUIHandler::~VulkanGUIHandler() {
 
 }
 
-// MAY14 - gotta redo this too, maybe i should change this so that it's given a frame context reference
-// to use 
 void VulkanGUIHandler::renderFrame(Backend::FrameContext &frameContext) {
     // i think this function can be submitted to a JobQueue for execution by a worker thread...
         // as far as i know this shouldn't really involve doing anything 
@@ -124,7 +114,7 @@ void VulkanGUIHandler::drawCoreMenu() {
     ImGui::SetNextWindowSize(winSize, ImGuiCond_Always);
 
     ImGui::Begin("PEngine Core Menu", NULL, coreWindowFlags);
-        // just gonna create an unformatted lil window for now lmfao
+        // just gonna create an unformatted lil window for now 
 
     if (ImGui::Button("World Generation")) {
         // somehow signal that we entered world generation?

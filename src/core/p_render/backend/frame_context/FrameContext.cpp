@@ -3,13 +3,10 @@
 // #include "../../../../../include/core/PEngineCore.hpp"
 #include "../../../../../include/core/p_render/backend/Context.hpp"
 
-
-
 using namespace Backend;
 
 FrameContext::FrameContext(std::shared_ptr<Context> context, unsigned int index, unsigned int numThreads) 
     : context_(context), index_(index), numThreads_(numThreads), wsi_(context_->WSI()) {
-    // wsi_ = std::move(wsi);
 
     for (auto i = 0; i < numThreads; i++) {
         ThreadCommandPool pool;
@@ -44,9 +41,7 @@ FrameContext::~FrameContext() {
 }
 
 bool FrameContext::begin() {
-    // actually wait, at this point we already know the swapchain image index (it's the one corresponding to this)
-        // so acquire next swapchain image occurs in PRender during renderFrame i guess
-    
+    // TODO - determine if this is even needed lol
     return true;
 }
 
@@ -63,13 +58,8 @@ void FrameContext::enqueueCommandBuffer(VkCommandBuffer buffer) {
 }
 
 void FrameContext::submitCommandBuffers() {
-    // submit command buffers, for now it should wait using a fence...
+    // TODO - restructure this
 
-    // for now i'm gonna just gonna include this function which doesn't make use of wait semaphores but
-    // i can probably write another version that does
-
-    // std::unique_lock<std::mutex> ul(commandBuffersLock_);
-    // maybe acquire the lock to the frame context
     std::unique_lock<std::mutex> ul(commandBuffersLock_);
 
     VkSubmitInfo info = {};
@@ -90,10 +80,6 @@ void FrameContext::submitCommandBuffers() {
     if (result != VK_SUCCESS) {
         throw std::runtime_error("Unable to submit command buffers to graphics queue!");
     }
-
-    // i guess just have this thread wait on the fence...
-    // result = vkWaitForFences(instance_.device, 1, &frameFence_, VK_TRUE, 50000000); // just gonna try this...
-
     while (vkWaitForFences(context_->getLogicalDevice(), 1, &frameFence_, VK_TRUE, 50000000) == VK_TIMEOUT) {
         // ugly - just kinda some ez bs code to wait, although it doesn't handle any VK_FAILs
     }

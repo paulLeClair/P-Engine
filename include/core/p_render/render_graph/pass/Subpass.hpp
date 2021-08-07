@@ -11,8 +11,6 @@
 #include <functional>
 #include <assert.h>
 
-// class Pass; 
-
 class Subpass {
   public:
     Subpass(const std::string &name, std::shared_ptr<RenderGraph> graph, std::shared_ptr<ThreadPool> pool, std::shared_ptr<Pass> pass);

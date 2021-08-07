@@ -37,17 +37,15 @@ void WindowProc_resize(HWND hwnd, UINT wParam, int width, int height);
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 struct Win32Info {
-    // these shouldn't have "_"s lol
-
   // windows-specific OS state
-    HINSTANCE instance_;
+    HINSTANCE instance;
 
     // some kind of windowing thing... i think for now we just need a main window, so instead of allowing for multiple i'll just hardcode that
-    HWND mainWindow_;
-    HRGN mainWindowRegion_; // not sure if this is needed... eventually encapsulate all this in a Window 
+    HWND mainWindow;
+    HRGN mainWindowRegion; // not sure if this is needed... eventually encapsulate all this in a Window 
 
     // for vulkan (a DLL, hopefully the only one in the engine... but maybe not who knows), need to store an HMODULE for it 
-    HMODULE vulkanLibrary_;
+    HMODULE vulkanLibrary;
 };
 #endif
 
@@ -89,12 +87,10 @@ class PEngine : public std::enable_shared_from_this<PEngine> {
       return dynamic_cast<PRender&>(*pRender_);
     }
     
-    // BACKEND REWRITE -> route the request to the renderer which should do the actual rendering
     void renderFrame(const std::string &name) {
         renderer().renderFrame(name);
     }
 
-    // void registerRenderGraph(const std::string &name, std::shared_ptr<RenderGraph> graph) {
     std::shared_ptr<RenderGraph> registerRenderGraph(const std::string &name) {
         return std::move(renderer().registerRenderGraph(name));
     }
@@ -106,15 +102,15 @@ class PEngine : public std::enable_shared_from_this<PEngine> {
     }
 
     HMODULE getVulkanLibraryModule() {
-        return win32_->vulkanLibrary_;
+        return win32_->vulkanLibrary;
     }
 
     HINSTANCE getHINSTANCE() {
-      return win32_->instance_;
+      return win32_->instance;
     }
 
     HWND getMainWindowHWND() {
-      return win32_->mainWindow_;
+      return win32_->mainWindow;
     }
 
     unsigned int getNumThreads() const {
@@ -146,7 +142,7 @@ class PEngine : public std::enable_shared_from_this<PEngine> {
     /* STARTUP FUNCTIONS */
     void setupImGui();
 
-    void startupInitializeComponents(); // 
+    void startupInitializeComponents();
 
     void startupInitializeModes();
 

@@ -13,10 +13,7 @@ ShaderModule::ShaderModule(const std::string &shaderFilename, std::shared_ptr<Co
     graph_ = std::move(graph);
 
     const auto &getShaderFilePathString = [&](const std::string &shaderModuleName) {
-        // i think we have to build up the proper path to access the given shader file...
-        // the thing is, my Cmake command isn't producing any .spv binaries, which isn't what i want
-        
-        // TODO: come up with a more consistent method of getting the file path string... this barely works
+        // TODO: come up with a more consistent method of getting the file path string... this isn't a real solution
 
         // have to excise part of this for now... really ugly, need to come up with a better way of doing this, but for now it should work
         std::string buildDirString = std::filesystem::current_path().string();
@@ -71,8 +68,6 @@ ShaderModule::ShaderModule(const std::string &shaderFilename, std::shared_ptr<Co
     }
 
     // it probably makes sense to do some reflection at this point too...
-
-    // gonna have to try and figure out how to use this SPIRVReflect library as i go
 
     // to start, you need to create a SpvReflect shader module:
     SpvReflectShaderModule module = {};

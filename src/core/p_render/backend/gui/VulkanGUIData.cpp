@@ -24,25 +24,7 @@ VulkanGUIData::VulkanGUIData(const VulkanIMGUICreateInfo &createInfo) {
     // IMGUI_CHECKVERSION();
     ctx_ = ImGui::GetCurrentContext();
     ImGui::SetCurrentContext(ctx_);
-    
 
-    // // get io, enable keyboard+mouse
-    // io_ = &ImGui::GetIO();
-    // io_->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    // // io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos; // does this do it? dunno if you need it 
-
-    /* set up the GUI pass */
-        // mar27 - might not need a guipass actually...
-    // renderGraph_ = createInfo.renderGraph;
-    // renderGraph_->createDefaultGUIPass();
-    // guiPass_ = renderGraph_->createDefaultGUIPass("default"); // might be able to just make a general "createGUIPass()" function but 
-    // auto guiPass = std::make_shared<GUIPass>("default");
-        // mar23 - for now i think i'll make GUIPasses fairly limited compared to your average render pass
-            // i'll probably end up doing some 3D gui stuff anyway, which will go in its own pass during 3D rendering
-    
-    // instead of having this GUIData class correspond to a particular vulkan pass, it'll 
-    // maintain the single imgui VkRenderPass?
-    
     // first set up the single color attachment description (there's only one we need i think)
     VkAttachmentDescription attachmentDescription = {};
     attachmentDescription.flags = 0;
@@ -127,9 +109,7 @@ VulkanGUIData::VulkanGUIData(const VulkanIMGUICreateInfo &createInfo) {
     imguiInitInfo.Queue = createInfo.queue;
     imguiInitInfo.QueueFamily = createInfo.queueFamilyIndex;
     imguiInitInfo.DescriptorPool = guiDescriptorPool_;
-    // imguiInitInfo.Subpass = VK_NULL_HANDLE; // TODO: have this pass an actual VkSubpass (maybe GUIPass::getIMGUISubpass()?)
-    // imguiInitInfo.Subpass = guiPass->getIMGUISubpass();
-    imguiInitInfo.Subpass = 0; // i guess just set it to the first subpass since the render pass only has one???
+    imguiInitInfo.Subpass = 0; // i guess just set it to the first subpass since the render pass only has one
 
 
     // null
@@ -140,8 +120,6 @@ VulkanGUIData::VulkanGUIData(const VulkanIMGUICreateInfo &createInfo) {
 
     // init imgui for vulkan!
     ImGui_ImplVulkan_Init(&imguiInitInfo, guiPass_);
-
-    
 
     // i think it's necessary to do some more setup before you can have imgui render things for you
         // i'll try separating it out in a separate function for now
@@ -169,6 +147,7 @@ void VulkanGUIData::setupIMGUIResources() {
             throw std::runtime_error("Unable to create fonts texture!");
         }
     });
+    
     // call another imgui function to cleanup some of the leftover font texture CPU data
     ImGui_ImplVulkan_DestroyFontUploadObjects();
 

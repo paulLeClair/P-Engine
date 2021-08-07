@@ -66,24 +66,6 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
 
         // not sure what else we need to know... maybe just the usage would be fine?
 
-        // one issue is that i need to know which subpasses use the resource, and (for some resources) we need to know
-        // how the subpass uses it 
-            // i'm thinking the solution for now can be to base our high-level interface around the subpasses, and then
-            // we can just rip out this information directly as the user gives it
-        // so you'd have to specify each shader resource used by a subpass as an input/output of the appropriate "variety" 
-            // (variety being determined by which interface function you call, eg addUniform or addStorageImageInput)
-        // then at this point we can just go through each Graph::Subpass' appropriate arrays of shader resources
-        // and determine their usages, which i think we'll use later to build the shader resource subpass dependencies
-    
-        // PROBLEM: i think we do have to be able to support multiple usages here, and in fact
-        // the logic of "continue" whenever we see a physical resource we've already encountered is flawed i think
-            // if we have a buffer that one subpass uses as a storage output and some later subpass uses as a storage input
-            // and output, we would be only adding the usage of being a storage output and would not really address
-            // the multiple usages of it
-        // i think we might already just add the usages when we see an existing phys resource, but if not
-        // we could just have each physical resource maintain all its usages and update em as you go through
-        // the graph resources
-
     };
 
     std::vector<ShaderResourceDescription> shaderResourceDescriptions = {};
@@ -121,19 +103,14 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
     std::vector<VkSubpassDescription> subpassDescriptions = {};
     std::vector<std::unordered_set<unsigned int>> subpassUsedAttachmentIndices = {};
 
-    // JULY5 - i think i might need to maintain some extra stuff here so we know which resources
-    // are read/write/readwrite
-        // i guess i'll just store a tuple of read/write index sets
+    // not sure if i need these...
     std::vector<std::tuple<std::unordered_set<unsigned int>, std::unordered_set<unsigned int>>> passReadWriteInfos = {};
-        // these sets should contain the physical resource indices of the read/write resources for this pass
     std::unordered_map<unsigned int, unsigned int> subpassReadWriteInfoIndices = {};
 
     std::vector<SubpassAttachments> subpassAttachmentPointers = {};
-    // // store physical resource index for each SHADER RESOURCE (accessed via descriptor set (+ maybe i'll lump in push constants))
-    // std::vector<unsigned int> shaderResourcePhysicalResourceIndices = {}; // i hate that this has the word "Resource" twice but meh
 
     // i could eventually use some kind of temporary hash type mechanism similar to Granite
-    // and automatically generate the actual VkRenderPass on the fly but for my 
+    // and automatically generate the actual VkRenderPass (and other such objects) on the fly but for my 
     // purposes (with static render graphs and generally trying to minimize graphics time while getting 
     // decently pretty results (plus the ability to crank it up or down as you want))
     // i think it'll be okay to just bake them at this point and discourage bake()ing often until
@@ -147,7 +124,6 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
             auto *colorOutput = pass.getColorOutputs()[i];
             
             if (seenResourceIndices.find(colorOutput->getPhysicalIndex()) != seenResourceIndices.end()) {
-                // i thought 
                 continue;
             }
             
@@ -163,18 +139,6 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
             desc.flags = 0; // eventually i'll add support for memory aliasing
             
             // layouts + load/store ops
-            // for color attachments (like color outputs) we start and finish in color_att_optimal i think...
-                // maybe we set this differently depending on whether there's an input?
-                    // if there's no input, we assume the resource hasn't been used yet?
-            // might have to go through and figure out where to do layout transitions... 
-                // still trying to wrap my brain around making this stuff automatic
-                // tbh i might need to go through all the physical passes + resources and set the layouts
-                    // i think that would mainly apply to the overall renderpass initial/final layouts
-            // actually, since we're only reasoning about each VkRenderPass' initial/final layouts, maybe
-            // we can deduce the required layout from the render graph info only... 
-                // once we know which layouts are required in which VkRenderPasses (i think layout transitions
-                // between subpasses of a renderpass are handled with subpass dependencies... not entirely sure how it works though),
-                // we can go through and add the barriers we need to make sure each resource is in the right layout during execution
             if (hasInput) {
                 desc.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             }
@@ -478,10 +442,6 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
 
         auto subpassIndex = 0u;
 
-        // std::shared_ptr<std::vector<VkAttachmentReference>> colorAttachments = {};
-        // std::shared_ptr<std::vector<VkAttachmentReference>> inputAttachments = {};
-        // std::shared_ptr<std::vector<VkAttachmentReference>> resolveAttachments = {}; // ignoring this for now
-
         for (auto &subpassPtr : pass.getSubpasses()) {
             auto &subpass = *subpassPtr;
 
@@ -706,166 +666,38 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
         }
 
         for (auto &uniformTexel : pass->getUniformTexelBuffers()) {
-            // if (seenResourceIndices.find(uniformTexel->getPhysicalIndex()) != seenResourceIndices.end()) {
-            //     // i dont know how much danger we 
-            //     continue;
-            // }
-            // seenResourceIndices.insert(uniformTexel->getPhysicalIndex());
-
-            // ShaderResourceDescription desc = {};
-
-            // // set up whatever info is required
-            // desc.usages |= ShaderResourceDescription::ResourceUsage::UniformTexel;
-
-            // shaderResourceDescriptions.push_back(desc);
-            // shaderResourcePhysicalResourceIndices.push_back(uniformTexel->getPhysicalIndex());
             checkBufferResource(uniformTexel, ShaderResourceDescription::ResourceUsage::UniformTexel);
         }
 
-        // int index = 0;
         for (auto &storageOutput : pass->getStorageBufferOutputs()) {
-            // if (seenResourceIndices.find(storageOutput->getPhysicalIndex()) != seenResourceIndices.end()) {
-            //     continue;
-            // }
-            // seenResourceIndices.insert(storageOutput->getPhysicalIndex());
-        
-            // ShaderResourceDescription desc = {};
-
-            // // first have to check the corresponding input slot in the pass
-            //     // actually i don't think we even do...
-            // // if (pass->getStorageBufferInputs()[index]) {
-            // //     // in this case we have a read-write 
-            // //     desc.usage = ShaderResourceDescription::ResourceUsage::StorageBufferReadWrite;
-            // // }
-            // // else {
-            // //     // the resource was registered with no corresponding input, so we have read-only
-            // //     desc.usage = ShaderResourceDescription::ResourceUsage::StorageBufferReadOnly;
-            // // }
-
-            // desc.usages |= ShaderResourceDescription::ResourceUsage::StorageBufferReadWrite;
-
-            // shaderResourceDescriptions.push_back(desc);
-            // shaderResourcePhysicalResourceIndices.push_back(storageOutput->getPhysicalIndex());
-            // index++;
-
             checkBufferResource(storageOutput, ShaderResourceDescription::ResourceUsage::StorageBufferReadWrite);
         }
 
         for (auto &storageInput : pass->getStorageBufferInputs()) {
-            // i think we check here for any read-only ones, since the read-write ones should have been
-            // identified in the above loop where we go over storage buffer outputs
-            // if (seenResourceIndices.find(storageInput->getPhysicalIndex()) != seenResourceIndices.end()) { 
-            //     continue;
-            // }
-            // seenResourceIndices.insert(storageInput->getPhysicalIndex());
-
-            // ShaderResourceDescription desc = {};
-
-            // desc.usages |= ShaderResourceDescription::ResourceUsage::StorageBufferReadOnly;
-
-            // shaderResourceDescriptions.push_back(desc);
-            // shaderResourcePhysicalResourceIndices.push_back(storageInput->getPhysicalIndex());
-
             checkBufferResource(storageInput, ShaderResourceDescription::ResourceUsage::StorageBufferReadOnly);
         }
 
-        // index = 0;
         for (auto &storageTexelOutput : pass->getStorageTexelBufferOutputs()) {
-            // if (seenResourceIndices.find(storageTexelOutput->getPhysicalIndex()) != seenResourceIndices.end()) {
-            //     continue;
-            // }
-            // seenResourceIndices.insert(storageTexelOutput->getPhysicalIndex());
-
-            // // i think here we also have to check for read=write or read-only
-            // ShaderResourceDescription desc = {};
-
-            // // if (pass->getStorageTexelBufferInputs()[index]) {
-            // //     // in this case we have a corresponding input so this is a read-write resource
-            // //     desc.usage = ShaderResourceDescription::ResourceUsage::StorageTexelReadWrite;
-            // // }
-            // // else {
-            // //     desc.usage = ShaderResourceDescription::ResourceUsage::StorageTexelReadOnly;
-            // // }
-
-            // desc.usages |= ShaderResourceDescription::ResourceUsage::StorageTexelReadWrite;
-
-            // shaderResourceDescriptions.push_back(desc);
-            // shaderResourcePhysicalResourceIndices.push_back(storageTexelOutput->getPhysicalIndex());
-            // index++;
-
             checkBufferResource(storageTexelOutput, ShaderResourceDescription::ResourceUsage::StorageBufferReadWrite);
         }
 
         for (auto &storageTexelInput : pass->getStorageTexelBufferInputs()) {
-            // if (seenResourceIndices.find(storageTexelInput->getPhysicalIndex()) != seenResourceIndices.end()) {
-            //     continue;
-            // }
-            // seenResourceIndices.insert(storageTexelInput->getPhysicalIndex());
-
-            // ShaderResourceDescription desc = {};
-
-            // desc.usages |= ShaderResourceDescription::ResourceUsage::StorageTexelReadOnly;
-
-            // shaderResourceDescriptions.push_back(desc);
-            // shaderResourcePhysicalResourceIndices.push_back(storageTexelInput->getPhysicalIndex());
             checkBufferResource(storageTexelInput, ShaderResourceDescription::ResourceUsage::StorageTexelReadOnly);
         }
 
         // image shader resources
 
         for (auto &sampledImage : pass->getTextureInputs()) {
-            // if (seenResourceIndices.find(sampledImage->getPhysicalIndex()) != seenResourceIndices.end()) {
-            //     continue;
-            // }
-            // seenResourceIndices.insert(sampledImage->getPhysicalIndex());
-
-            // ShaderResourceDescription desc = {};
-
-            // desc.usages |= ShaderResourceDescription::ResourceUsage::SampledImage;
-
-            // shaderResourceDescriptions.push_back(desc);
-            // shaderResourcePhysicalResourceIndices.push_back(sampledImage->getPhysicalIndex());
             checkImageResource(sampledImage, ShaderResourceDescription::ResourceUsage::SampledImage);
         }
 
-        // index = 0;
         for (auto &storageImageOutput : pass->getStorageImageOutputs()) {
-            // if (seenResourceIndices.find(storageImageOutput->getPhysicalIndex()) != seenResourceIndices.end()) {
-            //     continue;
-            // }
-            // seenResourceIndices.insert(storageImageOutput->getPhysicalIndex());
-
-            // ShaderResourceDescription desc = {};
-
-            // // if (pass->getStorageImageInputs()[index]) {
-            // //     desc.usage = ShaderResourceDescription::ResourceUsage::StorageImageReadWrite;
-            // // }
-            // // else {
-            // //     desc.usage = ShaderResourceDescription::ResourceUsage::StorageImageReadOnly;
-            // // }
-
-            // desc.usages |= ShaderResourceDescription::ResourceUsage::StorageImageReadWrite;
-            
-            // shaderResourceDescriptions.push_back(desc);
-            // index++;
-
             checkImageResource(storageImageOutput, ShaderResourceDescription::ResourceUsage::StorageImageReadWrite);
         }
 
         for (auto &storageImageInput : pass->getStorageImageInputs()) {
-            // if (seenResourceIndices.find(storageImageInput->getPhysicalIndex()) != seenResourceIndices.end()) {
-            //     continue;
-            // }
-            // seenResourceIndices.insert(storageImageInput->getPhysicalIndex());
-
-            // ShaderResourceDescription desc = {};
-
-            // desc.usages |= ShaderResourceDescription::ResourceUsage::StorageImageReadOnly;
-
-            // shaderResourceDescriptions.push_back(desc);
             checkImageResource(storageImageInput, ShaderResourceDescription::ResourceUsage::StorageImageReadOnly);
         }
-
     }
     #pragma endregion BAKE_BUILD_SHADER_RESOURCE_DESCRIPTIONS
 
@@ -876,7 +708,7 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
     // need to definitely think about this more but i'm pretty sure we can
     // track the the first/last usages of each resource, and then add external dependencies to each
     // subpass (by adding a subpass dependency) that waits for all resources which are used before the subpass
-        // if that doesn't work i could potentailly just do a naive thing and have subpasses execute sequentially even tho that's wrong i think
+        // if that doesn't work i could potentailly just do a naive thing and have physical subpasses execute sequentially
 
     /* BUILD SUBPASS DEPENDENCIES */
     #pragma region BAKE_BUILD_SUBPASS_DEPENDENCIES
@@ -953,7 +785,7 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
 
     const auto &usesResource = [&](std::shared_ptr<Subpass> subpass, const std::string &name) {
         
-        // check all shader resource types to 
+        // check all shader resource types 
         if (checkForResource(subpass->getUniformBuffers(), name)) {
             return true;
         }
@@ -1837,9 +1669,7 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
 
                     // now we have to go through every other pass and look for dependencies
                         // this is inherently really really slow, but i feel like 
-                        // there is no way youd need more than 300 passes and maybe 500 resources
-                            // (how the hell would you even keep track of all that? in those cases
-                            // calling bake() over and over again would seem silly anyway so idk)
+                        // there is no way youd need more than a few hundred passes/resources/etc
                     for (auto &externalPass : graph_->getPasses()) {
                         // skip any passes that are in this physicalpass
                         bool isExternal = true;
@@ -1961,7 +1791,6 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
 
     #pragma region BAKE_INIT_PHYSICAL_SUBPASS_ARRAY
     // this is also where we'll start building the array of physical subpasses
-    // physicalSubpasses_.resize(subpasses.size());
     physicalSubpasses_.clear();
     for (int i = 0; i < subpasses.size(); i++) {
         auto newSubpass = std::make_shared<PhysicalSubpass>();
@@ -2018,7 +1847,7 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
     // renderPassCreateInfo.dependencyCount = dependencies.size();
     renderPassCreateInfo.pDependencies = dependencies.size() ? dependencies.data() : nullptr;
 
-    // create it!
+    // create the render pass!
     VkRenderPass tmp;
     if (vkCreateRenderPass(context_->getLogicalDevice(), &renderPassCreateInfo, nullptr, &tmp) != VK_SUCCESS) {
         throw std::runtime_error("Unable to create VkRenderPass!");
@@ -2063,8 +1892,6 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
             auto physImage = std::dynamic_pointer_cast<Backend::Image>(graph_->getPhysicalResources()[attachmentPhysicalResourceIndices[i]]);
             info.image = physImage->getImage();
         }
-
-        
 
         // set subresource range for the image view
         info.subresourceRange.aspectMask = attachmentAspectMasks[i]; // this gets set up while building subpass descriptions 
@@ -2111,8 +1938,6 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
     // and AFTER their last use 
         // we can deduce what layout things need to be in by just traversing the graph and using that info
     
-
-
     #pragma endregion BAKE_BUILD_BARRIERS
 
     /* BUILD GRAPHICS PIPELINES */

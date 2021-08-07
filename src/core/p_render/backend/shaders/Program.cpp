@@ -28,7 +28,7 @@ Program::Program(std::shared_ptr<Context> context, std::shared_ptr<Subpass> subp
         stageInfo.pNext = nullptr;
         stageInfo.flags = 0; // not using any of the flag-enabled functionality
         stageInfo.module = sm->getVkShaderModule();
-        // stageInfo.pName = sm->getShaderName().c_str(); // for shader modules that contain >1 shader, this can be specified here (implement it later)
+        // stageInfo.pName = sm->getShaderName().c_str(); // for shader modules that contain >1 shader, the desired entry point can be specified here (implement it later)
         stageInfo.pName = "main"; // hardcoding this for now; 1 shader per module only (might be inefficient?)
 
         VkSpecializationInfo specInfo = {};

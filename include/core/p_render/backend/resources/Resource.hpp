@@ -1,6 +1,6 @@
 #pragma once
 
-// this will be the generic physical resource class i guess!
+// this will be the generic physical resource class
 
 namespace Backend {
 

@@ -56,12 +56,7 @@ class FrameContext {
         return index_;
     }
 
-    // VkImage getSwapchainImage() {
-    //     return swapchainImage_;
-    // }
-
   private:
-    // std::shared_ptr<PEngine> core_;
     // actually we might just need the context
     std::shared_ptr<Context> context_;
 
@@ -73,9 +68,6 @@ class FrameContext {
 
     // this should contain the relevant state for a single frame context
     WindowSystem &wsi_;
-
-    // swapchain image that this framecontext corresponds to
-    // VkImage swapchainImage_;
 
     // command pools per thread
     std::vector<std::shared_ptr<ThreadCommandPool>> commandPools_;

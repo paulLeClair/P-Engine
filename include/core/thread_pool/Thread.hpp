@@ -17,11 +17,9 @@ class Thread {
     ~Thread();
 
     /* Thread Interface */
-    // function for enabling a queue i guess
     void enableQueue(JobQueue *queue, unsigned int priority = 1);
     void enableExclusiveQueue(JobQueue *queue);
     
-    // void disableQueue(std::string name);
     void disableAllQueues();
     bool hasExclusiveQueue(); // if the thread has been assigned to a single queue exclusively (for now that's the only simplistic mechanism)
 
@@ -35,8 +33,7 @@ class Thread {
   private:
     /* Thread State */
     // actual thread
-    std::thread &thr_ = std::thread(&Thread::workerThreadRun, this); // thread is created here maybe?
-      // store ref 2 thread (should probably look into how you should wrap a std::thread but this seems to work for now)
+    std::thread &thr_ = std::thread(&Thread::workerThreadRun, this);
     
     // just gonna store and set the thread index after creation
     int threadIndex_;

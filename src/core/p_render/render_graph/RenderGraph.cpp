@@ -240,13 +240,13 @@ std::shared_ptr<Backend::ShaderModule> RenderGraph::getShaderModule(const std::s
     // similarly to the functions for images and resources, we will either return an
     // existing resource's handle, or we'll create it and then return it
     if (shaderModuleNames_.find(name) != shaderModuleNames_.end()) {
-        return std::move(shaderModules_[shaderModuleNames_[name]]);
+        return shaderModules_[shaderModuleNames_[name]];
     }
     
     // auto newModule = std::make_shared<Backend::ShaderModule>(name, context_, shared_from_this());
     shaderModules_.push_back(std::move(std::make_shared<Backend::ShaderModule>(name, context_, shared_from_this())));
     shaderModuleNames_[name] = shaderModules_.size() - 1; // set name->index mapping for this module
-    return std::move(shaderModules_[shaderModuleNames_[name]]);
+    return shaderModules_[shaderModuleNames_[name]];
 }
 
 /* BAKING UTITILITES */

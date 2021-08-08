@@ -59,14 +59,12 @@ class PEngine : public std::enable_shared_from_this<PEngine> {
 
     // run function
     void run();
-
-    // some windowing functions (not sure how to make this stuff clean but it's kool)
-      // really for now i'm just porting everything over from WindowsInterface
+  
     void createMainWindow();
     void showMainWindow();
 
     // engine mode functions (registration/access)
-    void registerMode(const std::string &modeName, std::shared_ptr<PEngineMode> mode); // still need ot think about this "Mode" contsruct...
+    void registerMode(const std::string &modeName, std::shared_ptr<PEngineMode> mode);
     void enterMode(const std::string &modeName);
 
     // kill function to cause the engine to stop
@@ -126,7 +124,6 @@ class PEngine : public std::enable_shared_from_this<PEngine> {
     // gonna try this for now
     bool engineIsAlive_ = true;
 
-    // gonna incorporate imgui stuff into the core 
     ImGuiContext *ctx_;
     ImGuiIO *io_;
 

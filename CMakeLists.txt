@@ -28,7 +28,7 @@ file(GLOB_RECURSE GLSL_SOURCE_FILES
 foreach(GLSL ${GLSL_SOURCE_FILES})
     message(STATUS "BUILDING SHADER: ")
     get_filename_component(FILE_NAME ${GLSL} NAME_WE)
-    set(SPIRV "${CMAKE_CURRENT_SOURCE_DIR}/bin/shaders/${FILE_NAME}.spv") # we should put these into the backend actually
+    set(SPIRV "${CMAKE_CURRENT_SOURCE_DIR}/bin/shaders/${FILE_NAME}.spv")
     message(STATUS ${GLSL})
     ##execute glslang command to compile that specific shader
     add_custom_command(

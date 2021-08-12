@@ -80,7 +80,7 @@ void JobQueue::flush() {
 }
 
 void JobQueue::submit() {
-    // some parts of this JobQueue object are incomplete and need to be redone
+    // some parts of this JobQueue class are incomplete and need to be redone
     std::unique_lock<std::mutex> ul(lock_);
     pool_.submitQueue(this);
 }

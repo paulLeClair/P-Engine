@@ -13,7 +13,7 @@ Thread::~Thread() {
 /* Thread Interface */
 
 void Thread::finish() {
-    std::unique_lock<std::mutex> UL(threadDataLock_);
+    std::unique_lock<std::mutex> ul(threadDataLock_);
 
     keepRunning_ = false;
 }
@@ -29,12 +29,13 @@ bool Thread::acquireDataLockNonblock() {
 }
 
 void Thread::acquireDataLockBlock() {
+    // may be deprecated
     threadDataLock_.lock();
 
 }
 
 void Thread::releaseDataLock() {
-    // release the Thread data lock
+    // may be deprecated
     threadDataLock_.unlock();
 }
 
@@ -59,8 +60,7 @@ void Thread::workerThreadRun() {
                     // true -> stop waiting
                     // false -> keep waiting
                 if (!keepRunning_) {
-                    // stop running
-                    return true; // shouldn't be executed because the thread should stop running at this point
+                    return true; // thread should stop running at this point so we don't want to wait
                 }
 
                 if (activeQueues_.size() == 0) {
@@ -124,7 +124,7 @@ void Thread::enableExclusiveQueue(JobQueue *queue) {
     activeQueuePriorities_.clear();
 
     activeQueues_.push_back(queue);
-    activeQueuePriorities_[0] = 55; // why not schfifty five
+    activeQueuePriorities_[0] = 55; // arbitrary 
 }
 
 void Thread::disableAllQueues() {

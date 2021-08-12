@@ -32,7 +32,7 @@ void ThreadPool::terminateWorkerThreads() {
 }
 
 void ThreadPool::submitQueue(JobQueue *queue, unsigned int priority) {
-
+    // i might want to add more functions like this, such as for enabling a queue only on a subset of threads etc
     // i think we can just enable the queue with each thread...
     for (uint32_t i = 0; i < threads_.size(); i++) {
         threads_[i]->enableQueue(queue, priority); // maybe i should have threads work with raw pointers..

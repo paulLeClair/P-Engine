@@ -1,5 +1,5 @@
 # P-Engine
-This is a WIP hobby game engine!
+This is a WIP hobby game engine! So far all development and testing has been done on Windows 10, but I plan to add support for other operating systems once the engine has enough functionality to justify doing that; I'm hoping to write the engine code to be as platform-agnostic as I can until then.
 
 Hopefully one day it will provide a fairly simple C++ interface for building 2D/3D games with. Currently I'm working on building up a Vulkan framework, and I think I'm (hopefully) close to a working "Hello, Triangle." I do active development on a private repo, so this is just a snapshot of where the engine is; I hope to add new content as it comes!
 

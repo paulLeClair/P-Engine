@@ -40,17 +40,14 @@ void CoreMenuMode::enterMode() {
     // add subpass which simply uses the swapchain image as a color output
     auto firstSubpass = simplePass->addSubpass("simpleSubpass");
 
-    // maybe i'll implement a super basic vertex shader that does nothing
-    // and try and get the whole thing up and running
+    // super basic vertex shader
     firstSubpass->registerVertexShader("testVert");
 
     // register a simple fragment shader
     firstSubpass->registerFragmentShader("testFrag");
 
-    // setup a simple swapchain color output? 
-        // ideally it should just clear the swapchain image in effect, until more things are up and running
+    // setup a simple swapchain color output
     auto swapchainDim = coreMenuGraph_->getSwapchainDimensions();
-    // should probably package this up into a "getSwapchainAttachmentInfo" type thing
     AttachmentInfo swapchainInfo = {};
     swapchainInfo.format = swapchainDim->format;
     swapchainInfo.numLayers = swapchainDim->layers;
@@ -59,11 +56,8 @@ void CoreMenuMode::enterMode() {
     
     swapchainInfo.persistent = true;
     swapchainInfo.transient = false;
-
-    // setting this up makes me realize how much cleaning up i should probably do 
     swapchainInfo.sizeClass = ImageSizeClass::SwapchainRelative;
     
-    // verify these are the correct mappings lmao
     swapchainInfo.size_x = swapchainDim->width; 
     swapchainInfo.size_y = swapchainDim->height;
     swapchainInfo.size_z = swapchainDim->depth;
@@ -78,6 +72,10 @@ void CoreMenuMode::enterMode() {
 void CoreMenuMode::mainLoop() {
     MSG msg;
 
+    // TODO -> redo this to use std::chrono 
+        // eventually i need to make a more formal mainLoop() mechanism for these engine modes, which
+        // maybe could just accept a couple callbacks but otherwise follow the same sort of format
+    
     while (_core->engineIsAlive()) {
         
         // first check windows events
@@ -87,17 +85,12 @@ void CoreMenuMode::mainLoop() {
         }
 
         if (msg.message == WM_QUIT) {
-            _core->killEngine(); // godawful name -> just sets the engineAlive bool to false
-            // engineIsAlive_ = false;
+            _core->killEngine();
             continue;
         }
 
-        // for now, we just render the default graph...
-        _core->renderer().renderFrame("core"); // BACKEND REWRITE
-            // i think it's fine to just put these high-level rendering functions in the core
+        _core->renderer().renderFrame("core"); 
 
-
-        // check frame time?
 
         Sleep(5);
     }
@@ -123,23 +116,15 @@ void CoreMenuMode::drawCoreMenu() {
         // just gonna create an unformatted lil window for now
 
     if (ImGui::Button("World Generation")) {
-        // somehow signal that we entered world generation?
-            // gotta think about how the engine will transition between different functionalities
-        
-        // gonna try ending some stuff on transition
-        ImGui::End();
-        ImGui::EndFrame(); 
-        _core->enterMode("worldGen");
-            // i actually have no clue if this is even valid lol
+
     }
 
     if (ImGui::Button("Simulate")) {
-        // similarly to worldgen, somehow enter the simulation thing
-        // engineCore_->enterMode("sim");
+        
     }
 
     if (ImGui::Button("Options")) {
-        // engineCore_->enterMode("optionsMenu");
+        
     }
 
     if (ImGui::Button("Exit")) {

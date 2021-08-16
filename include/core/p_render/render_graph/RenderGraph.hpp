@@ -18,7 +18,6 @@
 #include <algorithm>
 #include <assert.h>
 
-// class GUIPass;
 class Pass;
 class RenderResource;
 class ImageResource;
@@ -52,20 +51,17 @@ class RenderGraph : public std::enable_shared_from_this<RenderGraph> {
     }
     
     std::shared_ptr<Pass> appendPass(const std::string &passName);
-    // void appendPassAtIndex(std::shared_ptr<Pass> pass, unsigned int index); 
-    // void removePassByName(const std::string &passName);
-    // void removePassByIndex(unsigned int index);
 
     // resources etc 
       // gotta change these to return shared pointers too
     ImageResource &getImageResource(const std::string &name, const AttachmentInfo *info = nullptr);
-    BufferResource &getBufferResource(const std::string &name, const BufferInfo *info = nullptr); // in Themaister's graph, this creates + adds a resource if it doesn't exist
-
+    BufferResource &getBufferResource(const std::string &name, const BufferInfo *info = nullptr);
+    
     // shaders!
       // unlike the above get* functions, we'll return the shared pointer to the shader module
     std::shared_ptr<Backend::ShaderModule> getShaderModule(const std::string &shaderFilename);
 
-    // physical resource stuff!
+    // physical resources!
     ResourceDimensions getResourceDimensions(BufferResource &resource) const;
     ResourceDimensions getResourceDimensions(ImageResource &resource) const;
     std::vector<std::shared_ptr<Backend::Resource>> &getPhysicalResources() {

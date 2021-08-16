@@ -3,8 +3,6 @@
 #include "../../PRender.hpp"
 #include "./ResourceDimensions.hpp"
 
-// this is another thing that the render graph needs:
-
 enum ResourceQueueUsageFlagBits {
     GRAPHICS_QUEUE = 1 << 0,
     COMPUTE_QUEUE = 1 << 1
@@ -14,8 +12,8 @@ using ResourceQueueUsageFlags = uint32_t;
 // image size classes (similar to Themaister)
 enum class ImageSizeClass {
     Absolute, // absolute size (should be used for some things)
-    SwapchainRelative, // float parameter (i think b/w 0 and 1) relative to swapchain image size 
-    InputRelative // float parameter relative to input image size (should be used for some things)
+    SwapchainRelative, // float parameter, relative to swapchain image size 
+    InputRelative // float parameter, relative to input image size (should be used for some things)
 };
 
 // image resource aux info

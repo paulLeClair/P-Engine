@@ -72,7 +72,6 @@ class Shader {
     std::map<std::string, DescriptorSetBinding> bindings_;
 
     std::shared_ptr<Backend::ShaderModule> shaderModule_ = nullptr;
-    // Backend::ShaderModule &shaderModule_;
 
     /* Resources */
         // shaders can have a few different types of resources, and these

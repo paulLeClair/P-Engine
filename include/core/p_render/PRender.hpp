@@ -64,7 +64,6 @@ class PRender {
     std::shared_ptr<Backend::Context> &renderContext();
 
     // render graph interface
-      // i think i could make this follow RAII better by making it build the shared_ptr internally and return it?
     std::shared_ptr<RenderGraph> registerRenderGraph(const std::string &name);
     std::shared_ptr<RenderGraph> getRenderGraph(const std::string &name);
 

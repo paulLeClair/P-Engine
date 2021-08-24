@@ -1364,8 +1364,6 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
         processSelfDependencies();
 
     };
-    
-    // used to be a bunch of old code here, go dig through the commits if needed (it's bad so just don't)
 
     const auto &processExternalDependencies = [&]() {
         // TODO: refactor this to reduce all the code duplication etc
@@ -1819,20 +1817,11 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
     }
     #pragma endregion BAKE_INIT_PHYSICAL_SUBPASS_ARRAY
 
-    // after the subpass descriptions + dependencies are complete, we have everything we need to create the VkRenderPass,
-    // so do that i guess!
+    // after the subpass descriptions + dependencies are complete, we have everything we need to create the VkRenderPass
 
     /* BUILD RENDER PASS */
     #pragma region BAKE_BUILD_RENDER_PASS
     
-    // it seems like it isn't setting up the layouts...
-        // i might have to add a step here where we go through and make sure that
-        // every layout is properly set up if i can't diagnose the issue earlier 
-    // in some cases, such as when a resource is used as a color output exclusively in one pass,
-    // but which contains data from another pass' output that we don't want to lose, we might have to do some post-processing here maybe
-        // ie the resource is used as a color output previously in the pass stack
-    
-
     VkRenderPassCreateInfo renderPassCreateInfo = {};
     renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassCreateInfo.flags = 0;
@@ -2123,10 +2112,8 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
         colorBlendInfo.logicOpEnable = VK_FALSE; // can make this configurable later
 
         // setup color blend attachment state(s)
-            // apparently these have to match the fragment shader outputs...
-            // can they be reflected or something?
-        // actually i'll have to implement blending in the future, might be good
-        // to add some stuff to the interface for that
+            // i'll have to implement blending in the future, might be good
+            // to add some stuff to the interface for that
         colorBlendInfo.attachmentCount = physicalSubpass->colorAttachmentCount;
         std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates = {};
         for (int i = 0; i < physicalSubpass->colorAttachmentCount; i++) {

@@ -33,7 +33,7 @@ class JobQueue {
         // first we package up the job into an executable std::packaged_task(), hiding the actual arguments/return type so everything can be treated
         // as a void function with no arguments
             // the parameter pack syntax is kinda funky but Args represents an arbitrary-length sequence of args 
-        auto job = std::packaged_task<JobReturnType<F, Args>()>>(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+        auto job = std::packaged_task<JobReturnType<F, Args...>()>>(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
 
         pushPackagedJob([job] { (*job)(); }); // to convert the std::packaged_task<JRT<F, Args>> to std::function<void()> we just define a small lambda 
         return job->get_future(); // then we just return a future corresponding to the job return type from the packaged_task interface!

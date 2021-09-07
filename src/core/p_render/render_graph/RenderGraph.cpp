@@ -18,10 +18,6 @@
 
 
 RenderGraph::RenderGraph(const std::string &name, std::shared_ptr<ThreadPool> pool, std::shared_ptr<Backend::Context> context, VmaAllocator allocator) : name_(name), pool_(std::move(pool)), context_(std::move(context)), allocator_(allocator) {
-    // when we create a render graph, it should probably already have the swapchain images
-    // be accessible somehow
-        // maybe i can set it up so that we have one abstract "swapchain" image resource, and
-        // we set the actual VkImage according to the given FrameContext?
 
     auto swapchainDim = getSwapchainDimensions();
     swapchainDimensions_ = swapchainDim; // store this separately (kinda ugly)
@@ -34,10 +30,8 @@ RenderGraph::RenderGraph(const std::string &name, std::shared_ptr<ThreadPool> po
     swapchainInfo.persistent = true;
     swapchainInfo.transient = false;
 
-    // setting this up makes me realize how much cleaning up i should probably do 
     swapchainInfo.sizeClass = ImageSizeClass::SwapchainRelative;
     
-    // verify these are the correct mappings lmao
     swapchainInfo.size_x = swapchainDim->width; 
     swapchainInfo.size_y = swapchainDim->height;
     swapchainInfo.size_z = swapchainDim->depth;
@@ -96,9 +90,8 @@ void RenderGraph::bake() {
     /* BUILD PHYSICAL RESOURCES + RMW ALIASES */
 
     buildPhysicalResources();
-        // MAY28 - REWRITE: here we should prepare all the image resources as well as other input/output data for the pipeline
-            // i think we can prepare all the resources in this step (eg render targets + all vertex info etc)
-
+    
+    
     /* BUILD PHYSICAL PASSES */
     buildPhysicalPasses();
 
@@ -113,8 +106,6 @@ void RenderGraph::bake() {
 }
 
 void RenderGraph::execute(Backend::FrameContext &frame) {
-    // maybe i can avoid baking by just having render graphs stored in an executable format already (which i guess they just are anyway.... ~_~)
-    
     // whatever pre-execute setup is required?
     
     // handle swapchain
@@ -161,7 +152,6 @@ Pass &RenderGraph::getPass(const std::string &name) {
 }
 
 // functions for building/editing a render graph
-// void RenderGraph::appendPass(std::shared_ptr<Pass> pass) {
 std::shared_ptr<Pass> RenderGraph::appendPass(const std::string &name) {
     if (baked_) {
         // might get rid of this check eventually
@@ -205,7 +195,6 @@ BufferResource &RenderGraph::getBufferResource(const std::string &name, const Bu
         resources_.emplace_back(std::move(std::make_shared<BufferResource>(index, name, *info)));
         
         // set the resource's name etc
-        // resources_.back()->setResourceName(name);
         resourceNames_[name] = index;
 
         return static_cast<BufferResource&>(*resources_.back());
@@ -227,7 +216,6 @@ ImageResource &RenderGraph::getImageResource(const std::string &name, const Atta
         unsigned int index = resources_.size();
         resources_.emplace_back(std::move(std::make_shared<ImageResource>(index, name, *info)));
 
-        // resources_.back()->setResourceName(name);
         resourceNames_[name] = index;
 
         return static_cast<ImageResource&>(*resources_.back());
@@ -243,7 +231,6 @@ std::shared_ptr<Backend::ShaderModule> RenderGraph::getShaderModule(const std::s
         return shaderModules_[shaderModuleNames_[name]];
     }
     
-    // auto newModule = std::make_shared<Backend::ShaderModule>(name, context_, shared_from_this());
     shaderModules_.push_back(std::move(std::make_shared<Backend::ShaderModule>(name, context_, shared_from_this())));
     shaderModuleNames_[name] = shaderModules_.size() - 1; // set name->index mapping for this module
     return shaderModules_[shaderModuleNames_[name]];
@@ -254,7 +241,7 @@ std::shared_ptr<Backend::ShaderModule> RenderGraph::getShaderModule(const std::s
 void RenderGraph::validatePasses() {
     for (const auto &pass : passes_) {
         if (!pass->validate()) {
-            // this shouldn't crash the program but for now i'll just catch it with a runtime error as is the temporary norm lol
+            // this shouldn't crash the program but for now i'll just catch it with a runtime error as is the temporary fix
             throw std::runtime_error("Pass " + pass->getName() + " is invalid!");
         }
     }
@@ -979,9 +966,6 @@ void RenderGraph::buildPhysicalPasses() {
 
     for (unsigned int index = 0; index < passStack_.size(); ) {
         auto &pass = passes_[passStack_[index]];
-
-        // EXPERIMENTING: what if i do some kind of PhysicalPassCreateInfo thing, and fill it in here
-        // Backend::PhysicalPassCreateInfo physicalPassInfo = {};
 
         unsigned int mergeEnd = index + 1; // see if we can merge with the next few passes 
         for (; mergeEnd < passStack_.size(); mergeEnd++) {

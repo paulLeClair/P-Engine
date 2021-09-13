@@ -9,7 +9,7 @@
 // gonna restructure this to be similar to Granite, using an ImageCreateInfo struct which
 // will also have some common usage cases provided as convenience functions; 
 
-namespace Backend {
+namespace backend {
 
 class Image : public Resource {
   public:
@@ -80,8 +80,6 @@ class Image : public Resource {
         VkImageLayout initialLayout = VK_IMAGE_LAYOUT_GENERAL;
 
         VkComponentMapping swizzle = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A};
-        
-        // whatever else is req'd....
 
         /* IMAGE PRESETS */
         static ImageCreateInfo renderTarget(std::shared_ptr<Context> context, VmaAllocator allocator, unsigned int width, unsigned int height, VkFormat format) {
@@ -145,9 +143,7 @@ class Image : public Resource {
         // create the actual image thru VMA
         VmaAllocationCreateInfo allocCreateInfo = {};
         
-        // customizing the VMA allocation params through the create info will probably be a good idea,
-        // i still need to look into the details of VMA to figure out the correct way to use it for my purposes
-            // i think i could differentiate here based on the domain but i'll start with just implementing GPU resources
+        // TODO - add more to the interface so we can configure this 
         allocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY; 
 
         // store info after it has been filled
@@ -172,7 +168,7 @@ class Image : public Resource {
     }
 
     // similarly to buffer, should probably make sure that all usages are known + set before
-    // the Backend::Image is created so that this works
+    // the backend::Image is created so that this works
     VkImageUsageFlags getUsages() {
         return _info.usage;
     }

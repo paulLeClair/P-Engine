@@ -2,18 +2,18 @@
 
 // this is all largely TODO
 
-class Component {
+class EngineTool {
   public:
-    ~Component() = default;
+    ~EngineTool() = default;
 
-    // GENERAL COMPONENT INTERFACE
+    // GENERAL ENGINETOOL INTERFACE
     virtual void start() = 0; 
 
   private:
 
 
   protected:
-    Component() { 
+    EngineTool() { 
 
     }
 };

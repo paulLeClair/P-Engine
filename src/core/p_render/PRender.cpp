@@ -9,7 +9,7 @@
 
 PRender::PRender(PEngine *engineCore) : core_(engineCore) {
 
-    context_ = std::make_shared<Backend::Context>(core_);
+    context_ = std::make_shared<backend::Context>(core_);
 
     // NEW: create vma allocator
     VmaAllocatorCreateInfo allocInfo = {};
@@ -21,9 +21,6 @@ PRender::PRender(PEngine *engineCore) : core_(engineCore) {
     if (vmaCreateAllocator(&allocInfo, &allocator_) != VK_SUCCESS) {
         throw std::runtime_error("Unable to create allocator!");
     }
-
-    // TODO: create scene object 
-    // scene_ = std::make_unique<scene::Scene>();
 
     // set up imgui
     setupImGui();
@@ -47,9 +44,9 @@ PRender::PRender(PEngine *engineCore) : core_(engineCore) {
 
     // initiate any other state/components
     // initialize frame contexts; for now just make it use the number of swapchain images
-    activeFrameContext_ = 0; // this will probably get reset by "vkAcquireNextSwapchainImage" but i'll initialize it i suppose
+    activeFrameContext_ = 0;
     for (unsigned int i = 0; i < context_->getSwapchainImageCount(); i++) {
-        frameContexts_.push_back(std::make_shared<Backend::FrameContext>(context_, i, core_->getNumThreads()));
+        frameContexts_.push_back(std::make_shared<backend::FrameContext>(context_, i, core_->getNumThreads()));
     }
 }
 
@@ -106,8 +103,7 @@ void PRender::renderFrame(const std::string &renderGraphName) {
 
     renderGraphs_[renderGraphNames_[renderGraphName]]->execute(frameContext);
 
-    // maybe ill try and just have 2 submits... might be ugly/inefficient but idk 
-    // i still have to wrap my brain around a lot of the details of vulkan's synchronization
+    // might change this, but the imgui integration executes entirely separately from the render graph
     gui_->renderFrame(frameContext);
 
     // i think we can submit the render graph buffers via the frame context
@@ -116,11 +112,12 @@ void PRender::renderFrame(const std::string &renderGraphName) {
     }
 
     // end frame by presenting swapchain image
+        // maybe i should separate this as a separate function but for our purposes this is ok for now
     context_->WSI().presentImage();
 }
 
 
-std::shared_ptr<Backend::Context> &PRender::renderContext()  {
+std::shared_ptr<backend::Context> &PRender::renderContext()  {
     return context_;
 }
 
@@ -132,6 +129,6 @@ void PRender::clearGUIComponents() {
     std::dynamic_pointer_cast<VulkanGUIHandler>(gui_)->clearGUIComponents();
 }
 
-void PRender::submitCommandBuffers(Backend::FrameContext &frameContext) {
+void PRender::submitCommandBuffers(backend::FrameContext &frameContext) {
     frameContext.submitCommandBuffers(); 
 }

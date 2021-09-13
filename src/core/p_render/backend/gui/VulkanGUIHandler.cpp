@@ -17,15 +17,8 @@
 #include "../../../../../include/imgui/imgui_impl_vulkan.h"
 #include "../../../../../include/imgui/imgui_impl_win32.h"
 
-// for now i'll just implement everything here...
-
-
-VulkanGUIHandler::VulkanGUIHandler(VulkanIMGUICreateInfo &createInfo) { // for now GUIHandler has no ctor
-
-    // i guess it needs to store a shared pointer to BOTH 
+VulkanGUIHandler::VulkanGUIHandler(VulkanIMGUICreateInfo &createInfo) { 
     context_ = createInfo.context;
-    // renderGraph_ = createInfo.renderGraph;
-    // os_ = createInfo.os;
     engineCore_ = createInfo.engineCore;
 
     guiData_ = std::make_unique<VulkanGUIData>(createInfo);
@@ -36,10 +29,7 @@ VulkanGUIHandler::~VulkanGUIHandler() {
 
 }
 
-void VulkanGUIHandler::renderFrame(Backend::FrameContext &frameContext) {
-    // i think this function can be submitted to a JobQueue for execution by a worker thread...
-        // as far as i know this shouldn't really involve doing anything 
-
+void VulkanGUIHandler::renderFrame(backend::FrameContext &frameContext) {
     // start a new frame
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplWin32_NewFrame();
@@ -54,7 +44,7 @@ void VulkanGUIHandler::renderFrame(Backend::FrameContext &frameContext) {
     // call render to conclude executing things for ImGui to draw
     ImGui::Render();
 
-    // now we can actually render the ImGui data using vulkan
+    // now we can actually render the ImGui data through vulkan
     
     // reset gui command pool
     guiData_->resetCommandPool();
@@ -117,13 +107,10 @@ void VulkanGUIHandler::drawCoreMenu() {
         // just gonna create an unformatted lil window for now 
 
     if (ImGui::Button("World Generation")) {
-        // somehow signal that we entered world generation?
-            // gotta think about how the engine will transition between different functionalities
         // engineCore_->enterMode("worldGen");
     }
 
     if (ImGui::Button("Simulate")) {
-        // similarly to worldgen, somehow enter the simulation thing
         // engineCore_->enterMode("sim");
     }
 

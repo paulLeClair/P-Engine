@@ -1,8 +1,8 @@
 #pragma once
 
-// this will be the generic physical resource class
+// this will be the generic graphics-backend resource class
 
-namespace Backend {
+namespace backend {
 
 class Resource {
   public:
@@ -22,7 +22,7 @@ class Resource {
 
   protected:
     Resource() {
-      //pass
+      
     }
     ~Resource() = default;
 

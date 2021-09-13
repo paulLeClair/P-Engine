@@ -1,7 +1,7 @@
 #pragma once
 
 #include "./thread_pool/ThreadPool.hpp"
-#include "../components/Component.hpp"
+#include "./engine_tools/EngineTool.hpp"
 #include "./p_render/PRender.hpp" 
 
 // include glm stuff with appropriate defines for Vulkan
@@ -42,16 +42,15 @@ struct Win32Info {
 
     // some kind of windowing thing... i think for now we just need a main window, so instead of allowing for multiple i'll just hardcode that
     HWND mainWindow;
-    HRGN mainWindowRegion; // not sure if this is needed... eventually encapsulate all this in a Window 
+    HRGN mainWindowRegion; 
 
-    // for vulkan (a DLL, hopefully the only one in the engine... but maybe not who knows), need to store an HMODULE for it 
+    // need to store an HMODULE for vulkan 
     HMODULE vulkanLibrary;
 };
 #endif
 
-class PEngineMode; // placeholder engine mode thing until i get things implemented
+class PEngineMode;
 
-// TODO: write big description for core object
 class PEngine : public std::enable_shared_from_this<PEngine> { 
   public:
     PEngine();
@@ -64,15 +63,15 @@ class PEngine : public std::enable_shared_from_this<PEngine> {
     void showMainWindow();
 
     // engine mode functions (registration/access)
+      // TODO - reconsider this
     void registerMode(const std::string &modeName, std::shared_ptr<PEngineMode> mode);
     void enterMode(const std::string &modeName);
 
-    // kill function to cause the engine to stop
+    // causes the engine to stop
     void exit();
 
     // some other interface functions (i think these should just be used from within PEngineMode subclasses)
     bool engineIsAlive() {
-      // TODO: determine if we need to use any synch for engine state, i don't think so since this main loop runs on the control thread
       return engineIsAlive_;
     }
 
@@ -87,10 +86,6 @@ class PEngine : public std::enable_shared_from_this<PEngine> {
     
     void renderFrame(const std::string &name) {
         renderer().renderFrame(name);
-    }
-
-    std::shared_ptr<RenderGraph> registerRenderGraph(const std::string &name) {
-        return std::move(renderer().registerRenderGraph(name));
     }
 
     void registerGUIComponent(std::function<void()> call);
@@ -116,7 +111,7 @@ class PEngine : public std::enable_shared_from_this<PEngine> {
     }
 
     std::shared_ptr<ThreadPool> getThreadPool() {
-      return std::move(threadPool_);
+      return threadPool_;
     } 
 
   private:
@@ -130,7 +125,7 @@ class PEngine : public std::enable_shared_from_this<PEngine> {
     std::shared_ptr<Win32Info> win32_;
     std::shared_ptr<PRender> pRender_;
 
-    std::unordered_map<std::string, std::shared_ptr<Component>> components_;
+    std::unordered_map<std::string, std::shared_ptr<EngineTool>> engineTools_;
 
     std::unordered_map<std::string, std::shared_ptr<PEngineMode>> modes_;
 

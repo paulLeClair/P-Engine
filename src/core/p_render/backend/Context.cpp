@@ -8,7 +8,7 @@
 
 #include "../../../../include/core/PEngineCore.hpp"
 
-using namespace Backend;
+using namespace backend;
 
 Context::Context(PEngine *core) : core_(core) {
     // should try to follow RAII when possible -> allocate/create/etc in the ctor, deallocate/destroy/etc in the dtor 
@@ -99,7 +99,6 @@ const unsigned int Context::getCurrentSwapchainImageIndex() const {
 void Context::initialVulkanSetup(VulkanInstanceData &instance) {
     /* PHASE 1 */
     // load global and exported entry points
-        // not entirely sure what exported entry points are for
     // TODO: proper error handling
     #ifdef _WIN32
 
@@ -107,7 +106,7 @@ void Context::initialVulkanSetup(VulkanInstanceData &instance) {
     #define EXPORTED_VULKAN_FUNCTION( name ) \
     name = (PFN_##name)LoadFunction(vulkanLibraryModule, #name);\
     if (name == nullptr) {\
-        std::cout << "oh no! couldn't load exported function" << std::endl;\
+        std::cout << "Unable to load exported function!" << std::endl;\
         exit(1);\
     }
 
@@ -116,7 +115,7 @@ void Context::initialVulkanSetup(VulkanInstanceData &instance) {
     #define GLOBAL_LEVEL_VULKAN_FUNCTION( name )        \
     name = (PFN_##name)vkGetInstanceProcAddr(nullptr, #name);       \
     if (name == nullptr) { \
-            std::cout << "oh no! couldn't load global function" << std::endl;\
+            std::cout << "Unable to load exported function!" << std::endl;\
             exit(1); \
     }
 
@@ -129,7 +128,7 @@ void Context::initialVulkanSetup(VulkanInstanceData &instance) {
     createVulkanInstance(instance);
 
     const auto &setupValidationLayers = [&](VulkanInstanceData &instance) {
-        
+        // for now we have validation layers hardcoded somewhere, need to make it an optional thing
     };
 
     if (true) {
@@ -418,8 +417,7 @@ void Context::createVulkanInstance(VulkanInstanceData &instance) {
 
     };
 
-    if (vkCreateInstance(&instance_create_info, nullptr, &instance.vulkanInstance) != VK_SUCCESS) { //testies
-        // could not create vulkan instance :(
+    if (vkCreateInstance(&instance_create_info, nullptr, &instance.vulkanInstance) != VK_SUCCESS) {
         throw std::runtime_error("Unable to create vulkan instance!");
     }
 
@@ -477,7 +475,7 @@ void Context::createLogicalDevice(VulkanInstanceData &instance) {
     logicalDeviceCreateInfo.pQueueCreateInfos = (queueCreateInfos.size() > 0) ? queueCreateInfos.data() : nullptr;
     logicalDeviceCreateInfo.pEnabledFeatures = &physDeviceFeatures;
 
-    // set up device extensions (think i was missing this?)
+    // set up device extensions
     logicalDeviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(instance.enabledDeviceExtensionNames.size());
     logicalDeviceCreateInfo.ppEnabledExtensionNames = instance.enabledDeviceExtensionNames.data();
 
@@ -570,7 +568,7 @@ std::vector<VkDeviceQueueCreateInfo> Context::getQueueCreateInfos(VulkanInstance
     computeQueueInfo.priorities.clear(); computeQueueInfo.priorities.push_back(1.0);
     instance.queueFamilyInfos.push_back(computeQueueInfo);
 
-    // build queuecreateinfo struct?
+    // build queuecreateinfo struct
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     for (auto &info : instance.queueFamilyInfos) {
         // create queue

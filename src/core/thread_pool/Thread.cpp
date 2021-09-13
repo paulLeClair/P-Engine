@@ -45,7 +45,7 @@ void Thread::workerThreadRun() {
     // TODO: make the worker thread loop more robust
 
     // trying something else: hopefully this works better
-    int sleepTimeInMs = 15; // try 15 ms sleep for now, not sure the best way to structure that though lol
+    int sleepTimeInMs = 5; // try 5 ms sleep for now, not sure the best way to structure that though lol
         // i'm gonna have to do a bunch more research into structuring the worker thread function 
     while (keepRunning_ == true) {
 
@@ -60,7 +60,7 @@ void Thread::workerThreadRun() {
                     // true -> stop waiting
                     // false -> keep waiting
                 if (!keepRunning_) {
-                    return true; // thread should stop running at this point so we don't want to wait
+                    return true; // thread should stop running at this point so halt everything
                 }
 
                 if (activeQueues_.size() == 0) {
@@ -96,6 +96,7 @@ void Thread::workerThreadRun() {
                     }
                     else {
                         // we acquired a job from the queue, so store it and relinquish the unique_lock by breaking the final loop
+                            // i hope this isn't too slow... idk
                         job = queryJob;
                         break;
                     }
@@ -124,7 +125,7 @@ void Thread::enableExclusiveQueue(JobQueue *queue) {
     activeQueuePriorities_.clear();
 
     activeQueues_.push_back(queue);
-    activeQueuePriorities_[0] = 55; // arbitrary 
+    activeQueuePriorities_[0] = 55; // arbitrary value
 }
 
 void Thread::disableAllQueues() {

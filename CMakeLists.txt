@@ -1,18 +1,19 @@
 cmake_minimum_required(VERSION "3.15") # this seems to work for now... 
 
-# set C++ version to 20 i guess
+# set C++ version to 17 i guess
 set(CMAKE_CXX_STANDARD 17)
 
 project(PEngine)
 
 # configure CMake to use a "bin" folder for output
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
-
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/bin")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/bin")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "{CMAKE_CURRENT_SOURCE_DIR}/bin")
 
 # needs vulkan
 find_package(Vulkan REQUIRED FATAL_ERROR)
 
-# SHADER TARGET:
+# this is used to process GLSL/HLSL shader files
 find_program(GLSL_VALIDATOR glslangValidator HINTS $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
 
 ## find all the shader files under the shaders folder

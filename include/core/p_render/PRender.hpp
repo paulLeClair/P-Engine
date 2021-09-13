@@ -12,12 +12,12 @@
 // scene (TODO)
 #include "./scene/Scene.hpp"
 
-#include "../../../include/imgui/imgui.h"
-#include "../../../include/imgui/imgui_impl_vulkan.h"
-#include "../../../include/imgui/imgui_impl_win32.h"
+#include "../../imgui/imgui.h"
+#include "../../imgui/imgui_impl_vulkan.h"
+#include "../../imgui/imgui_impl_win32.h"
+#include "../../core/p_render/backend/Context.hpp"
 
-#include "../../../include/core/p_render/backend/Context.hpp"
-
+// VMA
 #include "../../vulkan_memory_allocator/vk_mem_alloc.h"
 
 // GLM
@@ -30,6 +30,7 @@
 
 
 // VULKAN LIMITS
+// should probably move these elsewhere
   // just gonna use the limits that Themaister's Granite uses, since i don't know how to judge
   // what reasonable limits are, and i also like the idea of keeping things compact
 #define VULKAN_NUM_DESCRIPTOR_SETS 4
@@ -45,23 +46,22 @@
 class PEngine;
 class VulkanGUIHandler;
 
-namespace Backend {
-    class Context; // renderer context
-    class FrameContext; // frame context
+namespace backend {
+    class Context;
+    class FrameContext;
 }
 
-namespace Scene {
+namespace scene {
     class Scene;
 }
-
 
 class PRender {
   public:
     PRender(PEngine *engineCore);
     ~PRender();
 
-    // PRender interface...
-    std::shared_ptr<Backend::Context> &renderContext();
+    /* RENDER INTERFACE */
+    std::shared_ptr<backend::Context> &renderContext();
 
     // render graph interface
     std::shared_ptr<RenderGraph> registerRenderGraph(const std::string &name);
@@ -94,19 +94,19 @@ class PRender {
     std::unordered_map<std::string, unsigned int> renderGraphNames_;
 
     // maintain a simple vector of FrameContexts, which should manage all the data for rendering one frame in one particular swapchain image
-    std::vector<std::shared_ptr<Backend::FrameContext>> frameContexts_;
+    std::vector<std::shared_ptr<backend::FrameContext>> frameContexts_;
     unsigned int activeFrameContext_;
 
     // gui handler
     std::shared_ptr<VulkanGUIHandler> gui_;
 
     /* BACKEND */
-    std::shared_ptr<Backend::Context> context_;
+    std::shared_ptr<backend::Context> context_;
 
     void setupImGui();
     void setupIMGUIResources();
 
-    void submitCommandBuffers(Backend::FrameContext &frameContext);
+    void submitCommandBuffers(backend::FrameContext &frameContext);
 
 };
 

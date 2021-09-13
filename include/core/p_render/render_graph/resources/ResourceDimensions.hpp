@@ -70,7 +70,7 @@ struct ResourceDimensions {
     // this is the generic structure for encoding a single physical resourcee (which may correspond to 
     // a few render graph resources)
         // we distinguish between images and buffers by testing the buffer size (will be nonzero for a buffer)
-    // i guess we could also distinguish them by just storing the RenderResource::Type here...
+    // might eventually change how this works a little bit, but for now it'll do
     VkFormat format = VK_FORMAT_UNDEFINED;
     BufferInfo bufferInfo = {};
 

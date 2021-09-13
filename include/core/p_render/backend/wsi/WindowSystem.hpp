@@ -6,7 +6,7 @@
 
 class PEngine;
 
-namespace Backend {
+namespace backend {
 
 struct WindowSystemData {
     /* WIN32 */
@@ -48,8 +48,6 @@ struct WindowSystemData {
     // for now i'll try just using simple semaphores, maybe i can look into more complicated swapchain synchronization later
     VkSemaphore swapchainRenderCompleteSemaphore;
     VkSemaphore swapchainPresentSemaphore;
-    // std::vector<VkSemaphore> swapchainImageAcquiredSemaphores;
-    // std::vector<VkSemaphore> swapchainRenderCompleteSemaphores;
 
 };
 
@@ -167,8 +165,7 @@ class WindowSystem {
     std::unique_ptr<WindowSystemData> wsiData_;
 
     #ifdef _WIN32
-
-
+    // todo: restructure all this to be more OS-independent
     #endif
 
     // gonna try and move the swapchain-related stuff into this WSI class 

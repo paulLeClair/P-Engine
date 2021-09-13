@@ -23,7 +23,7 @@ class Shader {
         return shaderName_;
     }
 
-    std::shared_ptr<Backend::ShaderModule> &getModule() {
+    std::shared_ptr<backend::ShaderModule> &getModule() {
         return shaderModule_;
     }
 
@@ -71,7 +71,7 @@ class Shader {
     };
     std::map<std::string, DescriptorSetBinding> bindings_;
 
-    std::shared_ptr<Backend::ShaderModule> shaderModule_ = nullptr;
+    std::shared_ptr<backend::ShaderModule> shaderModule_ = nullptr;
 
     /* Resources */
         // shaders can have a few different types of resources, and these

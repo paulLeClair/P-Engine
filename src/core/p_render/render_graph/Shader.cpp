@@ -7,8 +7,6 @@ Shader::Shader(const std::string &subpassName, const std::string &shaderName, st
     shaderName_ = shaderName;
     subpassName_ = subpassName;
 
-    // the shader has to be set up using the interface, i think we should at this point 
-    // query/create the Backend::ShaderModule, although idk it's kinda useless except for the first time
     shaderModule_ = graph_->getShaderModule(shaderName);
 
     // whatever else!

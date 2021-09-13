@@ -1,18 +1,14 @@
 #pragma once
 
 // this will be the object that actually pulls the module from the file system and sets it up 
-// to be used in a graphics pipeline / for reflection i think
-
-// maybe we can even include some of that functionality in this class
+// to be used in a graphics pipeline (plus reflection)
 
 #include "../../PRender.hpp"
 
 #include <fstream>
 #include <filesystem>
 
-namespace Backend {
-
-// here we'll declare some other that will probably be useful
+namespace backend {
 
 // this should be everything needed to get descriptor set layouts for this shader module
 struct DescriptorSetLayoutInfo {
@@ -21,7 +17,7 @@ struct DescriptorSetLayoutInfo {
     std::vector<VkDescriptorSetLayoutBinding> bindings = {};
 };
 
-// this is the same function as given in the SPIRVReflect repo, 
+// credits: same function as given in the SPIRVReflect repo, 
 // i'll use it to help compute vertex info 
 static uint32_t getVertexFormatSize(VkFormat format) {
   uint32_t result = 0;

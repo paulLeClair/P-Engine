@@ -34,12 +34,19 @@ bool Pass::validate() const {
 
 }
 
-void Pass::bake() {
-    // this is deprecated i think
+void Pass::linkGeometryToAllSubpasses(const std::vector<std::shared_ptr<scene::Renderable>> &renderables) {
+    // could probably make this multithreaded; for now i'll just do it singlethreaded
+    for (auto &subpass : subpasses_) {
+        linkGeometryToSubpass(subpass->getName(), renderables);
+    }
 }
 
-void Pass::execute() {
-    // this is deprecated i think
+void Pass::linkGeometryToSubpass(const std::string &subpass, const std::vector<std::shared_ptr<scene::Renderable>> &renderables) {
+    // Keep It Simple Stupid - unless it doesn't work :)
+    for (auto &renderable : renderables) {
+        const auto &subpassPtr = subpasses_[subpassNames_[subpass]];
+        subpassPtr->linkGeometry(renderable);
+    }
 }
 
 void Pass::reset() {
@@ -61,7 +68,6 @@ ImageResource &Pass::addColorOutput(const std::string &subpassName, const std::s
     auto &resource = graph_->getImageResource(outputName, &attachmentInfo);
     resource.addResourceQueueUsage(queueUsages_);
     resource.addWritePass(index_);
-    // resource.setAttachmentInfo(attachmentInfo);
     resource.addImageUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 
     if (attachmentInfo.numLevels != 1) {

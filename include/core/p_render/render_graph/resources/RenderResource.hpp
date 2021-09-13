@@ -60,7 +60,6 @@ class RenderResource {
     std::unordered_set<unsigned int> &getReadPasses();
 
   protected:
-    // RenderResource(Type type, unsigned int index);
     RenderResource(Type type, unsigned int index, const std::string &name = "");
 
     Type _type;

@@ -16,7 +16,7 @@
 
 class PEngine;
 
-namespace Backend {
+namespace backend {
 
 struct VulkanQueueInfo {
     uint32_t familyIndex; // index of given family
@@ -46,7 +46,7 @@ struct VulkanInstanceData {
     std::vector<VkPhysicalDevice> physicalDevices;
     VkPhysicalDevice selectedPhysicalDevice = VK_NULL_HANDLE;
 
-    // logical device (i think there should only be one?)
+    // logical device
     VkDevice device;
 
     // queue infos  
@@ -209,4 +209,4 @@ class Context : public std::enable_shared_from_this<Context> {
     
 };
 
-} // namespace Backend
+} // namespace backend

@@ -5,9 +5,9 @@
 
 #include <memory>
 
-class WindowSystem;
+namespace backend { 
 
-namespace Backend { 
+class WindowSystem;
 
 struct ThreadCommandPool {
     int threadIndex;
@@ -19,7 +19,7 @@ struct ThreadCommandPool {
             throw std::runtime_error("Pool accessed by incorrect thread!");
         }
         return commandPool;
-    } 
+    }
 };
 
 class Context;
@@ -29,15 +29,13 @@ class FrameContext {
     FrameContext(std::shared_ptr<Context> context, unsigned int index, unsigned int numThreads);
     ~FrameContext();
 
-    // begin and end should be all that's needed?
     bool begin();
+    bool end();
 
-    void enqueueCommandBuffer(VkCommandBuffer recordedBuffer);
+    void enqueueCommandBuffer(VkCommandBuffer &recordedBuffer);
     void enqueueCommandBuffers(std::vector<VkCommandBuffer> &recordedBuffers);
 
     void submitCommandBuffers();
-
-    bool end();
 
     std::mutex &getSubmissionMutex() {
         return commandBuffersLock_;
@@ -66,11 +64,15 @@ class FrameContext {
     // number of threads (for managing per-thread data)
     unsigned int numThreads_;
 
-    // this should contain the relevant state for a single frame context
+    // handle to window system integration
     WindowSystem &wsi_;
 
     // command pools per thread
     std::vector<std::shared_ptr<ThreadCommandPool>> commandPools_;
+
+    // vector of recorded command buffers per thread
+        // TODO - finish redoing this so we store command buffers per-thread until submit time
+    std::vector<std::vector<VkCommandBuffer>> recordedCommands_;
 
     // instead of trying to have multiple descriptor pools, i'll try just synchronizing access to one pool
     std::mutex descriptorPoolLock_;

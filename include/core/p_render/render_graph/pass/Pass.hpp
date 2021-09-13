@@ -50,19 +50,20 @@ class Pass : public std::enable_shared_from_this<Pass> {
     void setTessellationControlShader(const std::string &name);
     void setGeometryShader(const std::string &name);
 
-    // will probably need some functions for hooking up passes to the scene object 
-    
+    // TODO - flesh out this part of the interface (for linking geometry from a scene)
+    void linkGeometryToAllSubpasses(const std::vector<std::shared_ptr<scene::Renderable>> &renderables);
+    void linkGeometryToSubpass(const std::string &subpass, const std::vector<std::shared_ptr<scene::Renderable>> &renderables);
+
     // functions for setting up subpasses
     std::shared_ptr<Subpass> addSubpass(const std::string &subpassName); // this should create and initialize an empty Graph::Subpass
     void removeSubpass(const std::string &name);
     
     // maybe the process can be:
         // create your Pass
-            // create your subpasses
+            // create your Subpasses
                 // add all resources used by the subpass
                 // specify shaders + bindings for shader resources (needs to line up with shader code)
 
-    // Themaister has only an "addColorOutput" function which just takes an input resource name argument 
     ImageResource &addColorOutput(const std::string &subpass, const std::string &outputName, const AttachmentInfo &attachmentInfo, const std::string &inputName = "");
     
     // depth/stencil inputs/outputs
@@ -112,11 +113,9 @@ class Pass : public std::enable_shared_from_this<Pass> {
 
     // depth/stencil (can only have 1 input/output per pass)
     ImageResource *getDepthStencilInput() const {
-        // return (depthStencilInput_) ? *depthStencilInput_ : nullptr;
         return depthStencilInput_;
     }
     ImageResource *getDepthStencilOutput() const {
-        // return (depthStencilOutput_) ? *depthStencilOutput_ : nullptr;
         return depthStencilOutput_;
     }
 

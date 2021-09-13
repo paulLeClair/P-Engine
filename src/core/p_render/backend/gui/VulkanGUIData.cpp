@@ -1,10 +1,5 @@
 #include "../../../../../include/core/p_render/backend/gui/VulkanGUIData.hpp"
-
-// hmm maybe i can just include the guihandler header to get the create info struct
 #include "../../../../../include/core/p_render/backend/gui/VulkanGUIHandler.hpp"
-
-// render graph
-// #include "../../../../../include/core/p_render/render_graph/RenderGraph.hpp"
 
 #include "../../../../../include/core/p_render/backend/Context.hpp"
 
@@ -12,16 +7,10 @@
 #include "../../../../../include/imgui/imgui_internal.h"
 #include "../../../../../include/imgui/imgui_impl_vulkan.h"
 
-//MAY14 - TODO: combine VulkanGUIData and VulkanGUIHandler (needless separation)
-
 VulkanGUIData::VulkanGUIData(const VulkanIMGUICreateInfo &createInfo) {
     // store pointers
-    // renderGraph_ = createInfo.renderGraph;
     context_ = createInfo.context;
 
-        // MAR29 - think i have to move this to the windows-specific code to get this to work with the window proc
-    // // set up the IMGUI context
-    // IMGUI_CHECKVERSION();
     ctx_ = ImGui::GetCurrentContext();
     ImGui::SetCurrentContext(ctx_);
 
@@ -114,7 +103,7 @@ VulkanGUIData::VulkanGUIData(const VulkanIMGUICreateInfo &createInfo) {
 
     // null
     imguiInitInfo.PipelineCache = VK_NULL_HANDLE;
-    imguiInitInfo.MinImageCount = 3; // yep
+    imguiInitInfo.MinImageCount = 3; // this might need to be set differently
     imguiInitInfo.Allocator = nullptr;
     imguiInitInfo.CheckVkResultFn = nullptr;
 
@@ -139,7 +128,7 @@ VulkanGUIData::~VulkanGUIData() {
 void VulkanGUIData::setupIMGUIResources() {
     // this will now set up textures/etc for IMGUI, after this function runs it should be possible to use imgui 
         // for now this will be the exclusive GUI mechanism for the engine (unless you want to set up your own Passes in the render graph
-        // which i imagine i'll do for some things later)
+        // which i imagine will make sense for many things)
 
     // set up fonts texture on gpu, submit the imgui function (which takes a command buffer arg) 
     context_->immediateSubmitCommand([&](VkCommandBuffer cmd) {
@@ -187,9 +176,7 @@ void VulkanGUIData::setupIMGUIResources() {
     }
 
     // allocate gui command buffers
-    // resize 
     guiCommandBuffers_.resize(context_->getSwapchainImageCount()); // get numswapchain images from the backend
-
 
     VkCommandBufferAllocateInfo guiAllocInfo = {};
     guiAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;

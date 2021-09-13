@@ -1,19 +1,19 @@
 #pragma once
 
-// i'll try making a small header-only specialization of the Backend::Image class 
+// i'll try making a small header-only specialization of the backend::Image class 
 
 #include "./Image.hpp"
 
 #include <vector>
 
-namespace Backend {
+namespace backend {
 
 // maybe i can keep this one simple since it just basically has to hold on to 
-// the already-created swapchain images
+// the swapchain images (which come from the presentation engine and not the user)
 class SwapchainImage : public Image {
   public:
     SwapchainImage(std::vector<VkImage> swapchainImages) : swapchainImages_(swapchainImages), Image() {
-        // call the protected image ctor w/ no arguments to ignore the existing image implementation stuff basically
+        // call the protected backend::Image ctor w/ no arguments to ignore the existing image implementation stuff basically
             // means you shouldn't use the Image interface on these ones (you won't need to i hope)
         activeSwapchainIndex_ = 0u;
     }

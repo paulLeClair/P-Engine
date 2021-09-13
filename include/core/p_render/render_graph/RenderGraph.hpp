@@ -24,17 +24,24 @@ class ImageResource;
 class BufferResource;
 class Shader;
 
-namespace Backend {
+namespace backend {
     class Context;
+    
     class FrameContext;
-    class PhysicalPass;
+
     struct PhysicalPassCreateInfo;
+    class PhysicalPass;
+    
     class ShaderModule; 
+}
+
+namespace scene {
+  class Scene;
 }
 
 class RenderGraph : public std::enable_shared_from_this<RenderGraph> {
   public:
-    RenderGraph(const std::string &name,  std::shared_ptr<ThreadPool> pool, std::shared_ptr<Backend::Context> context, VmaAllocator allocator);
+    RenderGraph(const std::string &name,  std::shared_ptr<ThreadPool> pool, std::shared_ptr<backend::Context> context, VmaAllocator allocator);
     ~RenderGraph();
 
     /* Render Graph Interface */
@@ -52,19 +59,24 @@ class RenderGraph : public std::enable_shared_from_this<RenderGraph> {
     
     std::shared_ptr<Pass> appendPass(const std::string &passName);
 
-    // resources etc 
-      // gotta change these to return shared pointers too
+    // resources 
     ImageResource &getImageResource(const std::string &name, const AttachmentInfo *info = nullptr);
     BufferResource &getBufferResource(const std::string &name, const BufferInfo *info = nullptr);
     
-    // shaders!
-      // unlike the above get* functions, we'll return the shared pointer to the shader module
-    std::shared_ptr<Backend::ShaderModule> getShaderModule(const std::string &shaderFilename);
+    // shaders
+    std::shared_ptr<backend::ShaderModule> getShaderModule(const std::string &shaderFilename);
+
+    // scene interface
+    std::shared_ptr<scene::Scene> getScene();
+
+    const std::string &getName() {
+      return name_;
+    }
 
     // physical resources!
     ResourceDimensions getResourceDimensions(BufferResource &resource) const;
     ResourceDimensions getResourceDimensions(ImageResource &resource) const;
-    std::vector<std::shared_ptr<Backend::Resource>> &getPhysicalResources() {
+    std::vector<std::shared_ptr<backend::Resource>> &getPhysicalResources() {
       assert(physicalResources_.size()); // shouldn't call this before physical resources have been built
         // and we should always have at least the swapchain images to work with
       return physicalResources_;
@@ -100,7 +112,7 @@ class RenderGraph : public std::enable_shared_from_this<RenderGraph> {
     void bake();
 
     // functions for actually rendering a frame, provided the render graph has been finalized
-    void execute(Backend::FrameContext &frame); // execute the graph if finalized, enqueuing a submit(CommandBuffer) to the given submission queue
+    void execute(backend::FrameContext &frame); // execute the graph if finalized, enqueuing a submit(CommandBuffer) to the given submission queue
 
     void reset(); // reset all passes if finalized
 
@@ -112,18 +124,21 @@ class RenderGraph : public std::enable_shared_from_this<RenderGraph> {
     /* Render Graph State */
     bool baked_ = false;
 
-    std::string name_ = "";
+    std::string name_;
 
-    std::shared_ptr<Backend::Context> context_;
+    std::shared_ptr<backend::Context> context_;
 
     std::shared_ptr<ThreadPool> pool_;
 
-    std::vector<std::shared_ptr<Pass>> passes_; // gonna use shared pointers for this actually, passes can exist as their own
+    std::vector<std::shared_ptr<Pass>> passes_;
     std::map<std::string, unsigned int> passNames_; 
 
     // high-level resources that have been registered with the graph + its passes
     std::vector<std::shared_ptr<RenderResource>> resources_;
     std::map<std::string, unsigned int> resourceNames_;
+
+    // i'll try having each render graph maintain exactly one scene 
+    std::shared_ptr<scene::Scene> scene_;
 
     // backbuffer source 
     std::string backbufferResourceName_; // this is used to terminate the graph
@@ -142,13 +157,13 @@ class RenderGraph : public std::enable_shared_from_this<RenderGraph> {
     std::shared_ptr<ResourceDimensions> swapchainDimensions_; 
 
     // physical resources 
-    std::vector<std::shared_ptr<Backend::Resource>> physicalResources_; // these should just built 1 resource for each of the ResourceDimensions
+    std::vector<std::shared_ptr<backend::Resource>> physicalResources_; // these should just built 1 resource for each of the ResourceDimensions
 
     // physical passes (built up at bake time, should be possible to draw the frame
     // by just executing these one by one)
-    std::vector<std::shared_ptr<Backend::PhysicalPass>> physicalPasses_;
+    std::vector<std::shared_ptr<backend::PhysicalPass>> physicalPasses_;
 
-    std::vector<std::shared_ptr<Backend::ShaderModule>> shaderModules_;
+    std::vector<std::shared_ptr<backend::ShaderModule>> shaderModules_;
     std::map<std::string, unsigned int> shaderModuleNames_;
     
     /* Render Graph Internal Functions */
@@ -168,8 +183,8 @@ class RenderGraph : public std::enable_shared_from_this<RenderGraph> {
     void buildPhysicalResources();
 
     void buildPhysicalPasses();
-      void setupAttachments(Pass &pass, Backend::PhysicalPassCreateInfo &info);
-      void setupSubpasses(Pass &pass, Backend::PhysicalPassCreateInfo &info);
+      void setupAttachments(Pass &pass, backend::PhysicalPassCreateInfo &info);
+      void setupSubpasses(Pass &pass, backend::PhysicalPassCreateInfo &info);
 
     void buildPrograms();
 

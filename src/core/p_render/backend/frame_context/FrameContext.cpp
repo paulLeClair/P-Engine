@@ -1,9 +1,8 @@
 #include "../../../../../include/core/p_render/backend/frame_context/FrameContext.hpp"
 
-// #include "../../../../../include/core/PEngineCore.hpp"
 #include "../../../../../include/core/p_render/backend/Context.hpp"
 
-using namespace Backend;
+using namespace backend;
 
 FrameContext::FrameContext(std::shared_ptr<Context> context, unsigned int index, unsigned int numThreads) 
     : context_(context), index_(index), numThreads_(numThreads), wsi_(context_->WSI()) {
@@ -16,7 +15,7 @@ FrameContext::FrameContext(std::shared_ptr<Context> context, unsigned int index,
         info.flags = 0;
         info.pNext = nullptr;
         info.queueFamilyIndex = context_->getGraphicsQueueFamilyIndex(); // for now we'll just be using hopefully 1 compute+gpu queue, although
-        // eventually i'll probably want to decouple them into separate queues
+        // eventually i'll probably want to decouple them into separate queues (need to look more into that part of the vulkan spec though)
 
         auto result = vkCreateCommandPool(context_->getLogicalDevice(), &info, nullptr, &pool.commandPool);
         if (result != VK_SUCCESS) {
@@ -51,7 +50,7 @@ void FrameContext::enqueueCommandBuffers(std::vector<VkCommandBuffer> &buffers) 
     frameCommandBuffers_.insert(frameCommandBuffers_.end(), buffers.begin(), buffers.end());
 }
 
-void FrameContext::enqueueCommandBuffer(VkCommandBuffer buffer) {
+void FrameContext::enqueueCommandBuffer(VkCommandBuffer &buffer) {
     std::unique_lock<std::mutex> ul(commandBuffersLock_);
 
     frameCommandBuffers_.push_back(buffer);
@@ -60,14 +59,14 @@ void FrameContext::enqueueCommandBuffer(VkCommandBuffer buffer) {
 void FrameContext::submitCommandBuffers() {
     // TODO - restructure this
 
-    std::unique_lock<std::mutex> ul(commandBuffersLock_);
+    // std::unique_lock<std::mutex> ul(commandBuffersLock_);
 
     VkSubmitInfo info = {};
     VkShaderStageFlags waitFlags = VK_SHADER_STAGE_ALL_GRAPHICS; // i think this should work, this function wouldn't work for compute commands tho i don't think
     info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     info.pNext = 0;
     info.pWaitDstStageMask = &waitFlags;
-    info.waitSemaphoreCount = 1; // APR8 - wait on the imageacquiredsemaphore?
+    info.waitSemaphoreCount = 1;
     info.pWaitSemaphores = &wsi_.getSwapchainPresentSemaphore();
     info.signalSemaphoreCount = 1;
     info.pSignalSemaphores = &wsi_.getSwapchainRenderCompleteSemaphore(); // signal renderCompleteSemaphore
@@ -81,7 +80,7 @@ void FrameContext::submitCommandBuffers() {
         throw std::runtime_error("Unable to submit command buffers to graphics queue!");
     }
     while (vkWaitForFences(context_->getLogicalDevice(), 1, &frameFence_, VK_TRUE, 50000000) == VK_TIMEOUT) {
-        // ugly - just kinda some ez bs code to wait, although it doesn't handle any VK_FAILs
+        // TODO: handle VK_FAILUREs etc
     }
 
     frameCommandBuffers_.clear(); // clear the command buffers, which should have all been executed by this point!

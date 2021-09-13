@@ -15,7 +15,7 @@ class ImGuiContext;
 
 class VulkanGUIData {
   public:
-    VulkanGUIData(const VulkanIMGUICreateInfo &createInfo); // create info, no parent scene info anymore since GUI is no longer part of the scene itself
+    VulkanGUIData(const VulkanIMGUICreateInfo &createInfo);
     ~VulkanGUIData();
 
     // getters
@@ -41,7 +41,7 @@ class VulkanGUIData {
 
   private:
     // pointer to vulkan wrapper?
-    std::shared_ptr<Backend::Context> context_;
+    std::shared_ptr<backend::Context> context_;
 
     // // vulkan/DearIMGUI stuff!
     ImGuiContext *ctx_;
@@ -53,14 +53,12 @@ class VulkanGUIData {
     VkCommandPool guiCommandPool_;
     std::vector<VkCommandBuffer> guiCommandBuffers_;
 
-    // std::unordered_map<std::string, std::shared_ptr<GUIPass>> guiPasses_;
-    VkRenderPass guiPass_; // for now we just maintain a single one since that's how the imgui lib we're using works ;)
+    VkRenderPass guiPass_; // for now we just maintain this 
 
     std::vector<VkFramebuffer> frameBuffers_;
 
 
     // startup functions
-    // void createDescriptorPool(); // unneeded now i think
     void setupIMGUIResources(); 
 
   protected:

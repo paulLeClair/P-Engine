@@ -8,8 +8,7 @@
 
 #include "../render_graph/resources/RenderResource.hpp"
 
-// but hopefully i can hack together something that works :)
-namespace Backend {
+namespace backend {
 
 class Program;
 
@@ -31,11 +30,11 @@ class PhysicalPass {
         std::shared_ptr<std::vector<VkAttachmentReference>> resolveAttachments = {};
     };
 
-    struct PhysicalSubpass {
-      // TODO: set this up so that we can fill it using a Graph::Subpass + other physical pass info
-        // we'll probably want to take a few things directly from the Subpass...
-          // eg the callbacks for recording command buffers etc
+    struct Barrier {
 
+    };
+
+    struct PhysicalSubpass {
       // index within PhysicalPass
       unsigned int index = ~0u;
 
@@ -53,11 +52,11 @@ class PhysicalPass {
 
       unsigned int colorAttachmentCount = 0;
 
-      // whatever else a physical subpass needs!
-
+      // TODO - attach geometry from the Scene so that subpasses can bind their resp. vertex/index buffers etc
+      
     };
 
-    PhysicalPass(std::vector<unsigned int> passIndices, std::shared_ptr<RenderGraph> graph, std::shared_ptr<Context> context);
+    PhysicalPass(std::vector<unsigned int> &passIndices, std::shared_ptr<RenderGraph> graph, std::shared_ptr<Context> context);
     ~PhysicalPass() = default;
 
     void execute();
@@ -77,6 +76,11 @@ class PhysicalPass {
     // executed 
     std::vector<std::shared_ptr<PhysicalSubpass>> physicalSubpasses_ = {};
 
+    // we may need to insert layout transition barriers for some resources
+      // maybe i'll try storing a map from the subpass index to a barrier pointer 
+    std::vector<std::shared_ptr<Barrier>> barriers_ = {};
+    std::map<unsigned int, unsigned int> subpassBarrierIndices = {};
+ 
 };
 
 }

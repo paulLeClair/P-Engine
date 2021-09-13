@@ -2,9 +2,6 @@
 
 #include "../../../include/core/thread_pool/job_queue/JobQueue.hpp"
 
-// will probably be useful to have the ability to create multiple thread pools 
-    // eg if you want to split threads into groups, might be worth investigating
-// overall seems easier to achieve that behavior by just assigning groups of threads to separate queues, so maybe not...
 ThreadPool::ThreadPool(unsigned int size) : threadCount_(size) {
     // create threads
     for (int i = 0; i < threadCount_; i++) {
@@ -15,7 +12,6 @@ ThreadPool::ThreadPool(unsigned int size) : threadCount_(size) {
 
 ThreadPool::~ThreadPool() {
     // will probably need to terminate the worker threads at this point, should only happen once engine is being destroyed
-
     terminateWorkerThreads();
 
 }
@@ -34,6 +30,8 @@ void ThreadPool::terminateWorkerThreads() {
 void ThreadPool::submitQueue(JobQueue *queue, unsigned int priority) {
     // i might want to add more functions like this, such as for enabling a queue only on a subset of threads etc
     // i think we can just enable the queue with each thread...
+    
+    
     for (uint32_t i = 0; i < threads_.size(); i++) {
         threads_[i]->enableQueue(queue, priority); // maybe i should have threads work with raw pointers..
     }
@@ -49,6 +47,9 @@ void ThreadPool::submitQueue(JobQueue *queue, unsigned int priority) {
             // this function is thread-safe i believe
             return queue->isEmpty();
         });
+        // TODO - not sure if this condition is sufficient... we wanna probably return control to main thread only
+        // when the jobs have actually completed;
+            // i'll do some testing and maybe figure out somethings
     }
 }
 

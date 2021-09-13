@@ -17,27 +17,24 @@
 // subpass
 #include "../../../../include/core/p_render/render_graph/pass/Subpass.hpp"
 
-using namespace Backend;
+using namespace backend;
 
-// PhysicalPass::PhysicalPass(PhysicalPassCreateInfo &info) {
-// PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::vector<std::shared_ptr<Pass>> &passes) {
-PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_ptr<RenderGraph> graph, std::shared_ptr<Backend::Context> context) {
+PhysicalPass::PhysicalPass(std::vector<unsigned int> &passIndices, std::shared_ptr<RenderGraph> graph, std::shared_ptr<backend::Context> context) {
     graph_ = graph;
     context_ = context;
-    const auto &passes = graph->getPasses();
+    const auto &passes = graph_->getPasses();
 
     /* BIG TODO: clean up a lot of this (physical pass creation) logic; i think there's stuff that can be excised/redone in a simpler way, but i'll wait and
     get this working first */
+        // lots of these lambdas can probably be made member functions instead
 
+    #pragma region BAKE_PHYSICAL_PASS_LOCAL_DECLS
     // this array will be given to the VkRenderPassCreateInfo later 
     std::vector<VkAttachmentDescription> attachments = {};
 
     // for this maybe i'll try a local struct
         // not sure what i really need here, this entire thing might not be needed, but i'll leave it for now
     struct ShaderResourceDescription {
-        // maybe i could just rename this
-        // this is redundant i think, should eventually get rid of it probably
-        
         enum ResourceUsage {
             // init value
             Unknown,
@@ -108,6 +105,7 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
     std::unordered_map<unsigned int, unsigned int> subpassReadWriteInfoIndices = {};
 
     std::vector<SubpassAttachments> subpassAttachmentPointers = {};
+    #pragma endregion BAKE_PHYSICAL_PASS_LOCAL_DECLS
 
     // i could eventually use some kind of temporary hash type mechanism similar to Granite
     // and automatically generate the actual VkRenderPass (and other such objects) on the fly but for my 
@@ -154,8 +152,7 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
 
             // check if this output was registered with an input, and make sure we load the existing co
             if (hasInput) {
-                // i'm pretty sure if we have a named input resource we want to use LOAD,
-                // except maybe swapchain images but idk probably won't matter
+                // i'm pretty sure if we have a named input resource we want to use LOAD
                 desc.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
             }
             else {
@@ -233,7 +230,6 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
 
             attachments.push_back(desc);
             resourceNamesToAttachmentIndices[input->getResourceName()] = attachments.size() - 1;
-            // resourceAttachmentIndices[input->getIndex()] = attachments.size() - 1;
             attachmentPhysicalResourceIndices.push_back(input->getPhysicalIndex());
         };
 
@@ -305,10 +301,6 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
                 }
             }
 
-            // TODO: make it so that if format_has_depth_aspect() returns true, we set this up accordingly; 
-                //for now i'll just assume that this
-                // uses the same load/store op as the depth aspect... 
-                    // i'll come back to this later
             desc.stencilLoadOp = desc.loadOp;
             desc.stencilStoreOp = desc.storeOp;
 
@@ -454,10 +446,6 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
 
             VkAttachmentReference depthStencilRef = {};
 
-            // we'll have to fill the preserve attachments (which is kinda annoying i think)
-                // basically it just means that we have to go through and put
-                // any unused attachments as preserve attachments, otherwise
-                // vulkan might allow things to happen to them that you wouldn't want
             std::unordered_set<unsigned int> usedAttachmentIndices = {}; // used to build up preserve attachments later
             std::vector<unsigned int> preserveAttachments = {};
 
@@ -610,10 +598,7 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
 
         // not really sure if i need to get usage info when we build up the list of shader resources but idk
         
-        // i think i need to reset the "seenResourceIndices" thing...
         seenResourceIndices.clear();
-            // might not have much of an effect though, since there shouldn't usually be much overlap,
-            // except when we have a self-dependency or whatever
 
         const auto &checkBufferResource = [&](BufferResource *resource, ShaderResourceDescription::ResourceUsageFlags usages) {
             if (seenResourceIndices.find(resource->getPhysicalIndex()) != seenResourceIndices.end()) {
@@ -634,7 +619,6 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
 
             shaderResourceDescriptions.push_back(desc);
             
-            // shaderResourceIndices[resource->getIndex()] = shaderResourceDescriptions.size() - 1;
             resourceNamesToShaderResourceIndices[resource->getResourceName()] = shaderResourceDescriptions.size() - 1;
             shaderResourcePhysicalResourceIndices.push_back(resource->getPhysicalIndex());
         };
@@ -727,9 +711,9 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
     }
     assert(subpasses.size() == subpassDescriptions.size());
 
+    // small step: build up a set of used shader resource indices for each subpass
     std::vector<std::unordered_set<unsigned int>> subpassUsedShaderResourceIndices = {};
     for (auto subpass = 0u; subpass < subpasses.size(); subpass++) {
-        // need to build up a set of used shader resource indices for each subpass
         std::unordered_set<unsigned int> usedShaderResourceIndices = {};
 
         // i think we have to just go through each of the shader resources and add any used ones to the list
@@ -830,24 +814,11 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
 
     // might want to break things up into some more lambdas here too
     const auto &processInternalDependencies = [&]() {
-        // the idea here is to go through all the subpasses for every resource
-        // and build a VkSubpassDependency between subpasses when they both make use of the resource
-            // need to think about an algorithm for this... i have to make sure i don't miss any 
-            // important cases or add any incorrect dependencies, which could murder my whole thing
 
-        // i think the important thing here is to add dependencies between subpasses that both
-        // somehow make use of the same renderpass attachment
-
-        // is it considered ugly to have nested lambdas? `\_(;_;)_/`
         const auto &processFramebufferDependencies = [&]() {
             // for each attachment, we can go through and create dependencies as needed?
             // really hope this is possible...
             for (auto att = 0u; att < attachments.size(); att++) {
-                // i guess we could just build a list of subpasses that use this attachment;
-                // depending how they use it we insert dependencies 
-                    // i think vulkan automatically chains dependencies so i can just worry about "adjacent"
-                    // ones... (i think)
-
                 auto attachmentPhysicalResourceIndex = attachmentPhysicalResourceIndices[att];
 
                 std::vector<unsigned int> attSubpasses = {}; 
@@ -993,16 +964,8 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
 
         // here we'll have to handle dependencies for descriptor sets
         const auto &processDescriptorSetDependencies = [&]() {
-            // alright so here we're gonna look at descriptor set buffers/images...
-
-            // i'm hoping i can kinda follow the logic for framebuffer attachments, 
-            // except we can't base everything around VkSubpassDescriptions that capture
-            // all usage info for framebuffer attachments
-                // i still might have to go through and set everything up per-subpass for that since
-                // we MAY need to know which SUBPASS
             for (auto res = 0u; res < shaderResourceDescriptions.size(); res++) {
                 // find all subpasses that use this resource in order
-                // std::vector<unsigned int> resourceSubpasses = {};
                 auto name = shaderResourceDescriptions[res].name;
 
                 auto resourceSubpasses = getResourceSubpasses(name, subpasses);
@@ -1013,8 +976,7 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
                     for (auto k = 0; k < resourceSubpasses.size() - 1; k++) {
                         // should be possible to just use one dependency, as long as we don't miss anything
                         VkSubpassDependency dep = {};
-                        dep.dependencyFlags = 0; // need to figure out how to handle these flags, hoepfully i can 
-                            // ignore for now
+                        dep.dependencyFlags = 0;
 
                         dep.srcSubpass = resourceSubpasses[k];
                         dep.dstSubpass = resourceSubpasses[k+1];
@@ -1171,13 +1133,6 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
             // here we go through and look for any self dependencies that need to be set up
 
             for (auto att = 0u; att < attachments.size(); att++) {
-                // i donno exactly which cases i need to handle here;
-                    // as far as i know, i just need to check for cases where we use something
-                    // as both a TEXTURE and (i think) a color attachment
-                // i guess i could also look for storage image/color attachment overlap...
-
-                // may only have to go over the framebuffer attachments to do this...
-
                 auto attName = attachmentResourceNames[att];
 
                 // for each subpass that uses this att, have to check if the same att
@@ -1356,14 +1311,11 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
         // maybe after the lambda declarations we'll call them in turn
         processFramebufferDependencies();
         processDescriptorSetDependencies();
-
-        // maybe we should go through and look for self dependencies?
-            // i feel like if a subpass uses the same attachment as an Input and Color attachment, (which should be a common case i'd think...?)
-            // that subpass will have to have a self dependency (and other such cases would matter to)
-                // there's even a section in the spec about subpass self-dependencies
         processSelfDependencies();
 
     };
+    
+    // used to be a bunch of old code here, go dig through the commits if needed (it's bad so just don't)
 
     const auto &processExternalDependencies = [&]() {
         // TODO: refactor this to reduce all the code duplication etc
@@ -1802,7 +1754,7 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
         newSubpass->colorAttachmentCount = subpasses[i]->getColorOutputs().size();
 
         // build a program for this subpass
-        physicalSubpasses_[i]->program = std::make_shared<Backend::Program>(context_, subpasses[i]);
+        physicalSubpasses_[i]->program = std::make_shared<backend::Program>(context_, subpasses[i]);
     
         // collect some depth stencil information
         if (!subpasses[i]->getDepthStencilInput().empty() || !subpasses[i]->getDepthStencilOutput().empty()) {
@@ -1817,11 +1769,12 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
     }
     #pragma endregion BAKE_INIT_PHYSICAL_SUBPASS_ARRAY
 
-    // after the subpass descriptions + dependencies are complete, we have everything we need to create the VkRenderPass
+    // after the subpass descriptions + dependencies are complete, we have everything we need to create the VkRenderPass,
+    // so do that i guess!
 
     /* BUILD RENDER PASS */
     #pragma region BAKE_BUILD_RENDER_PASS
-    
+
     VkRenderPassCreateInfo renderPassCreateInfo = {};
     renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassCreateInfo.flags = 0;
@@ -1874,11 +1827,11 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
         // get the actual VkImage from the physical resource (created before the PhysicalPass ctor is called)
         if (graph_->getPhysicalResources()[attachmentPhysicalResourceIndices[i]]->isSwapchainImage()) {
             // create an image view for the swapchain image
-            auto physImage = std::dynamic_pointer_cast<Backend::SwapchainImage>(graph_->getPhysicalResources()[attachmentPhysicalResourceIndices[i]]);
+            auto physImage = std::dynamic_pointer_cast<backend::SwapchainImage>(graph_->getPhysicalResources()[attachmentPhysicalResourceIndices[i]]);
             info.image = physImage->getSwapchainImage(); // provide no arg to get the active swapchain image 
         }
         else {
-            auto physImage = std::dynamic_pointer_cast<Backend::Image>(graph_->getPhysicalResources()[attachmentPhysicalResourceIndices[i]]);
+            auto physImage = std::dynamic_pointer_cast<backend::Image>(graph_->getPhysicalResources()[attachmentPhysicalResourceIndices[i]]);
             info.image = physImage->getImage();
         }
 
@@ -1923,10 +1876,12 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
 
     /* BUILD MEMORY BARRIERS */
     #pragma region BAKE_BUILD_BARRIERS
-    // here i think i'll have to make sure that images are all transitioned properly BEFORE their first use
-    // and AFTER their last use 
-        // we can deduce what layout things need to be in by just traversing the graph and using that info
-    
+
+    const auto &buildBarriers = [&]() {
+        // TODO
+    };
+
+    buildBarriers();
     #pragma endregion BAKE_BUILD_BARRIERS
 
     /* BUILD GRAPHICS PIPELINES */
@@ -1958,9 +1913,6 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
                 inputAssemblyCreateInfo.flags = 0;
                 inputAssemblyCreateInfo.pNext = nullptr;
 
-                // i think that this will hook into the Scene that the user is supposed to set up, since that should hopefully
-                // package up all the high-level geometry information and it should also be able to provide that info
-                // to its associated Graph, and we can probably dynamically fill this struct for 
                 inputAssemblyCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; // just gonna use this for now..
                 
                 info.pInputAssemblyState = &inputAssemblyCreateInfo;
@@ -2078,13 +2030,7 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
             // for now, no depth-bound testing implemented
             depthStencilInfo.depthBoundsTestEnable = VK_FALSE;
 
-            // TODO - handle stencil test stuff... 
-                // i think i should maybe add more to the interface to handle this better,
-                // i might just use some very simple logic for now to set this up
-            // it should probably be fairly configurable so i'll have to add in a bunch of stuff to make it configurable
-            // in a nice way (i think i'll try and have separate interface functions for setting this kind of thing up?)
-                // it may also be possible to do it another way but i'm not entirely sure, making it explicit
-                // and setting it up that way might a solution
+            // TODO - handle stencil test stuff
             depthStencilInfo.stencilTestEnable = VK_FALSE;
         }
         else {
@@ -2112,8 +2058,6 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
         colorBlendInfo.logicOpEnable = VK_FALSE; // can make this configurable later
 
         // setup color blend attachment state(s)
-            // i'll have to implement blending in the future, might be good
-            // to add some stuff to the interface for that
         colorBlendInfo.attachmentCount = physicalSubpass->colorAttachmentCount;
         std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates = {};
         for (int i = 0; i < physicalSubpass->colorAttachmentCount; i++) {
@@ -2130,8 +2074,7 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
         VkPipelineViewportStateCreateInfo viewportInfo = {VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
 
         // no scissor rectangles yet
-        viewportInfo.scissorCount = 1; // have to set this to 1
-        // viewportInfo.pScissors = nullptr;
+        viewportInfo.scissorCount = 1;
         VkRect2D hardcodedScissor = {};
         hardcodedScissor.offset = {0, 0}; 
         hardcodedScissor.extent = {1, 1};
@@ -2172,15 +2115,11 @@ PhysicalPass::PhysicalPass(std::vector<unsigned int> passIndices, std::shared_pt
     #pragma endregion BAKE_BUILD_GRAPHICS_PIPELINES
 
     /* SETUP DESCRIPTOR SETS? */
-    // from here i'm not entirely sure, but it might make sense to set up at least the descriptor pools so that
-    // at execute() time the PhysicalPass allows command buffers to bind the required resources
+    
 
 }
 
 void PhysicalPass::execute() {
-    // this should be a pretty meaty/important function, 
-    // will be called in order to render a frame using a particular graph 
-
-    
+    // TODO
 }
 

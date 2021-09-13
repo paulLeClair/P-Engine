@@ -1,6 +1,6 @@
 # CMakeLists file for pengine source
 
-# TODO - maybe restructure all of these into subdirectories? might be worth it idk
+# TODO - look into CMake best practices, not sure if this is the ideal way of organizing the project
 set(pengine_src 
     ## ENTRY POINT
     "main.cpp"
@@ -37,8 +37,9 @@ set(pengine_src
     "imgui/imgui_impl_win32.cpp"
     ##
 
-    ## ENGINE COMPONENTS
-    "components/Component.cpp"
+    ## ENGINE TOOLS
+        ## still need to think about how this is gonna work...
+    "core/engine_tools/EngineTool.cpp"
     ##
 
     ### P_RENDER
@@ -56,6 +57,9 @@ set(pengine_src
 
     ## SCENE
     "core/p_render/scene/Scene.cpp"
+    # "core/p_render/scene/Renderable.cpp"
+    "core/p_render/scene/mesh/Mesh.cpp"
+    "core/p_render/scene/material/Material.cpp"
     
     "core/p_render/backend/Context.cpp"
     "core/p_render/backend/frame_context/FrameContext.cpp"
@@ -67,20 +71,37 @@ set(pengine_src
     "core/p_render/backend/gui/VulkanGUIData.cpp"
     "core/p_render/backend/PhysicalPass.cpp"
 
+    ## UTILS
+    "core/utils/UniqueID.cpp"
+
+    ## VULKAN MEMORY ALLOCATOR
     "core/p_render/VulkanMemoryAllocator.cpp"
+
+    ## MESHOPT
+        # for now i'll include all the algorithms and prune as needed
+    "mesh_optimizer/allocator.cpp"
+    "mesh_optimizer/clusterizer.cpp"
+    "mesh_optimizer/indexcodec.cpp"
+    "mesh_optimizer/indexgenerator.cpp"
+    "mesh_optimizer/overdrawanalyzer.cpp"
+    "mesh_optimizer/overdrawoptimizer.cpp"
+    "mesh_optimizer/simplifier.cpp"
+    "mesh_optimizer/spatialorder.cpp"
+    "mesh_optimizer/stripifier.cpp"
+    "mesh_optimizer/vcacheanalyzer.cpp"
+    "mesh_optimizer/vcacheoptimizer.cpp"
+    "mesh_optimizer/vertexcodec.cpp"
+    "mesh_optimizer/vertexfilter.cpp"
+    "mesh_optimizer/vfetchanalyzer.cpp"
+    "mesh_optimizer/vfetchoptimizer.cpp"
     )
 
 # try adding the pengine executable here?
 add_executable(pgame WIN32 ${pengine_src}) # forgot to add this win32 flag
 
 # add pengine headers
-    # not sure whether to use include_directories() or target_include_directories()
 target_include_directories(pgame PUBLIC BEFORE "$../include") # this seems to work!
 
-# try and get vulkan integrated?????
-    # apparently CMake makes this easy... 8===D~~~~~~~~~~~~~~
+# integrate vulkan :)
 target_include_directories(pgame PUBLIC BEFORE "${Vulkan_INCLUDE_DIRS}")
 target_link_libraries(pgame Vulkan::Vulkan)
-
-
-# not sure what else goes in this one... 

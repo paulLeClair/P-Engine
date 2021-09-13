@@ -4,7 +4,7 @@
 
 #include "../../../../vulkan_memory_allocator/vk_mem_alloc.h"
 
-namespace Backend {
+namespace backend {
 
 class Buffer : public Resource {
   public:
@@ -23,8 +23,7 @@ class Buffer : public Resource {
 
     struct BufferCreateInfo {
         VmaAllocator allocator = nullptr;
-
-        BufferDomain domain = BufferDomain::Device;
+        BufferDomain domain = BufferDomain::Device; // by default it'll be a VRAM buffer
         VkDeviceSize size = 0;
         VkBufferUsageFlags usages = 0;
         // could add some misc flags for later 
@@ -45,8 +44,8 @@ class Buffer : public Resource {
         info.usage = info_.usages;
 
         VmaAllocationCreateInfo allocCreateInfo = {};
-        // for now again we're just assuming GPU resources, but i'll extend this to use the proper usage depending
-        // on the Domain of the buffer i think
+        
+        // TODO - make this configurable thru the BufferCreateInfo
         allocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY; 
 
         if (vmaCreateBuffer(allocator_, &info, &allocCreateInfo, &buffer_, &allocation_, nullptr) != VK_SUCCESS) {
@@ -63,7 +62,7 @@ class Buffer : public Resource {
         return true;
     }
 
-    // i think we gotta make sure all usages are set before this Backend::Buffer object is created
+    // i think we gotta make sure all usages are set before this backend::Buffer object is created
     VkBufferUsageFlags getUsages() {
         return info_.usages;
     }

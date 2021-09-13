@@ -17,8 +17,7 @@
 #include "../../../../include/core/p_render/backend/shaders/ShaderModule.hpp"
 
 
-RenderGraph::RenderGraph(const std::string &name, std::shared_ptr<ThreadPool> pool, std::shared_ptr<Backend::Context> context, VmaAllocator allocator) : name_(name), pool_(std::move(pool)), context_(std::move(context)), allocator_(allocator) {
-
+RenderGraph::RenderGraph(const std::string &name, std::shared_ptr<ThreadPool> pool, std::shared_ptr<backend::Context> context, VmaAllocator allocator) : name_(name), pool_(std::move(pool)), context_(std::move(context)), allocator_(allocator) {
     auto swapchainDim = getSwapchainDimensions();
     swapchainDimensions_ = swapchainDim; // store this separately (kinda ugly)
     AttachmentInfo swapchainInfo = {};
@@ -30,8 +29,10 @@ RenderGraph::RenderGraph(const std::string &name, std::shared_ptr<ThreadPool> po
     swapchainInfo.persistent = true;
     swapchainInfo.transient = false;
 
+    // setting this up makes me realize how much cleaning up i should probably do 
     swapchainInfo.sizeClass = ImageSizeClass::SwapchainRelative;
     
+    // verify these are the correct mappings lmao
     swapchainInfo.size_x = swapchainDim->width; 
     swapchainInfo.size_y = swapchainDim->height;
     swapchainInfo.size_z = swapchainDim->depth;
@@ -53,8 +54,6 @@ RenderGraph::~RenderGraph() {
 #pragma region INTERFACE_RG
 
 void RenderGraph::bake() {
-    // APR26 - this is the massive baking function for preparing a render graph for execution 
-
     // first make sure there's a backbuffer resource we can use
     auto itr = resourceNames_.find(backbufferResourceName_);
     if (itr == resourceNames_.end() || backbufferResourceName_ == "") {
@@ -66,6 +65,13 @@ void RenderGraph::bake() {
     }
 
     validatePasses(); // this must succeed before we can continue
+
+    // todo: validate scene
+    // validateScene();
+
+    // before we begin setting up physical passes etc, we should probably bake the scene subcomponent
+    if (scene_)
+        scene_->bake();
 
     // set up the pass stack
     const auto setupPassStack = [&]() {
@@ -90,8 +96,9 @@ void RenderGraph::bake() {
     /* BUILD PHYSICAL RESOURCES + RMW ALIASES */
 
     buildPhysicalResources();
-    
-    
+        // MAY28 - REWRITE: here we should prepare all the image resources as well as other input/output data for the pipeline
+            // i think we can prepare all the resources in this step (eg render targets + all vertex info etc)
+
     /* BUILD PHYSICAL PASSES */
     buildPhysicalPasses();
 
@@ -105,22 +112,22 @@ void RenderGraph::bake() {
     baked_ = true;
 }
 
-void RenderGraph::execute(Backend::FrameContext &frame) {
-    // whatever pre-execute setup is required?
-    
+void RenderGraph::execute(backend::FrameContext &frame) {
     // handle swapchain
-    const auto setupSwapchainImageResourceForFrame = [&](unsigned int index) {
-        // auto defaultSwapchainImage = std::dynamic_pointer_cast<SwapchainImageResource>(resources_[resourceNames_["swapchain"]]);
-        // defaultSwapchainImage->setActiveSwapchainImageIndex(index); // this should do for now i guess.. 
+    const auto setupSwapchainImageResourceForFrame = [&](unsigned int index) { 
         auto physIndex = resources_[resourceNames_["swapchain"]]->getPhysicalIndex();
-        auto scImg = std::dynamic_pointer_cast<Backend::SwapchainImage>(physicalResources_[physIndex]);
+        auto scImg = std::dynamic_pointer_cast<backend::SwapchainImage>(physicalResources_[physIndex]);
         scImg->setActiveSwapchainIndex(index);
     };
 
     setupSwapchainImageResourceForFrame(frame.getIndex());
 
-    if (!baked_) bake(); 
+    if (!baked_) 
+        bake(); 
     
+    if (scene_)
+        scene_->update(frame); // should get all geometry data set up and copied to GPU for the current frame
+
     // this should actually execute the flattened array of physical passes, using what was built up in the bake() 
     // i may have to flesh this out a bit more 
     for (auto &physicalPass : physicalPasses_) {
@@ -151,7 +158,6 @@ Pass &RenderGraph::getPass(const std::string &name) {
     return **find;
 }
 
-// functions for building/editing a render graph
 std::shared_ptr<Pass> RenderGraph::appendPass(const std::string &name) {
     if (baked_) {
         // might get rid of this check eventually
@@ -170,6 +176,16 @@ std::shared_ptr<Pass> RenderGraph::appendPass(const std::string &name) {
     auto pass = std::make_shared<Pass>(name, static_cast<unsigned int>(passes_.size()), std::move(pool_), shared_from_this());
     passes_.push_back(pass);
     return pass;
+}
+
+std::shared_ptr<scene::Scene> RenderGraph::getScene() {
+    // hopefully i can just have scenes be a singular subcomponent managed by the render graph, cause they don't work separately anyway
+    if (!scene_) {
+        scene::SceneCreateInfo sceneInfo = {};
+
+        scene_ = std::make_shared<scene::Scene>(sceneInfo);
+    }
+    return scene_;
 }
 
 #pragma endregion INTERFACE_RG
@@ -224,14 +240,12 @@ ImageResource &RenderGraph::getImageResource(const std::string &name, const Atta
 #pragma endregion RESOURCES_RG
 
 /* SHADERS */
-std::shared_ptr<Backend::ShaderModule> RenderGraph::getShaderModule(const std::string &name) {
-    // similarly to the functions for images and resources, we will either return an
-    // existing resource's handle, or we'll create it and then return it
+std::shared_ptr<backend::ShaderModule> RenderGraph::getShaderModule(const std::string &name) {
     if (shaderModuleNames_.find(name) != shaderModuleNames_.end()) {
         return shaderModules_[shaderModuleNames_[name]];
     }
     
-    shaderModules_.push_back(std::move(std::make_shared<Backend::ShaderModule>(name, context_, shared_from_this())));
+    shaderModules_.push_back(std::move(std::make_shared<backend::ShaderModule>(name, context_, shared_from_this())));
     shaderModuleNames_[name] = shaderModules_.size() - 1; // set name->index mapping for this module
     return shaderModules_[shaderModuleNames_[name]];
 }
@@ -241,7 +255,7 @@ std::shared_ptr<Backend::ShaderModule> RenderGraph::getShaderModule(const std::s
 void RenderGraph::validatePasses() {
     for (const auto &pass : passes_) {
         if (!pass->validate()) {
-            // this shouldn't crash the program but for now i'll just catch it with a runtime error as is the temporary fix
+            // this shouldn't crash the program but for now i'll just catch it with a runtime error as is the temporary norm lol
             throw std::runtime_error("Pass " + pass->getName() + " is invalid!");
         }
     }
@@ -304,8 +318,6 @@ void RenderGraph::traverseDependencies(Pass &pass, unsigned int stackCounter) {
 }
 
 void RenderGraph::recursePassDependencies(const Pass &self, std::unordered_set<unsigned int> &writtenPasses, unsigned int stackCounter, bool noCheck, bool ignoreSelf, bool mergeDependency) {
-
-    // first filter our recursion based on the given flags
     if (!noCheck && writtenPasses.empty())
         throw std::runtime_error("No pass exists which writes to the resource!");
 
@@ -474,7 +486,6 @@ void RenderGraph::reorderPasses() {
 
 // get or create resource dimensions given render graph buffer or images
 ResourceDimensions RenderGraph::getResourceDimensions(BufferResource &resource) const {
-    // build ResourceDimensions for the given resource
     ResourceDimensions dim; 
     auto &info = resource.getBufferInfo();
     dim.bufferInfo = info;
@@ -507,8 +518,7 @@ ResourceDimensions RenderGraph::getResourceDimensions(ImageResource &resource) c
     dim.name = resource.getResourceName();
 
     // now we set up the spatial dimensions of the image depending on the chosen size class
-    assert(swapchainDimensions_->width && swapchainDimensions_->height); // jjust wanna make sure
-    // that swapchain dimensions exist at this point 
+    assert(swapchainDimensions_->width && swapchainDimensions_->height);
 
     switch (info.sizeClass) {
         case (ImageSizeClass::SwapchainRelative):
@@ -519,7 +529,6 @@ ResourceDimensions RenderGraph::getResourceDimensions(ImageResource &resource) c
         break;
 
         case (ImageSizeClass::InputRelative): {
-            // this size class will make use of a particular resource name to size the image
 
             // find the input image to size
             auto itr = resourceNames_.find(info.sizeRelativeName);
@@ -568,8 +577,6 @@ void RenderGraph::buildPhysicalResources() {
         auto &pass = *passes_[passIndex];
 
         // now go through each resource type in the pass and build+alias resources
-
-        // TODO: handle everything that was previously done as a generic texture/buffer
 
         // storage inputs
         if (!pass.getStorageBufferInputs().empty()) {
@@ -661,7 +668,6 @@ void RenderGraph::buildPhysicalResources() {
                 physicalResourceDimensions_[dsOutput->getPhysicalIndex()].imageUsage |= dsOutput->getImageUsageFlags();
             }
         }
-
         // now onto the rest of the pass' outputs!
 
         // storage buffer + texture outputs
@@ -750,7 +756,7 @@ void RenderGraph::buildPhysicalResources() {
 
         if (dim.bufferInfo.size) {
             // make a buffer!
-            Backend::Buffer::BufferCreateInfo createInfo = {};
+            backend::Buffer::BufferCreateInfo createInfo = {};
 
             // first fill any additional info...
             createInfo.allocator = allocator_;
@@ -759,10 +765,7 @@ void RenderGraph::buildPhysicalResources() {
             createInfo.size = dim.bufferInfo.size;
             createInfo.usages = dim.bufferInfo.usage;
 
-            // donno exactly where to set the domain, but should add that in somewhere so that
-            // other memory usages work
-
-            physicalResources_.push_back(std::make_shared<Backend::Buffer>(createInfo));
+            physicalResources_.push_back(std::make_shared<backend::Buffer>(createInfo));
         }
         else {
             // handle swapchain images separately
@@ -771,14 +774,14 @@ void RenderGraph::buildPhysicalResources() {
                 for (int j = 0; j < context_->getSwapchainImageCount(); j++) {
                     swapchainImages.push_back(context_->getSwapchainImage(j));
                 }
-                auto scImg = std::make_shared<Backend::SwapchainImage>(swapchainImages);
+                auto scImg = std::make_shared<backend::SwapchainImage>(swapchainImages);
 
                 physicalResources_.push_back(scImg);
                 continue;
             }
             
             // make an image based off the ResourceDimensions!
-            Backend::Image::ImageCreateInfo createInfo = {};
+            backend::Image::ImageCreateInfo createInfo = {};
 
             createInfo.allocator = allocator_;
             createInfo.context = context_;
@@ -813,7 +816,7 @@ void RenderGraph::buildPhysicalResources() {
             createInfo.layers = 1;
             createInfo.levels = 1;
 
-            physicalResources_.push_back(std::make_shared<Backend::Image>(createInfo));
+            physicalResources_.push_back(std::make_shared<backend::Image>(createInfo));
         }
     }
 
@@ -824,10 +827,6 @@ void RenderGraph::buildPhysicalResources() {
 void RenderGraph::buildPhysicalPasses() {
     // now i think we go on to building actual physical passes!
 
-    // first we define some handy lambdas that will be used to merge physical passes
-        // we'll make one PhysicalPass object for each pass and merge them using these lambdas
-
-    // yee
     const auto find_attachment = [](const std::vector<ImageResource*> &resourceList, const ImageResource *resource) -> bool {
         if (!resource)
             return false;
@@ -838,7 +837,6 @@ void RenderGraph::buildPhysicalPasses() {
         return itr != resourceList.end();
     };
 
-    // frigge
     const auto find_buffer = [](const std::vector<BufferResource*> &resourceList, const BufferResource *resource) {
         if (!resource)
             return false;
@@ -988,7 +986,7 @@ void RenderGraph::buildPhysicalPasses() {
 
         // create the physical pass
         auto tmp = shared_from_this();
-        physicalPasses_.push_back(std::make_shared<Backend::PhysicalPass>(passIndices, tmp, context_));
+        physicalPasses_.push_back(std::make_shared<backend::PhysicalPass>(passIndices, tmp, context_));
         index = mergeEnd;
     }
 }

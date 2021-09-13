@@ -17,12 +17,8 @@
 class JobQueue;
 
 class ThreadPool {
-    // this class should be as light as possible, just needs to handle the worker threads used by the engine
-        // still need to figure out certain specifics, but i'm thinking it'll be better to rewrite later as opposed to
-        // trying to divine what exactly i'm gonna need now
   public:
     ThreadPool(unsigned int size = std::thread::hardware_concurrency());
-    // ThreadPool(OSInterfacePtr osPtr);
     ~ThreadPool();
 
     /* Thread Pool Interface */

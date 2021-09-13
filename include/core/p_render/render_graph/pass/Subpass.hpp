@@ -11,6 +11,11 @@
 #include <functional>
 #include <assert.h>
 
+namespace scene {
+    class Renderable;
+}
+
+
 class Subpass {
   public:
     Subpass(const std::string &name, std::shared_ptr<RenderGraph> graph, std::shared_ptr<ThreadPool> pool, std::shared_ptr<Pass> pass);
@@ -20,7 +25,11 @@ class Subpass {
         return name_;
     }
 
-    // utilities
+    void linkGeometry(const std::shared_ptr<scene::Renderable> &renderable) {
+        renderables_.push_back(renderable); // gonna keep it simple for now; set up the mesh, hook er right on in there bud
+    }
+
+    // usage enums
     enum SubpassAttachmentUsage {
         ColorAttachment,
         InputAttachment,
@@ -41,6 +50,9 @@ class Subpass {
         SampledImage,
         UnusedShaderResource
     };
+
+    // SEP5 - should probably just refactor all of these to use IDs instead of strings
+    #pragma region SUBPASS_GETTERS
 
     SubpassAttachmentUsage getAttachmentUsage(const std::string &attName) {
         // i think the order that we check these might actually be important, 
@@ -203,6 +215,10 @@ class Subpass {
         return storageImageOutputs_;
     }
 
+    #pragma endregion SUBPASS_GETTERS
+
+    #pragma region SUBPASS_ADDERS
+
     ImageResource &addColorOutput(const std::string &newResource, const AttachmentInfo &info, const std::string &inputName) {
         colorOutputs_.push_back(newResource);
         return pass_->addColorOutput(name_, newResource, info, inputName);
@@ -272,13 +288,11 @@ class Subpass {
     }
     
     // any other adders 
+    #pragma endregion SUBPASS_ADDERS
 
     // SHADER INTERFACE
-        // now that we're integrating shaders into everything, i'll have to provide a way to assign
-        // shaders into the possible shader stages, which will be used to build the graphics pipeline (per-subpass)
-    // now that i think about it, this can be where the actual Graph::Shader objects are created maybe?
-        // this doesn't currently check whether the shader module you specify is actually the shader type you want, so 
-        // it's on the user for now to be careful
+    #pragma region SUBPASS_SHADER_INTERFACE
+
     void registerVertexShader(const std::string &shaderName) {
         vertexShader_ = std::make_shared<Shader>(name_, shaderName, graph_);
     }
@@ -319,8 +333,7 @@ class Subpass {
         return fragmentShader_;
     }
 
-    // execution stuff - TODO
-    // void execute();
+    #pragma endregion SUBPASS_SHADER_INTERFACE
 
   private:
     /* APR25 - Subpass State */
@@ -329,7 +342,8 @@ class Subpass {
     std::shared_ptr<ThreadPool> pool_ = nullptr;
     std::shared_ptr<Pass> pass_ = nullptr;
     
-    // JobQueue queue_; // probably don't need this
+    // global list of renderables that the Subpass will draw
+    std::vector<std::shared_ptr<scene::Renderable>> renderables_ = {};
 
     // for each subpass I think it's probably best to stick the shaders in a few single-capacity slots
     std::shared_ptr<Shader> vertexShader_ = nullptr;
@@ -353,7 +367,7 @@ class Subpass {
 
     /* DESCRIPTOR SET RESOURCES */
     // IMPT
-        // forgot about the fact that we bind different descriptor sets at different frequencies
+        // TODO - set it up so we bind different descriptor sets at different frequencies
             // DS (index) 0 -> GLOBAL RESOURCES: put shader resources here that are bound once per frame, 
                 // and make sure that the correct bindings within that set are specified in the render graph
             // DS 1 -> these are for per-PASS resources, which should be bound once per render pass (so
@@ -362,8 +376,8 @@ class Subpass {
                 // in subpass execution; (i think these are pretty much resources that are bound per-subpass)
             // DS 3 -> "per-object" resources, which will be bound most frequently and should contain things that
                 // will need to be bound often (not entirely sure how these should fit in yet)
-        // it might be possible to just have 4 slots for binding descriptor sets, and always bind at that point in
-            // the rendering process... 
+        // it might be possible to just have 4 slots for binding descriptor sets, and always bind at their 
+        // respective points in the rendering process... 
 
     // texture inputs are used with samplers and are bound as part of descriptor sets i think
     std::vector<std::string> textureInputs_ = {};
@@ -379,11 +393,5 @@ class Subpass {
     // storage texel buffers
     std::vector<std::string> storageTexelBufferInputs_ = {};
     std::vector<std::string> storageTexelBufferOutputs_ = {};
-
-    // job queue callback
-    // std::function<JobQueue()> buildJobQueue_; // this should build (if necessary) and return a job queue that can be flushed by a thread pool
-    
-    // any other callbacks...
-
 
 };

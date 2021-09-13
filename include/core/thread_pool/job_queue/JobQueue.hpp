@@ -28,15 +28,14 @@ class JobQueue {
 
     template <typename F, typename... Args>
     auto scheduleTask(F&& f, Args&&... args /*, Priority priority = Priority::normal*/) 
-        -> std::future<JobReturnType<F, Args...>> // using a trailing return type since the return type depends on the template arguments (C++11 feature for generalizing return types that depend on template arguments)
+        -> std::future<JobReturnType<F, Args...>> // using a trailing return type since the return type depends on the template arguments
     {
         // first we package up the job into an executable std::packaged_task(), hiding the actual arguments/return type so everything can be treated
-        // as a void function with no arguments
-            // the parameter pack syntax is kinda funky but Args represents an arbitrary-length sequence of args 
-        auto job = std::packaged_task<JobReturnType<F, Args...>()>>(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+        // as a void function with no arguments 
+        auto job = std::make_shared<std::packaged_task<JobReturnType<F, Args...>()>>(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
 
-        pushPackagedJob([job] { (*job)(); }); // to convert the std::packaged_task<JRT<F, Args>> to std::function<void()> we just define a small lambda 
-        return job->get_future(); // then we just return a future corresponding to the job return type from the packaged_task interface!
+        pushPackagedJob([job] { (*job)(); }); // to convert the std::packaged_task<JobReturnType<F, Args>> to std::function<void()> we just define a small lambda 
+        return job->get_future(); // then we just return a future corresponding to the job return type from the packaged_task interface
     }
 
     std::function<void()> popTask() {

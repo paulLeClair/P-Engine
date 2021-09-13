@@ -4,7 +4,7 @@
 
 #include "../../../../../include/core/PEngineCore.hpp"
 
-using namespace Backend;
+using namespace backend;
 
 WindowSystem::WindowSystem(PEngine *core, Context *context) {
     // should allocate all resources in the ctor for RAII
@@ -56,10 +56,7 @@ void WindowSystem::setSwapchainImageUses(WindowSystemData &wsiData, VkSurfaceCap
 
 void WindowSystem::setSwapchainImageTransform(WindowSystemData &wsiData, VkSurfaceCapabilitiesKHR &capabilities) {
     // set the swapchain transform used by the engine
-        // not entirely sure what this has to be set to, but it shouldn't be too bad
-    // just trying this for now
 
-    //FEB17 - i think both the transform and image usages function have to actually do what they say they do... 
     wsiData.desiredSurfaceTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 
     if (wsiData.desiredSurfaceTransform & capabilities.supportedTransforms) {
@@ -73,7 +70,6 @@ void WindowSystem::setSwapchainImageTransform(WindowSystemData &wsiData, VkSurfa
 
 void WindowSystem::setSwapchainImageFormat(WindowSystemData &wsiData) {
     // set the swapchain image format here
-        // not entirely sure what needs to be done, gotta read
 
     // i think we're setting 3 things:
         // 1. VkFormat -> image format (components, precision, data type of an image's pixels)
@@ -82,7 +78,6 @@ void WindowSystem::setSwapchainImageFormat(WindowSystemData &wsiData) {
     
     /* SET DESIRED FORMAT */
     // gonna try these for now 
-    // instance.desiredSurfaceFormat.format = VK_FORMAT_R8G8B8A8_UNORM; //FEB17- found the problem maybe: incorrect surface format!
     wsiData.desiredSurfaceFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
     wsiData.desiredSurfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
@@ -192,13 +187,6 @@ void WindowSystem::setupSwapchain(WindowSystemData &wsiData) {
 }
 
 void WindowSystem::setPresentationMode(WindowSystemData &wsiData) {
-    // ideally we want to use triple buffering I think, which in Vulkan you can accomplish by using the MAILBOX present mode with
-    // an extra image being used as the third buffer
-        // provides a good balance between less input lag and less screen tearing
-        // a way to limit FPS would also accomplish this 
-    // either way that's just the default, i need to probably write a whole other submodule/more interface functions for configuring Vulkan to
-    // accomodate modifiable graphics options in the game
-
     uint32_t presentationModesCount = 0;
     VkResult result = VK_SUCCESS;
     result = vkGetPhysicalDeviceSurfacePresentModesKHR(wsiData.selectedPhysicalDevice, wsiData.presentationSurface, &presentationModesCount, nullptr);
@@ -302,8 +290,6 @@ void WindowSystem::getSwapchainImageViews(WindowSystemData &wsiData) {
         imageViewCreateInfo.pNext = nullptr;
         imageViewCreateInfo.flags = 0;
         imageViewCreateInfo.image = swapchainImage;
-
-        // APR6 - i think i'm missing some stuff?
         imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
         imageViewCreateInfo.format = wsiData.surfaceFormat.format;
         

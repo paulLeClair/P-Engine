@@ -52,13 +52,10 @@ PEngine::PEngine() {
     
 }
 
-
 // destructor
 PEngine::~PEngine() {
     threadPool_->terminateWorkerThreads();
 }
-
-
 
 /* ENGINE STARTUP */
 void PEngine::startupInitializeComponents() {
@@ -158,8 +155,6 @@ void PEngine::showMainWindow() {
 }
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-
-
     ImGuiIO& io = ImGui::GetIO();
 	ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam);
 	if (io.WantCaptureMouse && (uMsg == WM_LBUTTONDOWN || uMsg == WM_LBUTTONUP || uMsg == WM_RBUTTONDOWN || uMsg == WM_RBUTTONUP || uMsg == WM_MBUTTONDOWN || uMsg == WM_MBUTTONUP || uMsg == WM_MOUSEWHEEL || uMsg == WM_MOUSEMOVE))
@@ -168,6 +163,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 	}
 
     // using this alternate windowproc 
+
+    // TODO - evaluate this switch
     switch( uMsg ) {
         case WM_LBUTTONDOWN:
             // for now i'm leaving most of the n

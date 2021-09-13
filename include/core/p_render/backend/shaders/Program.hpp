@@ -1,7 +1,5 @@
 #pragma once
 
-// this should hopefully contain the Program abstraction!
-
 #include "../../PRender.hpp"
 
 #include "../../backend/Context.hpp"
@@ -10,7 +8,7 @@
 #include <memory>
 #include <vector>
 
-namespace Backend {
+namespace backend {
 
 class Program {
   public:

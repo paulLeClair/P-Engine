@@ -3,7 +3,7 @@
 #include "../../../../../include/core/p_render/render_graph/Shader.hpp"
 #include "../../../../../include/core/p_render/render_graph/pass/Subpass.hpp"
 
-using namespace Backend;
+using namespace backend;
 
 Program::Program(std::shared_ptr<Context> context, std::shared_ptr<Subpass> subpass) {
     // hopefully i can use just the subpass pointer to make this happen!
@@ -13,8 +13,6 @@ Program::Program(std::shared_ptr<Context> context, std::shared_ptr<Subpass> subp
     VkPipelineLayoutCreateInfo plInfo = {};
     plInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     plInfo.pNext = nullptr;
-    
-    // need to reflect push constant information as well... 
 
     // go through the different shaders and set up the pipeline shader stage info
     // and get descriptor set layouts 
@@ -28,7 +26,6 @@ Program::Program(std::shared_ptr<Context> context, std::shared_ptr<Subpass> subp
         stageInfo.pNext = nullptr;
         stageInfo.flags = 0; // not using any of the flag-enabled functionality
         stageInfo.module = sm->getVkShaderModule();
-        // stageInfo.pName = sm->getShaderName().c_str(); // for shader modules that contain >1 shader, the desired entry point can be specified here (implement it later)
         stageInfo.pName = "main"; // hardcoding this for now; 1 shader per module only (might be inefficient?)
 
         VkSpecializationInfo specInfo = {};

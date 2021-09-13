@@ -18,10 +18,6 @@ CoreMenuMode::~CoreMenuMode() {
 }
 
 void CoreMenuMode::enterMode() {
-    // idea for these "enterMode()" functions
-        // you specify the render graph and bake it, and then the engine will run your baked graph as
-        // part of execution
-
     // register core menu gui call
     _core->registerGUIComponent([&](){
         drawCoreMenu();
@@ -91,13 +87,10 @@ void CoreMenuMode::mainLoop() {
 
         _core->renderer().renderFrame("core"); 
 
-
+        // very ugly
         Sleep(5);
     }
 }
-
-// TODO: implmt this which should only really be used to transition to another specified mode, the program should just quit from within
-// the current mode if an exit signal is given (whatever form that takes)
 
 void CoreMenuMode::drawCoreMenu() {
     ImGuiWindowFlags coreWindowFlags = 0;
@@ -113,7 +106,7 @@ void CoreMenuMode::drawCoreMenu() {
     ImGui::SetNextWindowSize(winSize, ImGuiCond_Always);
 
     ImGui::Begin("PEngine Core Menu", NULL, coreWindowFlags);
-        // just gonna create an unformatted lil window for now
+        // just gonna create a basic window for now
 
     if (ImGui::Button("World Generation")) {
 

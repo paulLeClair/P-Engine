@@ -18,7 +18,7 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE prev_instance, LPSTR lpCmdLine, in
 #endif 
 #pragma endregion WINDOWS
 
-// TODO - support OS other than windows 
+// TODO - support operating systems other than windows 
 #pragma region UNIX
 #ifdef unix 
 int main (int argc, char *argv[]) { 

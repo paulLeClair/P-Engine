@@ -2,7 +2,7 @@
 
 #include "../../../../../include/spirv_reflect/spirv_reflect.h"
 
-using namespace Backend;
+using namespace backend;
 
 ShaderModule::ShaderModule(const std::string &shaderFilename, std::shared_ptr<Context> context, std::shared_ptr<RenderGraph> graph) {
     // this should expect an extension-less name that will be used as a SPV file name
@@ -13,28 +13,14 @@ ShaderModule::ShaderModule(const std::string &shaderFilename, std::shared_ptr<Co
     graph_ = std::move(graph);
 
     const auto &getShaderFilePathString = [&](const std::string &shaderModuleName) {
-        // TODO: come up with a more consistent method of getting the file path string... this isn't a real solution
-            // this seems only to work on one of my computers for obvious reasons, i really need to come up with
-            // a way to get the path of the shader 
-
-        // have to excise part of this for now... really ugly, need to come up with a better way of doing this, but for now it should work
         std::string buildDirString = std::filesystem::current_path().string();
-        int i = 0;
-        for (auto itr = buildDirString.rbegin(); itr != buildDirString.rend(); itr++) {
-            if (*itr == '\\') {
-                buildDirString = buildDirString.substr(0, buildDirString.size() - i);
-                break;
-            }
-            i++;
-        }
-        std::string shaderBinaryRelativePath = "shaders\\";
-        
+        std::string shaderBinaryRelativePath = "\\shaders\\";
         return buildDirString + shaderBinaryRelativePath + shaderModuleName + ".spv";
     };
 
     auto pathString = getShaderFilePathString(shaderFilename);
 
-    // read code from file using std::ifstream
+    // read shader SPIR-V code from file using std::ifstream
         // following the vkguide's description, we use these flags:
             // ate -> start at the end so we know the size and copy everything in a chunk
             // binary -> we open the stream in BINARY MODE to prevent any possible translations of the SPIR-V code inside
@@ -177,18 +163,14 @@ ShaderModule::ShaderModule(const std::string &shaderFilename, std::shared_ptr<Co
     // not really sure what i'll have to do for inputs/outputs...
         // maybe i can just change this code to store them and they can be 
         // processed later as needed, eg to make sure that shader i/o variables line up 
-    // eventually i'd like this engine to be pretty error-resistant, and have it be fairly easy to 
-    // change things on the fly and if they're wrong the engine will allow you to change them or whatever without failing
 
     // we'll now do everything to populate the VkPipelineVertexInputStateCreateInfo given the 
     // module's expected input variables, as is done in the SPIRVReflect examples
     if (stage_ == ShaderStage::Vertex) {
-        // if we're building a vertex shader, we reflect
-        
-        // might need to flesh this out to make sure our vertex data is good to go
+        // if we're building a vertex shader, we reflect the vertex-specific pipeline info
         
         bindingDesc_.binding = 0; // gonna assume a single vertex buffer for the input source, bound at 0
-        bindingDesc_.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; // TODO: support instancing somehow lol
+        bindingDesc_.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; // TODO: support instancing 
         
         // the stride will be computed in the loop below
         bindingDesc_.stride = 0;

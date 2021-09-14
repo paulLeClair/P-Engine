@@ -96,8 +96,6 @@ void RenderGraph::bake() {
     /* BUILD PHYSICAL RESOURCES + RMW ALIASES */
 
     buildPhysicalResources();
-        // MAY28 - REWRITE: here we should prepare all the image resources as well as other input/output data for the pipeline
-            // i think we can prepare all the resources in this step (eg render targets + all vertex info etc)
 
     /* BUILD PHYSICAL PASSES */
     buildPhysicalPasses();
@@ -511,7 +509,7 @@ ResourceDimensions RenderGraph::getResourceDimensions(ImageResource &resource) c
     dim.transient = info.transient;
     dim.persistent = info.persistent;
 
-    // could add more here i blieve
+    // could add more here i believe
 
     dim.queueUsages = resource.getResourceQueueUsages();
     dim.imageUsage = info.auxUsage | resource.getImageUsageFlags();

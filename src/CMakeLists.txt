@@ -97,7 +97,7 @@ set(pengine_src
     )
 
 # try adding the pengine executable here?
-add_executable(pgame WIN32 ${pengine_src}) # forgot to add this win32 flag
+add_executable(pgame WIN32 ${pengine_src})
 
 # add pengine headers
 target_include_directories(pgame PUBLIC BEFORE "$../include") # this seems to work!

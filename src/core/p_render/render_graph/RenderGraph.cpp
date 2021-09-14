@@ -17,7 +17,7 @@
 #include "../../../../include/core/p_render/backend/shaders/ShaderModule.hpp"
 
 
-RenderGraph::RenderGraph(const std::string &name, std::shared_ptr<ThreadPool> pool, std::shared_ptr<backend::Context> context, VmaAllocator allocator) : name_(name), pool_(std::move(pool)), context_(std::move(context)), allocator_(allocator) {
+RenderGraph::RenderGraph(const std::string &name, std::shared_ptr<ThreadPool> pool, std::shared_ptr<backend::Context> context, VmaAllocator allocator) : name_(name), pool_(pool), context_(context), allocator_(allocator) {
     auto swapchainDim = getSwapchainDimensions();
     swapchainDimensions_ = swapchainDim; // store this separately (kinda ugly)
     AttachmentInfo swapchainInfo = {};

@@ -6,7 +6,7 @@
 
 This is a work-in-progress game engine hobby project, with a central goal of providing a fairly simple C++ framework for building both 2D and 3D graphical applications.
 
-I'm using C++ and the STL to implement it, and it's based around the Vulkan graphics API. When it's complete, it should allow you to build rendering pipelines according to your particular use case and supply those pipelines with the rendering data, all while giving lots of freedom to define the logic that drives the rendering itself. Since convenience is important to me, I also hope to provide a set of helpful tools to make various tasks easier for you, and I want the engine to be entirely controllable by writing C++ code.
+I'm using C++ and the STL to implement it, and it's based around the Vulkan graphics API. When it's complete, it should allow you to build rendering pipelines according to your particular use case and supply those pipelines with rendering data, all while giving lots of freedom to define the logic that drives the rendering itself. Since convenience is important to me, I also hope to provide a set of helpful tools to make various tasks easier for you, and I want the engine to be entirely controllable by writing C++ code.
 
 The goal with this framework is to turn the process of rendering 2D/3D scenes into a relatively-simple specification of a few high-level abstractions, hopefully drastically reducing the amount of code required to get a useful interactive Vulkan application up and running!
 

@@ -16,7 +16,7 @@ Eventually I'd like it to be able to wrap up any Vulkan GPU work you want to do,
 
 Currently it's on its way to being able to render simple 3D scenes, and I hope to have a "Hello, Triangle" example set up ASAP that will demonstrate how the user might set up a graphical application with this framework. The engine has been in development since I finished classes back in January 2021, and I've worked on it concurrently with studying various resources to learn about how game engines work. I can only work on it in my free time, but so far I'm making some progress.
 
-Since it's a sort of personal active learning tool at this point, lots of it is still only sketchwork! I haven't been able to work on tons of important pieces yet, since game engines are very complicated. Most functioning game engines are developed by large teams of ultra-geniuses, and so I'm trying to keep the scope limited so as to be within my own reach.
+Since it's a sort of personal active learning tool at this point, lots of it is still only sketchwork! I haven't been able to work on tons of important pieces yet, since game engines are very complicated. Most functioning game engines are developed by large teams of ultra-geniuses, and so I'm trying to keep the scope limited so as to be within my own reach, because I'm a complete noob at this stuff.
 
 As I learn more about how things are done in practice, I'll unavoidably have to come back and make big changes! That's the fun part. I'm trying to make use of proven design patterns and modern techniques wherever possible, so that the engine hopefully ends up being worthwhile in its own right.
 

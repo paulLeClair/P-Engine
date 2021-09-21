@@ -112,7 +112,7 @@ Each render graph will have an associated `Scene` (discussed below), which will 
 
 My model is tailored towards simpler rendering processes, where the graph representing the process does not require to be rebaked each frame. I will probably add things like conditional (sub)pass execution and nested render graphs, plus anything else I come across that might help make these graphs more flexible and comfortable to use.
 
-To describe the rendering processes they're using, the user specifies the passes and subpasses they need, as well as the rendering resources to be used (apart from geometry). The idea is to specify and bake the graph upon entering a particular engine mode, and then it will be able to render frames after it is baked. Since we're directly mapping each `Pass` into a sequence of `VkRenderPass`es plus everything required to submit some specified commands for execution, it should be fairly general-purpose. Ideally it should handle many of Vulkan's use cases especially as I continue to fill in missing features.
+To describe the rendering processes they're using, the user specifies the passes and subpasses they need, as well as the rendering resources to be used (apart from geometry). The idea is to specify and bake the graph upon entering a particular engine mode, and then it will be able to render frames after it is baked. Since we're directly mapping each `Pass` into a sequence of `VkRenderPass`es plus everything required to submit some specified commands for execution, it should be fairly general-purpose. Ideally it should expose most of Vulkan's functionality especially as I continue to fill in missing features.
 
 ### Scene
 

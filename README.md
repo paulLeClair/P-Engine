@@ -2,7 +2,7 @@
 
 >This is a snapshot of my hobby game engine framework! Active development is done on a private repo, but I'll add things here in chunks as the engine continues to take shape.
 
->Right now I'm in the middle of a large redesign and rewrite! Especially now that Vulkan 1.3 has been released, I'll need time to bring in the new stuff and write a full design doc. As of early '22 I don't have anywhere near as much time to work on it as I used to, but in the coming months I hope to move some of the new changes over! When they're in, the engine should be on its way to supporting actual 3D rendering.
+>Right now I'm in the middle of a large redesign and rewrite! Especially now that Vulkan 1.3 has been released, I'll need time to bring in the new stuff and write a full design doc. As of early '22 I don't have anywhere near as much time to work on this particular project, but in the coming months I hope to move some of the new changes over! When they're in, the engine should be on its way to supporting actual 3D rendering. Once things get less busy I'll hopefully be able to shift focus back to this thing too :)
 
 ## Summary
 

@@ -2,7 +2,7 @@
 
 >This is a snapshot of my hobby game engine framework! Active development is done on a private repo, but I'll add things here in chunks as the engine continues to take shape.
 
->Right now I'm in the middle of a large redesign and rewrite! Especially now that Vulkan 1.3 has been released, I'll need time to bring in the new stuff and write a full design doc. As of early '22 I don't have anywhere near as much time to work on this particular project, but in the coming months I hope to move some of the new changes over! When they're in, the engine should be on its way to being "usable," whatever that means. Once things get less busy I'll hopefully be able to shift focus back to this thing too :)
+>Right now I'm in the middle of a large redesign and rewrite! Especially now that Vulkan 1.3 has been released, I'll need time to bring in the new stuff and write a full design doc. As of early '22 I don't have anywhere near as much time to work on this particular project, but in the coming months I hope to move some of the new changes over! When they're in, the engine should be on its way to being "usable," whatever that means. Once things get less busy I'm hoping be able to shift focus back to this thing too so I can make faster progress :)
 
 ## Summary
 
@@ -55,6 +55,8 @@ cmake --build ./build --config Debug --target pgame
 Currently the engine doesn't do much when you run it, but with a few more additions it should be able to do something interesting I hope! The base implementation of the engine shouldn't do a lot on its own, anyway; the user has to specialize it by extending it with their own code. When it's ready, I'll refit this entire build process so that you only have to supply your relevant source files and the engine will hook them in (assuming that's doable).
 
 ## Design Description
+
+> Note: I'm working on an actual design document that will be released with the new stuff, this is just an overview of what little I have so far. Lots of stuff is missing and/or incorrectly designed and/or going to be changed ;)
 
 My main goal is to end up with a C++ framework that allows you to set up graphical applications with minimal pain. The engine's design is probably most focused on making video games, but fundamentally it aims to provide the user with tools to write their own interactive rendering/GPU logic for the engine to execute, whatever that may look like.
 

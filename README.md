@@ -72,7 +72,7 @@ The `PEngine` class defines the core of the engine, which  and serves as the ent
 
 4. the **renderer**, `PRender`, which serves as the mechanism through which the core interfaces with the GPU and allows for graphics work to be done
 
-While I still need to figure out a lot of the implementation details, I'm thinking that to specialize the engine for a particular use case, you would just subclass it and override the various methods to include whatever logic you want; each member function would serve a well-defined purpose in the execution of the engine.
+While I still need to figure out a lot of the implementation details, I'm thinking that to specialize the engine for a particular use case, you would just subclass it and override the various methods to include whatever logic you want, so you basically are just implementing a C++ app with access to the engine's tools. I might go a different direction with that but I'm aiming for simplicity. 
 
 Fundamentally, the core will set up the engine's main abstractions for providing an execution environment: the engine's **modes** (as below), and the **tools** (also below) that will be used within the engine. The modes and tools that are to be used should be registered during engine startup, and the user will be given immediate control over how the engine actually makes use of those modes and tools. Lots of different applications should be able to be represented this way, I'm hoping, especially within the scope of video games.
 
@@ -88,7 +88,7 @@ The design is not fully finished and tested, but the engine will need multithrea
 
 An implementation of an `EngineMode` subclass basically consists of all the functionality needed for a particular "usage" of the engine, from menu screens to interactive gameplay in a scene. The idea currently is that the usage of the engine itself will center around extending `EngineMode` to support whatever logic you want before, during, and after your render loop. The actual render loop itself should also be completely programmable, although providing an efficient customizable built-in loop might help support lots of practical applications in real-time graphics.
 
-Similarly to the `PEngine` core construct, you can define subclasses of `EngineMode` for the engine to use, and these can do whatever you want, mostly. The engine will maintain one default mode for entry, the so-called `CoreMenuMode`, which will give you a default "entry menu" to look at, but of course the decision about which modes are executed when `PEngine::run()` is called will be decided by the programmer in their implementation.
+Similarly to the `PEngine` core construct, you can define subclasses of `EngineMode` for the engine to use, and these can do whatever you want. The engine will maintain one default mode for entry, the so-called `CoreMenuMode`, which will give you a default "entry menu" to look at, but of course the decision about which modes are executed when `PEngine::run()` is called will be decided by the programmer in their implementation (or however that ends up working).
 
 ### Engine Tools
 

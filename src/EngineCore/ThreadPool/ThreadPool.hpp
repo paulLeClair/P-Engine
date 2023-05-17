@@ -5,8 +5,7 @@
 #pragma once
 
 /**
- * Alright! I'm currently in a car driving from Kelowna to Edmonton so I have no internet, and I think I'll need the
- * internet to move all the thread pool stuff over here
+ * TODO - break off PThreadPool methods into this abstract class
  */
 class ThreadPool {
 public:

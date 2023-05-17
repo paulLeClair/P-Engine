@@ -2,7 +2,7 @@
 
 >This is a snapshot of my hobby game engine framework! Active development is done on a private repo, but I'll add things here in chunks as the engine continues to take shape.
 
->Right now I'm in the middle of a large redesign and rewrite! Especially now that Vulkan 1.3 has been released, I'll need time to bring in the new stuff and write a full design doc. As of early '22 I don't have anywhere near as much time to work on this particular project, but in the coming months I hope to move some of the new changes over! When they're in, the engine should be on its way to being "usable," whatever that means. Once things get less busy I'm hoping be able to shift focus back to this thing too so I can make faster progress :)
+TODO - large update in progress, description update forthcoming
 
 ## Summary
 
@@ -84,6 +84,8 @@ This engine subcomponent is meant to provide a ready-to-use STL thread pool, and
 
 The design is not fully finished and tested, but the engine will need multithreading for some tasks, so I will be able to test it and make fixes and upgrades soon. When it's done, I'd like to have a simple, clean interface that allows for a persistent threadpool with a few useful mechanisms for submitting work!
 
+Currently an extremely basic version exists, but it will be expanded as a future update.
+
 ### Engine Modes
 
 An implementation of an `EngineMode` subclass basically consists of all the functionality needed for a particular "usage" of the engine, from menu screens to interactive gameplay in a scene. The idea currently is that the usage of the engine itself will center around extending `EngineMode` to support whatever logic you want before, during, and after your render loop. The actual render loop itself should also be completely programmable, although providing an efficient customizable built-in loop might help support lots of practical applications in real-time graphics.
@@ -120,56 +122,15 @@ To describe the rendering processes they're using, the user specifies the passes
 
 ### Scene
 
-Right now, each render graph maintains exactly one `Scene` object, which is intended to manage geometry and other rendering data in a convenient way.
-
-The scene construct is currently the focus of a lot of research and development, and I'm still working on bridging certain gaps before the engine will be able to handle drawing a full dynamic 3D scene making use of typical graphics techniques. Since geometry has unique characteristics both in terms of the abstract rendering process and in the Vulkan API, I've decided to try and separate it out as much as I can from other rendering logic that's integrated into the render graph. The scene will provide an alternate way to package up certain types of auxiliary rendering data (like textures) together with the geometry it's going to apply to. It also might provide a decent way to batch up the scene into separate jobs that can be done in parallel, if the data is distributed nicely between scene objects.
-
-Often you're going to be dealing with vast arrays of geometry data, and so I want to make it easy to break it up logically and feed it into the engine. The `Scene` will accept some set of `Renderable`s, which contain a higher-level representation of the geometry. The user-supplied data can take many forms, and various supported vertex attributes can be controlled with a bitmask. The ordering of the attributes (in memory) is hardcoded, so you have to package your vertex data in the order the engine expects.
-
-There are different subtypes of `Renderable`, for now only including `Mesh`es (for traditional meshes) and `PatchList`s (stubs until I add tessellation support), and ideally it should be fairly easy to define your own types of `Renderable`s that the engine should handle provided they're valid. I plan to make it easy to supply renderables in as many forms supported by Vulkan.
-
-As I continue working on the engine, I'll add numerous companion classes for the `Renderable`s we supply to the scene, to allow for things like animation and texturing. Currently there is only a `Material` class, which should provide an easier way to package up textures and other shader resources with the geometry that they will have an effect on.
-
-Since the geometry is intrinsically tied with the commands + pipelines rendering the geometry, I think another important function of the `Scene` will be to **register callbacks for recording Vulkan draw commands** for particular geometry, which should take a single `VkCommandBuffer` argument in their signature. The idea will be that the user will provide their geometry and associated data, specify which subpasses are to accept which subsets of the scene geometry, and then when `PRender::renderFrame()` is called the engine will execute each callback in turn, providing a fully prepared command buffer to record the commands used to draw the scene geometry.
-
-Registerable `update()` callbacks for each renderable will hopefully allow the user to easily perform updates outside the render logic and then the changes will be automatically copied over for the next frame, allowing geometry to be made dynamic. I want to make animation as easy as possible, and so I'll dive into that once I get some more of the fundamentals put in place. The details here are still being figured out, and there are a couple things I need to get to before these parts.
-
-When the `Scene`'s parent `RenderGraph` performs a `bake()`, the `Scene` will *also undergo a bake process* that sets up the appropriate `VkBuffer`(s) for geometry data and copies all initial data to the GPU so that the shaders can perform draw commands. When the geometry is updated each frame, the `Scene` copies over the new data for drawing. Some testing will be required before I have a well-defined scheme for updating data on the host and copying to the GPU, but the general idea will probably be the same.
-
-Right now the `Scene` is implemented in a kind of Struct-of-Arrays form with one array for each supported renderable, but I may rewrite it or otherwise integrate some sort of **scene graph** functionality, which is a common technique used in game engines to break a scene into its components. In both cases, it's fairly simple to connect the constituent renderables to a particular subpass in the scene's render graph, so I might aim to support both (and as many other useful representations that I can find).
-
-This whole construct is generally subject to change, since I'm getting into more territory I've never been before!
+TODO - large update in progress, description update forthcoming
 
 ### Vulkan Backend
 
-Fundamentally, the renderer aims to provide a simplified interface for working with Vulkan - it should take the bare minimum of input information required to set up a particular rendering configuration (ie the information given during **render graph specification**) and dynamically build the appropriate Vulkan structures under the hood. A lot of Vulkan code can be hidden, and you can see it done in practice by looking at Vulkan renderers people have released, including **Granite** (see resources section for a link) by Themaister.
-
-I'm aiming to wrap backend-specific code in the `backend` namespace, which should contain all the engine's constructs that **manage Vulkan code**. For the most part, these constructs will process the high-level information specified in the user's `RenderGraph` and `Scene` setup and build up a collection of objects that can be used to execute Vulkan commands on the GPU. The user should not work with these directly, which should be pretty convenient I hope.
-
-Each construct should have a well-defined purpose, and most are generated at `RenderGraph`/`Scene` bake time:
-
-- The `Context` is intended to manage some of the fundamental Vulkan overhead that is required to have run Vulkan code in your application; it manages central Vulkan constructs such as the `VkDevice` and `VkContext` and `VkQueue`s, and is used by many `PRender` subcomponents; it also provides immediate command buffer submission
-  - currently the `Context` class monolithic and does not do much to tailor itself to the user's machine; I hope to have it consider such information carefully during setup (and to refactor it to be cleaner)
-
-- The `FrameContext` essentially wraps up all information needed to render into a **single presentable swapchain image**, and the engine will cycle through them according to the index returned by `vkAcquireNextImageKHR()`; rendering occurs with access to one of these, and it will batch all the command buffers recorded each frame, plus it will probably provide descriptor pools/sets for each thread (that's todo)
-
-- the `WindowSystem` is a class that's intended to handle most windowing concerns (related to both the host OS and Vulkan), although there is lots of work left to do on it (such as dynamic window size at runtime)
-
-- the `VulkanGUIHandler` simply manages all Vulkan state for the DearIMGUI library integration, and it's intended to render outside of the context of any render graph, to provide a fundamental GUI option (which you could ideally ignore and set up your own GUI using the render graph and associated engine mechanisms)
-
-- `ShaderModule`s are generated for each specified shader used by a render graph, provided a `.spv` binary can be found in `bin/shaders`; they contain a variety of information that is reflected from the shader itself using SPIRV-Reflect (info below); this reflection info can used to ensure that the user's render configuration matches up with the shaders they intend to use, and allows us to build otherwise-complicated structures like `VkPipelineLayout`s without any additional info
-
-- a `Program` is generated at `RenderGraph::bake()` time for **each graphics pipeline**, and essentially processes each shader assigned to each shader stage of each subpass; information from the `Program` is used to build the `VkPipeline` for each subpass later on in the bake
-
-- the `Resource` subclasses each wrap up the corresponding Vulkan construct, and are built according to info given during render graph specifciation
-
-- the `PhysicalPass` object (plus its companion `PhysicalSubpass`) are the backend-facing structures that are generated from the `RenderGraph` information given by the user; the main goal of `RenderGraph::bake()` is to produce a sequence of `PhysicalPass`es that can be `execute()`d to record command buffers for the frame
-
-I still need to finalize how I'm handling shader resources (which make use of Vulkan's **descriptor**-related constructs), including how I'll structure descriptor pool and descriptor set management, which is one of the final pieces before I can start trying to support render graphs that make use of shader resources in their pipelines. Hopefully I'll figure that out soon and then I'll add that to the public repo!
+TODO - large update in progress, description update forthcoming
 
 ## External Libraries
 
-- here are some links to the external libraries that P-Engine is using currently (apart from Vulkan):
+TODO - large update in progress, description update forthcoming
 
   - [DearIMGUI](https://github.com/ocornut/imgui)
     - This is used to provide a sort of default GUI option, although implementing your own GUI library or integrating another should be an option. It's an amazing library in its own right, and I imagine I'll be leveraging it a lot especially when the engine is ready to support complex logic.

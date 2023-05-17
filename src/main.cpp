@@ -8,7 +8,7 @@
 
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow) {
 
-    std::cout << "Pee Engine, Activate!" << std::endl;
+    std::cout << "Engine, Activate! ;)" << std::endl;
 
     return 0;
 }
@@ -16,10 +16,10 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 #endif
 
 #ifdef __linux__
-// LINUX/MAC(?) ENTRY POINT
+// LINUX/MAC(?) ENTRY POINT (TODO)
 int main( int argc, char *argv[] ) {
 
-  std::cout << "Pee Engine, Activate!" << std::endl;
+  std::cout << "PEngine, Activate! ;)" << std::endl;
 
   return 0;
 }

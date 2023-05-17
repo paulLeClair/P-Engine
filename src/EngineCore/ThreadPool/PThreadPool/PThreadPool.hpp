@@ -10,12 +10,7 @@
 #include "Thread/Thread.hpp"
 
 namespace PEngine {
-/**
-* NEW POTENTIAL IDEA - since smaller numbers of worker threads seem to work better, maybe I should focus on
- * redesigning/extending the thread pool interface so that we can have multiple thread pools that are working on
- * different queues (or making the singular threadpool more focused around passing its threads around, which may be
- * a lot easier)
-*/
+    
     class PThreadPool : public ThreadPool {
     public:
         struct CreationInput {

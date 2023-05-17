@@ -1,35 +1,26 @@
-// ideally there will be a single include in the entry point, the engine should have everything it needs
-#include "../include/core/PEngineCore.hpp"
-// forward declare the function that is responsible for running the engine upon entry 
-void runEngine();
+#include <iostream>
 
-// i think i need this here, since win32 apps need a special main
-#pragma region WINDOWS
 #ifdef _WIN32
-// include windows header for winmain
+// WINDOWS ENTRY POINT
 #define UNICODE 1
+
 #include <windows.h>
 
-// windows main
-int WINAPI WinMain(HINSTANCE hinst, HINSTANCE prev_instance, LPSTR lpCmdLine, int nCmdShow) {
-    runEngine();
+INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow) {
+
+    std::cout << "Pee Engine, Activate!" << std::endl;
+
     return 0;
 }
-#endif 
-#pragma endregion WINDOWS
 
-// TODO - support operating systems other than windows 
-#pragma region UNIX
-#ifdef unix 
-int main (int argc, char *argv[]) { 
-    runEngine();
-    return 0;
+#endif
+
+#ifdef __linux__
+// LINUX/MAC(?) ENTRY POINT
+int main( int argc, char *argv[] ) {
+
+  std::cout << "Pee Engine, Activate!" << std::endl;
+
+  return 0;
 }
 #endif
-#pragma endregion UNIX
-
-void runEngine() {    
-    std::shared_ptr<PEngine> engine = std::make_shared<PEngine>();
-
-    engine->run();
-}

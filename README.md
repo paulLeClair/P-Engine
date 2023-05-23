@@ -14,7 +14,7 @@ The goal with this framework is to turn the process of rendering 2D/3D scenes in
 
 As such, it's being tailored for applications that use such a "render loop" in their architecture, and by that I just mean the core functionality at a high-level can be approximated as something like:  `while (condition) { update(); render(); }`
 
-Eventually I'd like it to be able to wrap up any Vulkan GPU work you want to do, including pure compute pipelines and the like, if possible. One step at a time!
+Eventually I'd like it to be able to wrap up any Vulkan GPU work you want to do, including pure compute pipelines and the like, if possible.
 
 Currently it's on its way to being able to render simple 3D scenes, and I hope to have a "Hello, Triangle" example set up ASAP that will demonstrate how the user might set up a graphical application with this framework. The engine has been in development since I finished classes back in January 2021, and I've worked on it concurrently with studying various resources to learn about how game engines work. I can only work on it in my free time, but so far I'm making some progress.
 
@@ -56,9 +56,9 @@ Currently the engine doesn't do much when you run it, but with a few more additi
 
 ## Design Description
 
-> Note: I'm working on an actual design document that will be released with the new stuff, this is just an overview of what little I have so far. Lots of stuff is missing and/or incorrectly designed and/or going to be changed ;)
-
 My main goal is to end up with a C++ framework that allows you to set up graphical applications with minimal pain. The engine's design is probably most focused on making video games, but fundamentally it aims to provide the user with tools to write their own interactive rendering/GPU logic for the engine to execute, whatever that may look like.
+
+I'm trying to follow TDD (or an approximation of TDD) whenever I can, and I hope to end up with a large set of good tests as the engine matures.
 
 ### Engine Core
 
@@ -66,7 +66,7 @@ The `PEngine` class defines the core of the engine, which  and serves as the ent
 
 1. the engine's **thread pool**
 
-2. any **engine modes** that have been registered with the core
+2. any **engine modes** that have been registered with the core (which is basically 
 
 3. any **engine tools** that have been registered with the core
 
@@ -76,7 +76,7 @@ While I still need to figure out a lot of the implementation details, I'm thinki
 
 Fundamentally, the core will set up the engine's main abstractions for providing an execution environment: the engine's **modes** (as below), and the **tools** (also below) that will be used within the engine. The modes and tools that are to be used should be registered during engine startup, and the user will be given immediate control over how the engine actually makes use of those modes and tools. Lots of different applications should be able to be represented this way, I'm hoping, especially within the scope of video games.
 
-My plan is to eventually find a way to package up specific implementation files so that the user doesn't even have to work within the internal source of the engine, to keep things compact and provide a fast way to develop new P-Engine applications. I still need to look into ways to make this happen, though, since I'm still a newcomer to build systems!
+My plan is to eventually find a way to package up specific implementation files so that the user doesn't even have to work within the internal source of the engine, to provide a compact way to develop new applications using this framework. Since I'm still a newcomer to build systems and I'm not sure entirely what's possible yet, that will be something for the future!
 
 ### Thread Pool
 
@@ -106,13 +106,13 @@ The design of the renderer centers around two user-facing abstractions that shou
 
 Since rendering a 3D scene will ultimately involve submitting valid data to a graphics pipeline no matter what, the scene object is meant to be responsible for managing renderable geometry (plus other data such as textures) that is submitted to it by the user. The render graph allows for pipelines to accept geometry directly from the scene abstraction (provided everything lines up).
 
-The renderer is based around Khronos' Vulkan graphics API, and it's assumed that the user will have some understanding of how that works and how to use it. Being that it is verbose and puts a lot of responsibility on the programmer, writing raw Vulkan code can be difficult and inflexible! However, a lot of these problems can be avoided by writing an abstraction around Vulkan, which is what I've tried to do in this engine. There are many ways to go about writing a wrapper for the API and I won't pretend that I've even scratched the surface of what's possible, but I hope to end up with a clean Vulkan `backend` abstraction that produces reasonably correct Vulkan code without much effort from the user.
+To start, the engine will use a Vulkan backend, with the end goal of designing an interface that will allow different backend implementations be easily swapped in and out.
 
 ### Render Graph
 
 The render graph, as its name implies, involves representing rendering processes as a **heterogeneous directed acyclic graph**. This design pattern is common in modern graphics engines, and many implementations exist out there! It provides a powerful logical model that can represent extremely complicated rendering techniques and performs very well when implemented properly by people way smarter and more creative than me. For my engine, I wanted to keep things conceptually simple and clear-cut, especially since I'm new to graphics programming in general, and I decided to tailor it to fit the Vulkan execution model, since that's the only API I've ever worked with.
 
-Broadly, render graphs are made of a variety of **`Pass` nodes** and **`Resource` nodes**. A `Pass` node corresponds to a collection of `Subpass`es and handles of resources used by a nonempty subset of those subpasses, which correspond closely with the Vulkan subpass construct. Each subpass maps to one graphics pipeline and its related high-level information. Subpasses maintain lists of various types of **Resources** that they use, in addition to storing information about **shaders** and **shader resource bindings**. These high-level passes and subpasses contain the information needed to *bake* the graph into a collection of backend-facing objects that will actually create and use the underlying Vulkan-specific constructs on behalf of the user.
+Broadly, render graphs are made of a variety of **Pass nodes** and **Resource nodes**. A Pass node corresponds to a collection of Subpasses and handles of resources used by a nonempty subset of those subpasses, which correspond closely with the Vulkan subpass construct. Each subpass maps to one graphics pipeline and its related high-level information. Subpasses maintain lists of various types of **Resources** that they use, in addition to storing information about **shaders** and **shader resource bindings**. These high-level passes and subpasses contain the information needed to *bake* the graph into a collection of backend-facing objects that will actually create and use the underlying Vulkan-specific constructs on behalf of the user.
 
 Each render graph will have an associated `Scene` (discussed below), which will store the geometry that is intended to be fed into the graph. I want to try decoupling geometry from rendering pipelines as much as possible, so that the user can focus on just supplying and updating geometry plus any other dynamic rendering data for the render graph each frame. 
 
@@ -122,15 +122,22 @@ To describe the rendering processes they're using, the user specifies the passes
 
 ### Scene
 
-TODO - large update in progress, description update forthcoming
+As mentioned, the Scene abstraction should provide the user with an interface for populating the graphics engine with the objects you want to render, plus information for updating them frame-by-frame. The hope is that this will allow for the user to just wrap the relevant parts of their external update code for each element of the scene and register them, and the graphics engine will convert that to the relevant backend-specific data, handling the specifics under the hood.
+
+Currently the scene consists of the following general elements:
+
+Primitive scene resources:
+* Buffers, which correspond to Vulkan buffers (and really it should handle the general use case of a buffer resource in most modern graphics APIs)
+* Images, which similarly correspond to Vulkan images as well as the general concept of an image in the context of graphics APIs
+
+Composite scene resources:
+* Textures, 
 
 ### Vulkan Backend
 
 TODO - large update in progress, description update forthcoming
 
 ## External Libraries
-
-TODO - large update in progress, description update forthcoming
 
   - [DearIMGUI](https://github.com/ocornut/imgui)
     - This is used to provide a sort of default GUI option, although implementing your own GUI library or integrating another should be an option. It's an amazing library in its own right, and I imagine I'll be leveraging it a lot especially when the engine is ready to support complex logic.

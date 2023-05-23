@@ -6,7 +6,7 @@ TODO - large update in progress, description update forthcoming
 
 ## Summary
 
-This is a work-in-progress game engine hobby project, with a central goal of providing a fairly simple C++ framework for building both 2D and 3D graphical applications.
+This is a work-in-progress game engine hobby project, with a central goal of providing a fairly simple C++ framework for building both 2D and 3D graphical applications. Lots of this code needs to be cleaned up and refactored, as is natural when the design is changing constantly. Future updates will focus on cleaning things up, but for now I'm aiming on just getting it to the point where it can render simple 3D scenes.
 
 I'm using C++ and the STL to implement it, and it's based around the Vulkan graphics API. When it's complete, it should allow you to build rendering pipelines according to your particular use case and supply those pipelines with rendering data, all while giving lots of freedom to define the logic that drives the rendering itself. Since convenience is important to me, I also hope to provide a set of helpful tools to make various tasks easier for you, and I want the engine to be entirely controllable by writing C++ code.
 
@@ -114,7 +114,7 @@ The render graph, as its name implies, involves representing rendering processes
 
 Broadly, render graphs are made of a variety of **Pass nodes** and **Resource nodes**. A Pass node corresponds to a collection of Subpasses and handles of resources used by a nonempty subset of those subpasses, which correspond closely with the Vulkan subpass construct. Each subpass maps to one graphics pipeline and its related high-level information. Subpasses maintain lists of various types of **Resources** that they use, in addition to storing information about **shaders** and **shader resource bindings**. These high-level passes and subpasses contain the information needed to *bake* the graph into a collection of backend-facing objects that will actually create and use the underlying Vulkan-specific constructs on behalf of the user.
 
-Each render graph will have an associated `Scene` (discussed below), which will store the geometry that is intended to be fed into the graph. I want to try decoupling geometry from rendering pipelines as much as possible, so that the user can focus on just supplying and updating geometry plus any other dynamic rendering data for the render graph each frame. 
+Each render graph will be associated with a particular `Scene` (discussed below), which will store the geometry that is intended to be fed into the graph. I want to try decoupling geometry from rendering pipelines as much as possible, so that the user can focus on just supplying and updating geometry plus any other dynamic rendering data for the render graph each frame. 
 
 My model is tailored towards simpler rendering processes, where the graph representing the process does not require to be rebaked each frame. I will probably add things like conditional (sub)pass execution and nested render graphs, plus anything else I come across that might help make these graphs more flexible and comfortable to use.
 
@@ -122,28 +122,50 @@ To describe the rendering processes they're using, the user specifies the passes
 
 ### Scene
 
-As mentioned, the Scene abstraction should provide the user with an interface for populating the graphics engine with the objects you want to render, plus information for updating them frame-by-frame. The hope is that this will allow for the user to just wrap the relevant parts of their external update code for each element of the scene and register them, and the graphics engine will convert that to the relevant backend-specific data, handling the specifics under the hood.
+As mentioned, the Scene abstraction should provide the user with an interface for populating the graphics engine with the objects you want to render, plus information for updating them frame-by-frame. The hope is that this will allow for the user to just wrap the relevant parts of their external update code for each element of the scene and register them, and the graphics engine will convert that to the relevant backend-specific data, handling the specifics under the hood. 
+
+When actually using the engine for graphics purposes, the Scene will be the main class the user works with.
 
 Currently the scene consists of the following general elements:
+
+#### SceneResources 
 
 Primitive scene resources:
 * Buffers, which correspond to Vulkan buffers (and really it should handle the general use case of a buffer resource in most modern graphics APIs)
 * Images, which similarly correspond to Vulkan images as well as the general concept of an image in the context of graphics APIs
 
 Composite scene resources:
-* Textures, 
+* Textures (& Samplers)
+* Materials
+* Renderables
+* Models
+* ShaderConstants
+
+#### Shader Modules
+
+These are basically how the user will specify their backend-specific shader modules, which are intended to be converted to whatever shader representation is required by the backend. Currently it revolves around SPIR-V shaders, and the user specifies a particular spir-v file name to be searched for inside an engine shader folder, as well as the type of shader and some additional information. 
+
+Shader reflection is leveraged to minimize the amount of information that needs to be entered by the user - just make sure the rest of your data lines up with these shaders and they're used properly and it avoids entering a lot of boilerplate, at least when using Vulkan as the backend.
+
+#### Scene Views
+
+This corresponds to camera views inside the scene - this is TODO and will come in a future update, but it ideally will provide the user with an easy-to-use interface for controlling a set of cameras in a scene. 
 
 ### Vulkan Backend
 
-TODO - large update in progress, description update forthcoming
+The design of the backend is still very unfinished - probably a whole bunch of re-architecting is going to be required, but the general idea is to almost treat the graphics engine as a compiler, where the backend-agnostic scene data is our front-end representation (to be translated) and the Vulkan backend data is the target. The specification of the scene describes a well-defined set of desired graphics operations on a well-defined set of graphics data, and all the user has to do is this initial specification (plus providing info about how to update data frame-to-frame), and the engine converts that to the equivalent set of data structures and logic that is required to perform those user-defined operations on the user-defined data for a particular backend API.
+
+
 
 ## External Libraries
+
+  - GTest - this is what we use for testing! Ubiquitous C++ testing library by Google, very easy to use and convenient
 
   - [DearIMGUI](https://github.com/ocornut/imgui)
     - This is used to provide a sort of default GUI option, although implementing your own GUI library or integrating another should be an option. It's an amazing library in its own right, and I imagine I'll be leveraging it a lot especially when the engine is ready to support complex logic.
 
   - [Mesh Optimizer](https://github.com/zeux/meshoptimizer)
-    - Incredible library, used for geometry processing!
+    - Incredible library, will be used for geometry processing!
 
   - [SPIR-V Reflect](https://github.com/KhronosGroup/SPIRV-Reflect)
     - Another great library (in addition to SPIRV-Cross) which is used for shader reflection, very useful in the design of the renderer!

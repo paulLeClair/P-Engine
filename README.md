@@ -2,7 +2,7 @@
 
 >This is a snapshot of my hobby game engine framework! Active development is done on a private repo, but I'll add things here in chunks as the engine continues to take shape.
 
-TODO - large update in progress, description update forthcoming
+TODO - large update in progress, wiki update forthcoming
 
 ## Summary
 
@@ -100,9 +100,9 @@ It may not be required to use these at all, and you can attach code to the engin
 
 ## Renderer Design
 
-As mentioned, the renderer (`PRender`) is a subcomponent of the `PEngine` core; it is designed to be as easy to use as I can possibly make it.
+As mentioned, the renderer is a subcomponent of the `PEngine` core.
 
-The design of the renderer centers around two user-facing abstractions that should (for the most part) entirely define a renderable scene in a general representation. The **render graph** is where you encode the workings of the **graphics pipelines** you want to build (described below), and the **scene** serves as the abstraction for **managing geometry**.
+The design of the renderer centers around two user-facing abstractions that should (for the most part) entirely define a renderable scene in a general representation. The **render graph** is where you encode the workings of the **graphics pipelines** you want to build (described below), which is connected to the **scene** that serves as the abstraction for **managing geometry**.
 
 Since rendering a 3D scene will ultimately involve submitting valid data to a graphics pipeline no matter what, the scene object is meant to be responsible for managing renderable geometry (plus other data such as textures) that is submitted to it by the user. The render graph allows for pipelines to accept geometry directly from the scene abstraction (provided everything lines up).
 
@@ -153,8 +153,13 @@ This corresponds to camera views inside the scene - this is TODO and will come i
 
 ### Vulkan Backend
 
-The design of the backend is still very unfinished - probably a whole bunch of re-architecting is going to be required, but the general idea is to almost treat the graphics engine as a compiler, where the backend-agnostic scene data is our front-end representation (to be translated) and the Vulkan backend data is the target. The specification of the scene describes a well-defined set of desired graphics operations on a well-defined set of graphics data, and all the user has to do is this initial specification (plus providing info about how to update data frame-to-frame), and the engine converts that to the equivalent set of data structures and logic that is required to perform those user-defined operations on the user-defined data for a particular backend API.
+The design of the backend is still very unfinished - probably a whole bunch of re-architecting is going to be required, but the general idea is to almost treat the graphics engine as a compiler, where the backend-agnostic scene data is our front-end representation (to be translated) and the Vulkan backend data is the target. The specification of the scene describes a well-defined set of desired graphics operations on a well-defined set of graphics data. All the user has to do is this initial specification (including info about how to update data frame-to-frame), and the engine converts that to the equivalent set of data structures and logic that is required to perform those user-defined operations on the user-defined data for a particular backend API. It will also provide any other required functionality for supporting a dynamic scene (adding/removing elements in between frames, etc).
 
+The actual conversion process from scene resources to backend resources is referred to as "baking" (common terminology for render graph architectures) - this whole process is very much WIP and is actually the main focal point of work being done on my private development repo. The idea is to break off the baking process for each scene resource into a separate class, and then backend implementations will override those scene resource baking methods to do whatever needs to be done for the graphics API it's using.
+
+For now, there are mainly Vulkan-specific versions of many of the scene resources, and all the composite resources end up just being collections of either VulkanBuffers or VulkanImages. 
+
+This section will be expanded once the next update comes, which will include simple scene bake processes that should hopefully allow for the application to render simple 3D scenes. 
 
 
 ## External Libraries

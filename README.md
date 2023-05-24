@@ -159,8 +159,7 @@ The actual conversion process from scene resources to backend resources is refer
 
 For now, there are mainly Vulkan-specific versions of many of the scene resources, and all the composite resources end up just being collections of either VulkanBuffers or VulkanImages. 
 
-This section will be expanded once the next update comes, which will include simple scene bake processes that should hopefully allow for the application to render simple 3D scenes. 
-
+This section will be expanded once the next update comes, which will include simple scene bake processes that should hopefully allow for the application to render simple 3D scenes. I'm expecting a lot of these classes to be either moved around or completely replaced/redone, so I'll save writing detailed descriptions for when things are more crystallized.
 
 ## External Libraries
 

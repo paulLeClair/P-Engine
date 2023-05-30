@@ -84,7 +84,7 @@ This engine subcomponent is meant to provide a ready-to-use STL thread pool, and
 
 The design is not fully finished and tested, but the engine will need multithreading for some tasks, so I will be able to test it and make fixes and upgrades soon. When it's done, I'd like to have a simple, clean interface that allows for a persistent threadpool with a few useful mechanisms for submitting work!
 
-Currently an extremely basic version exists, but it will be expanded as a future update.
+Currently an extremely basic version exists, but it will be expanded as a future update. The current version makes use of a very naive implementation based around job queues that each thread queries, and the user is meant to submit work to the worker threads by filling a queue and submitting it to the thread pool. In the future, most likely when I get to the point that performance is actually an issue, I'll change it so that the threads aren't all fighting over a lock, and the thread pool interface will provide a simpler interface based around futures / async.
 
 ### Engine Modes
 

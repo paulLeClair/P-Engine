@@ -8,7 +8,7 @@
 
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow) {
 
-    std::cout << "Engine, Activate! ;)" << std::endl;
+    std::cout << "PEngine, Activate! ;)" << std::endl;
 
     return 0;
 }

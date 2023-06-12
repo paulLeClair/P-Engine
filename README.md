@@ -2,7 +2,9 @@
 
 >This is a snapshot of my hobby game engine framework! Active development is done on a private repo, but I'll add things here in chunks as the engine continues to take shape.
 
-TODO - large update in progress, wiki update forthcoming
+TODO - large update in progress, wiki update forthcoming! 
+
+Note - a lot of these designs are quite messy and I've definitely made some bad choices (eg using lots of shared ownership), but hopefully a good number of such things will be fixed as part of the next update for rendering simple DearImGUI menus that can be interacted with. 
 
 ## Summary
 

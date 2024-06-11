@@ -45,11 +45,9 @@ Below is a gif showing the engine in action, with some basic interactable DearIm
 
 ## Build Instructions
 
-This project uses CMake 3.15+, and currently it relies heavily on the [CMakeTools](https://github.com/microsoft/vscode-cmake-tools) extension for VSCode, and can be built easily through the VSCode interface.
+This project uses CMake 3.15+. It should build and run on Windows, and it should build (but not run) on Linux.
 
-I have only tested this on Windows 10 and using the Visual Studio Build Tools generator as of now! In general, I've only focused on getting things up and running on my own computer. I will eventually go through and do a bunch research & redesign on the project's entire build system and make sure it's easy to get the engine compiled and running for anyone, but that should wait until the engine has its core functionalities in place.
-
-Without using CMakeTools, you can prepare the build files for the engine by running this shell command in the root directory of the project, supplying the desired arguments for the generator (`-G`), the toolset specification (`-T`), and platform (`-A`, which should probably be given the value `x64` as below):
+Without using any external CMake manager (like the CLion CMake integration in my case), you can prepare the build files for the engine by running this shell command in the root directory of the project, supplying the desired arguments for the generator (`-G`), the toolset specification (`-T`), and platform (`-A`, which should probably be given the value `x64` as below):
 
 ~~~~Shell
 cmake --no-warn-unused-cli -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE -S ./ -B ./build -G "Visual Studio 16 2019" -T host=x64 -A x64

@@ -1,6 +1,6 @@
 
 #include <gtest/gtest.h>
-#include "../../../../../../src/GraphicsEngine/Backend/FrameExecutionController/Frame/PFrame/PFrame.hpp"
+#include "../../../../../../src/GraphicsEngine/Backend/FrameExecutionController/Frame/PFrame/VulkanFrame.hpp"
 
 using namespace PGraphics;
 using namespace PEngine;
@@ -11,7 +11,7 @@ protected:
         applicationContext = std::make_shared<PApplicationContext>();
 
         // TODO - fix this when we get render passes implemented fully
-//        frame = std::make_shared<PFrame>(PFrame::CreationInput{
+//        frame = std::make_shared<VulkanFrame>(VulkanFrame::CreationInput{
 //                0,
 //                applicationContext->getLogicalDevice(),
 //                threadPool,

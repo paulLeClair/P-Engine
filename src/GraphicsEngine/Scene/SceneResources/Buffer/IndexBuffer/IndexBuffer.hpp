@@ -1,126 +1,90 @@
 #pragma once
 
 #include "../Buffer.hpp"
-#include "../../../PScene/PScene.hpp"
 #include "IndexTypes/IndexTypes.hpp"
 
-using namespace PGraphics;
+namespace pEngine::girEngine::scene {
+    template<typename IndexType>
+    class IndexBuffer : public Buffer {
+    public:
+        struct CreationInput {
+            // note: this is not a subclass of Buffer::CreationInput
+            std::string name;
+            util::UniqueIdentifier uid;
+            BufferSubtype bufferType = BufferSubtype::UNKNOWN;
 
-template<typename IndexType>
-class IndexBuffer : public Buffer {
-public:
-    struct CreationInput {
-        std::shared_ptr<PScene> parentScene;
-        std::string name;
-        PUtilities::UniqueIdentifier uniqueIdentifier;
-        std::function<void(const Buffer &)> updateCallback;
+            const std::vector<IndexType> initialIndexData = {};
+        };
 
-        std::vector<IndexType> initialIndexData = {};
-
-        IndexTypeToken indexTypeToken = IndexTypeToken::UNKNOWN;
-    };
-
-
-    explicit IndexBuffer(const CreationInput &creationInput) : Buffer(Buffer::CreationInput{
-            creationInput.parentScene,
+        explicit IndexBuffer(const CreationInput &creationInput) : Buffer(Buffer::CreationInput{
             creationInput.name,
-            creationInput.uniqueIdentifier,
-            creationInput.updateCallback
-    }) {
-        indexTypeToken = getIndexTypeToken(creationInput.indexTypeToken);
-        if (indexTypeToken == IndexTypeToken::UNKNOWN) {
-            throw std::runtime_error("Error in IndexBuffer() - unknown index type");
-        }
-
-        rawDataContainer = std::make_shared<RawDataContainer>(
-                RawDataContainer::CreationInput{
-                        creationInput.name + "TemplatedIndexBuffer",
-                        creationInput.uniqueIdentifier,
-                        nullptr,
-                        0
-                }
-        );
-        numberOfIndices = 0;
-
-        if (!creationInput.initialIndexData.empty()) {
-            rawDataContainer->setRawDataAsArray(creationInput.initialIndexData);
+            creationInput.uid,
+            creationInput.bufferType
+        }) {
+            if (!creationInput.initialIndexData.empty()) {
+                setBufferDataAsArray<IndexType>(creationInput.initialIndexData);
+            }
             numberOfIndices = creationInput.initialIndexData.size();
         }
-    }
 
-    ~IndexBuffer() override = default;
+        ~IndexBuffer() override = default;
 
-    [[nodiscard]] unsigned long getNumberOfIndices() const {
-        return numberOfIndices;
-    }
-
-    [[nodiscard]] unsigned int getIndexSizeInBytes() const {
-        return sizeof(IndexType);
-    }
-
-    [[nodiscard]] unsigned long getSizeInBytes() const override {
-        return numberOfIndices * sizeof(IndexType);
-    }
-
-    [[nodiscard]] void *getRawDataPointer() {
-        return rawDataContainer->getRawDataPointer<void>();
-    }
-
-    IndexType *getIndexDataPointer() {
-        return rawDataContainer->getRawDataPointer<IndexType>();
-    }
-
-    const std::vector<IndexType> &getIndexData() const {
-        return rawDataContainer->getRawDataArray<IndexType>();
-    }
-
-    std::vector<IndexType> &getMutableIndexData() {
-        return rawDataContainer->getRawDataArray<IndexType>();
-    }
-
-    void setIndexData(std::vector<IndexType> &newVertexData) {
-        rawDataContainer->setRawDataAsArray<IndexType>(newVertexData);
-    }
-
-    IndexType &getIndexAt(unsigned long arrayIndex) {
-        return rawDataContainer->getRawDataPointer<IndexType>()[arrayIndex];
-    }
-
-    void setIndexAt(IndexType index, unsigned long arrayIndex) {
-        rawDataContainer->getRawDataPointer<IndexType>()[arrayIndex] = index;
-    }
-
-    [[nodiscard]] IndexTypeToken getIndexTypeToken() const {
-        return indexTypeToken;
-    }
-
-private:
-    IndexTypeToken getIndexTypeToken(IndexTypeToken typeToken) {
-        if (typeToken != IndexTypeToken::UNKNOWN) {
-            return typeToken;
+        [[nodiscard]] unsigned long getNumberOfIndices() const {
+            return numberOfIndices;
         }
 
-        bool isUnsignedChar = std::is_same<IndexType, unsigned char>().value;
-        if (isUnsignedChar) {
-            return IndexTypeToken::UNSIGNED_CHAR;
+        [[nodiscard]] unsigned int getIndexSizeInBytes() const {
+            return sizeof(IndexType);
         }
 
-        bool isUnsignedInt = std::is_same<IndexType, unsigned int>().value;
-        if (isUnsignedInt) {
-            return IndexTypeToken::UNSIGNED_INT;
+        std::shared_ptr<gir::GraphicsIntermediateRepresentation> bakeToGIR() override {
+            return std::make_shared<gir::BufferIR>(gir::BufferIR::CreationInput{
+                getName(),
+                getUid(),
+                gir::GIRSubtype::BUFFER,
+                {gir::BufferIR::BufferUsage::INDEX_BUFFER},
+                getRawDataContainer().getRawDataByteArray(),
+                getRawDataContainer().getRawDataSizeInBytes()
+            });
         }
 
-        bool isUnsignedLong = std::is_same<IndexType, unsigned long>().value;
-        if (isUnsignedLong) {
-            return IndexTypeToken::UNSIGNED_LONG;
+        const std::vector<IndexType> &getIndexData() {
+            return bufferData->getRawDataAsVector<IndexType>();
         }
 
-        return IndexTypeToken::UNKNOWN;
-    }
+        void setIndexData(const std::vector<IndexType> &newIndices) {
+            bufferData->setRawDataAsArray<IndexType>(newIndices);
+        }
 
-    std::shared_ptr<RawDataContainer> rawDataContainer;
+        /**
+         *
+         * @param indexIntoBuffer this is the index into the IndexBuffer itself that you want to access
+         * @return the index stored at the location indexIntoBuffer in the index buffer
+         */
+        IndexType getIndexAt(unsigned long indexIntoBuffer) {
+            if (indexIntoBuffer >= numberOfIndices) {
+                throw std::runtime_error("Error in IndexBuffer<>::getIndexAt() - indexIntoBuffer is out of bounds!");
+            }
+            return getBufferDataAsArray<IndexType>()[indexIntoBuffer];
+        }
 
-    unsigned long numberOfIndices;
+        /**
+         *
+         * @param indexIntoBuffer
+         * @param newIndexValue
+         */
+        void setIndexAt(unsigned long indexIntoBuffer, IndexType newIndexValue) {
+            if (indexIntoBuffer >= numberOfIndices) {
+                throw std::runtime_error("Error in IndexBuffer<>::setIndexAt() - indexIntoBuffer is out of bounds!");
+            }
+            auto data = bufferData->getRawDataAsVector<IndexType>();
+            data[indexIntoBuffer] = newIndexValue;
+            bufferData->setRawDataAsArray<IndexType>(data);
+        }
 
-    IndexTypeToken indexTypeToken = IndexTypeToken::UNKNOWN;
-};
+    private:
+        unsigned long numberOfIndices;
+
+        // TODO - figure out how updating these will work later
+    };
+}

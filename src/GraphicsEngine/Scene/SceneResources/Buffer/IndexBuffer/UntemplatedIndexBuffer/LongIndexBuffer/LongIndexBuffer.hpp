@@ -4,21 +4,21 @@
 
 #pragma once
 
-
 #include "../UntemplatedIndexBuffer.hpp"
 
-class LongIndexBuffer : public UntemplatedIndexBuffer {
-public:
-    struct CreationInput {
-        std::shared_ptr<Scene> parentScene;
+namespace pEngine::girEngine::scene {
 
-        std::string name;
-        PUtilities::UniqueIdentifier uniqueIdentifier;
+    class UntemplatedLongIndexBuffer : public UntemplatedIndexBuffer {
+    public:
+        struct CreationInput : public UntemplatedIndexBuffer::CreationInput {
 
-        std::function<void(const Buffer &)> updateCallback;
+        };
+
+        explicit UntemplatedLongIndexBuffer(const CreationInput &creationInput);
+
+        ~UntemplatedLongIndexBuffer() override = default;
+
+        std::shared_ptr<gir::GraphicsIntermediateRepresentation> bakeToGIR() override;
     };
 
-    explicit LongIndexBuffer(const CreationInput &creationInput);
-
-    ~LongIndexBuffer() override = default;
-};
+}

@@ -2,3 +2,6 @@ build/
 .vscode/
 .idea/
 src/shaders/bin
+_deps/
+.cache/
+cmake-*/

@@ -6,40 +6,22 @@
 
 #include "../../Buffer.hpp"
 
-class UntemplatedIndexBuffer : public Buffer {
-public:
-    struct CreationInput {
-        std::shared_ptr<Scene> parentScene;
+namespace pEngine::girEngine::scene {
 
-        std::string name;
-        PUtilities::UniqueIdentifier uniqueIdentifier;
+    class UntemplatedIndexBuffer : public Buffer {
+    public:
+        struct CreationInput : public Buffer::CreationInput {
+        };
 
-        std::function<void(const Buffer &)> updateCallback;
+        explicit UntemplatedIndexBuffer(const CreationInput &creationInput);
+
+        ~UntemplatedIndexBuffer() override = default;
+
+        virtual unsigned int getIndexTypeSizeInBytes() = 0;
+
+        virtual unsigned int getNumberOfIndices() = 0;
+
+        std::shared_ptr<pEngine::girEngine::gir::GraphicsIntermediateRepresentation> bakeToGIR() override;
     };
 
-    explicit UntemplatedIndexBuffer(const CreationInput &creationInput);
-
-    ~UntemplatedIndexBuffer() override = default;
-
-    [[nodiscard]] virtual std::shared_ptr<Buffer> toBuffer(const std::shared_ptr<Scene> &parentScene) const = 0;
-
-    virtual unsigned int getIndexTypeSizeInBytes() = 0;
-
-    virtual unsigned int getNumberOfIndices() = 0;
-
-    [[nodiscard]] bool isIndexBuffer() const override {
-        return true;
-    }
-
-    [[nodiscard]] virtual bool isCharIndices() const {
-        return false;
-    }
-
-    [[nodiscard]] virtual bool isIntIndices() const {
-        return false;
-    }
-
-    [[nodiscard]] virtual bool isLongIndices() const {
-        return false;
-    }
-};
+}

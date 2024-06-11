@@ -4,21 +4,20 @@
 
 #pragma once
 
-
 #include "../UntemplatedIndexBuffer.hpp"
 
-class CharIndexBufferTest : public UntemplatedIndexBuffer {
-public:
-    struct CreationInput {
-        std::shared_ptr<Scene> parentScene;
+namespace pEngine::girEngine::scene {
 
-        std::string name;
-        PUtilities::UniqueIdentifier uniqueIdentifier;
+    class UntemplatedCharIndexBuffer : public UntemplatedIndexBuffer {
+    public:
+        struct CreationInput : public UntemplatedIndexBuffer::CreationInput {
+        };
 
-        std::function<void(const Buffer &)> updateCallback;
+        explicit UntemplatedCharIndexBuffer(const CreationInput &creationInput);
+
+        ~UntemplatedCharIndexBuffer() override = default;
+
+        std::shared_ptr<gir::GraphicsIntermediateRepresentation> bakeToGIR() override;
     };
 
-    explicit CharIndexBufferTest(const CreationInput &creationInput);
-
-    ~CharIndexBufferTest() override = default;
-};
+}

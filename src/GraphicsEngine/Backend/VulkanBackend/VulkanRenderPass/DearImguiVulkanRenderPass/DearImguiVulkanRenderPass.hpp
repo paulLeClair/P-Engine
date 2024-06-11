@@ -89,6 +89,7 @@ namespace pEngine::girEngine::backend::vulkan {
 
             beginRenderPassForCurrentFrame(frameCommandBuffer, currentFrameIndex);
 
+            ImGui::Render();
             ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), frameCommandBuffer);
 
             vkCmdEndRenderPass(frameCommandBuffer);

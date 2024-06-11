@@ -12,7 +12,7 @@ Below is a gif showing the engine in action, with some basic interactable DearIm
 
 ![](https://github.com/paulLeClair/P-Engine/blob/main/Original_Core_Menu_Demo_Gif.gif)
 
-### Current Features list (taken directly from demo)
+### Current Features list (taken directly from demo window)
 
 - girEngine::Scene-> render graph abstraction and principal interface with user's application code
   - designed to act as a backend-agnostic front-end to different graphics backends
@@ -23,9 +23,11 @@ Below is a gif showing the engine in action, with some basic interactable DearIm
   - define image, buffer, and texture resources to be bound to render passes
   - high-level graphics pipeline configuration designed with automation in mind
   - partial implementation of user-specified geometry specification (full implementation upcoming)
+    
 - girEngine::GraphicsIntermediateRepresentation-> simple intermediate layer between front-end and back-end
   - packages data supplied by the front-end into simple structs that provide context about how the information should be used in graphics operations
   - intended to be processed by a girEngine backend to execute the encoded graphics operations
+    
 - girEngine::VulkanBackend -> Foundational Vulkan backend implementation
   - prepares required data and facilitates real-time rendering using the Vulkan 1.3 API
   - operates by accepting a set of GraphicsIntermediateRepresentation objects as input
@@ -33,6 +35,7 @@ Below is a gif showing the engine in action, with some basic interactable DearIm
   - integration of SPIRVReflect for SPIR-V shader module reflection"
   - aiming to automate a lot of boilerplate code, but with configurability where needed"
   - provides general interface for integration with different OS window systems
+    
 - Basic integration with Windows, partial integration with Linux
   - pre-alpha window system integration and input handling
 

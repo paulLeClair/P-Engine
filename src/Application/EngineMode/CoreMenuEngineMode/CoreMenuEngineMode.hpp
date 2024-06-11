@@ -18,10 +18,6 @@
 
 using namespace pEngine::core;
 
-// BACK TO THIS SHITE AGAIN!
-// now that the backend can draw frames, we can probably try to get this core menu
-// mode running;
-
 namespace pEngine::app::mode {
     template<typename GirGeneratorType, typename BackendType>
     class CoreMenuEngineMode : public EngineMode<GirGeneratorType, BackendType> {

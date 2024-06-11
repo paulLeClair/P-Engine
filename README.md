@@ -4,7 +4,7 @@
 
 ## Demo
 
-The text is kind of squashed in the readme itself, you may want to click the files to view them in higher resolution!
+The text in the screenshot & animation is kind of squashed in the readme itself, you may want to click the files to view them in higher resolution!
 
 Here's a screenshot of the engine, with a description of the current features. 
 

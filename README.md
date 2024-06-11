@@ -4,7 +4,9 @@
 
 ## Demo
 
-Here's a screenshot of the engine, with a description of the current features.
+The text is kind of squashed in the readme itself, you may want to click the files to view them in higher resolution!
+
+Here's a screenshot of the engine, with a description of the current features. 
 
 ![](https://github.com/paulLeClair/P-Engine/blob/main/Original_Core_Menu_Demo_Screenshot.png)
 

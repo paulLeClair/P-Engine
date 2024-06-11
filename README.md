@@ -1,4 +1,6 @@
-# P-Engine
+# GirEngine
+
+GIR -> Graphics Intermediate Representation, meant to be pronounced as "gear."
 
 >This is a snapshot of my hobby game engine! Active development is done on a private repo, but I'll add things here in chunks when they're ready.
 

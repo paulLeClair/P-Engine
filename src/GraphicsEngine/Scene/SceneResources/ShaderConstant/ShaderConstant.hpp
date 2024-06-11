@@ -11,93 +11,97 @@
 
 #include "../../../../lib/glm/glm.hpp"
 
-#include "../../../../EngineCore/utilities/UniqueIdentifier/UniqueIdentifier.hpp"
-#include "../../../../EngineCore/utilities/RawDataContainer/RawDataContainer.hpp"
+#include "../../../../utilities/UniqueIdentifier/UniqueIdentifier.hpp"
+#include "../../../../utilities/RawDataContainer/RawDataContainer.hpp"
 
 #include "../SceneResource.hpp"
+
+#include "../../../GraphicsIR/ResourceIR/ShaderConstantIR/ShaderConstantIR.hpp"
+
+namespace pEngine::girEngine::scene {
 
 /**
  * This should map to a push constant in Vulkan, or a cbuffer (etc) in DX12, and so on - basically constant memory
  * that is updated frequently by CPU and is faster for shaders to access (but there's limited space)
  */
-class ShaderConstant : public SceneResource {
-public:
-    enum ShaderStage {
-        VERTEX,
-        TESSELLATION_CONTROL,
-        TESSELLATION_EVALUATION,
-        GEOMETRY,
-        FRAGMENT,
-        MESH,
-        // TODO - add raytracing stages (but that will come as a later epic lol)
-        ALL_GRAPHICS
-    };
+    class ShaderConstant : public scene::Resource {
+    public:
+        // TODO - replace these weird vectors of enums with some kind of bitmask or something
+        enum ShaderStage {
+            VERTEX,
+            TESSELLATION_CONTROL,
+            TESSELLATION_EVALUATION,
+            GEOMETRY,
+            FRAGMENT,
+            MESH,
+            // TODO - add raytracing stages (but that will come as a later epic lol)
+            ALL_GRAPHICS
+        };
 
-    struct CreationInput {
-        std::shared_ptr<Scene> scene;
+        struct CreationInput : public Resource::CreationInput {
+            std::vector<ShaderStage> shaderStages = {};
+            unsigned int offset;
+            unsigned int size;
 
-        const std::string &name;
-        const PUtilities::UniqueIdentifier uniqueIdentifier;
+            unsigned char *initializationDataPointer = nullptr;
+            unsigned long initializationDataSizeInBytes = 0;
 
+
+        };
+
+        explicit ShaderConstant(const CreationInput &creationInput) : Resource(creationInput),
+                                                                      shaderStages(
+                                                                              creationInput.shaderStages),
+                                                                      offset(creationInput.offset),
+                                                                      size(creationInput.size) {
+            rawDataContainer = std::make_unique<util::RawDataContainer>(
+                    util::RawDataContainer::CreationInput{
+                            getName(),
+                            getUid(),
+                            creationInput.initializationDataPointer,
+                            creationInput.initializationDataSizeInBytes
+                    });
+        }
+
+        ~ShaderConstant() override = default;
+
+        UpdateResult update() override {
+            return UpdateResult::FAILURE;
+        }
+
+        [[nodiscard]] const std::vector<ShaderStage> &getShaderStages() const {
+            return shaderStages;
+        }
+
+        [[nodiscard]] unsigned int getOffset() const {
+            return offset;
+        }
+
+        [[nodiscard]] unsigned int getSize() const {
+            return size;
+        }
+
+        [[nodiscard]] const std::unique_ptr<util::RawDataContainer> &getRawDataContainer() const {
+            return rawDataContainer;
+        }
+
+        std::shared_ptr<gir::GraphicsIntermediateRepresentation> bakeToGIR() override {
+            return std::make_shared<gir::ShaderConstantIR>(gir::ShaderConstantIR::CreationInput{
+                    getName(),
+                    getUid(),
+                    gir::GIRSubtype::SHADER_CONSTANT,
+                    rawDataContainer->getRawDataByteArray(),
+                    rawDataContainer->getRawDataSizeInBytes()
+            });
+        }
+
+    private:
         std::vector<ShaderStage> shaderStages = {};
         unsigned int offset;
         unsigned int size;
 
-        unsigned char *initializationDataPointer = nullptr;
-        unsigned long initializationDataSizeInBytes = 0;
-
+        std::unique_ptr<util::RawDataContainer> rawDataContainer;
 
     };
 
-    explicit ShaderConstant(const CreationInput &creationInput) : name(creationInput.name),
-                                                                  uniqueIdentifier(
-                                                                          creationInput.uniqueIdentifier),
-                                                                  shaderStages(
-                                                                          creationInput.shaderStages),
-                                                                  offset(creationInput.offset),
-                                                                  size(creationInput.size) {
-
-    }
-
-    [[nodiscard]] const std::string &getName() const override {
-        return name;
-    }
-
-    [[nodiscard]] const PUtilities::UniqueIdentifier &getUniqueIdentifier() const override {
-        return uniqueIdentifier;
-    }
-
-    [[nodiscard]] const std::shared_ptr<Scene> &getParentScene() const override {
-        return scene;
-    }
-
-    UpdateResult update() override {
-        return UpdateResult::FAILURE;
-    }
-
-    [[nodiscard]] const std::vector<ShaderStage> &getShaderStages() const {
-        return shaderStages;
-    }
-
-    [[nodiscard]] unsigned int getOffset() const {
-        return offset;
-    }
-
-    [[nodiscard]] unsigned int getSize() const {
-        return size;
-    }
-
-
-private:
-    std::shared_ptr<Scene> scene;
-
-    std::string name;
-    PUtilities::UniqueIdentifier uniqueIdentifier;
-
-    std::vector<ShaderStage> shaderStages = {};
-    unsigned int offset;
-    unsigned int size;
-
-    std::shared_ptr<PUtilities::RawDataContainer> rawDataContainer;
-
-};
+}

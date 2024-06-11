@@ -4,12 +4,14 @@
 
 #include "CharIndexBuffer.hpp"
 
-CharIndexBufferTest::CharIndexBufferTest(const CharIndexBufferTest::CreationInput &creationInput)
-        : UntemplatedIndexBuffer(
-        UntemplatedIndexBuffer::CreationInput{
-                creationInput.parentScene,
-                creationInput.name,
-                creationInput.uniqueIdentifier,
-                creationInput.updateCallback}) {
+using namespace pEngine::girEngine::scene;
 
+UntemplatedCharIndexBuffer::UntemplatedCharIndexBuffer(const UntemplatedCharIndexBuffer::CreationInput &creationInput)
+        : UntemplatedIndexBuffer(creationInput) {
+
+}
+
+std::shared_ptr<pEngine::girEngine::gir::GraphicsIntermediateRepresentation> UntemplatedCharIndexBuffer::bakeToGIR() {
+    // TODO - provided we keep all this 
+    return nullptr;
 }

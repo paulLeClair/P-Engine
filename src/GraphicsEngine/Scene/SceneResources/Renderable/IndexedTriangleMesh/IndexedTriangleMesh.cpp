@@ -4,7 +4,7 @@
 
 #include "IndexedTriangleMesh.hpp"
 
-namespace PGraphics {
+namespace pEngine::girEngine::scene {
 
 
 } // PGraphics

@@ -5,6 +5,8 @@
 #pragma once
 
 #include "../Buffer.hpp"
+#include "../../formats/TexelFormat/TexelFormat.hpp"
+#include "../../Texture/Sampler/SamplerSettings.hpp"
 
 /**
  * Texel buffers are used for image-like data, so there should be significant overlap between these two classes.
@@ -24,67 +26,43 @@
  *
  * Another note: you can have uniform and storage texel buffers; make that a configuration setting
  */
-class TexelBuffer : public Buffer {
-public:
-    enum class UsageType {
-        UNIFORM,
-        STORAGE
+namespace pEngine::girEngine::scene {
+    class TexelBuffer : public Buffer {
+    public:
+        struct CreationInput : public Buffer::CreationInput {
+            SamplerSettings samplerSettings;
+
+            TexelFormat texelFormat;
+        };
+
+        explicit TexelBuffer(const CreationInput &creationInput)
+            : Buffer(creationInput),
+              samplerSettings(creationInput.samplerSettings),
+              texelFormat(creationInput.texelFormat) {
+        }
+
+        [[nodiscard]] const SamplerSettings &getSampler() const {
+            return samplerSettings;
+        }
+
+        [[nodiscard]] TexelFormat getTexelFormat() const {
+            return texelFormat;
+        }
+
+        std::shared_ptr<gir::GraphicsIntermediateRepresentation> bakeToGIR() override {
+            return std::make_shared<gir::BufferIR>(gir::BufferIR::CreationInput{
+                getName(),
+                getUid(),
+                gir::GIRSubtype::BUFFER,
+                {gir::BufferIR::BufferUsage::TEXEL_BUFFER},
+                getRawDataContainer().getRawDataByteArray(),
+                getRawDataContainer().getRawDataSizeInBytes()
+            });
+        }
+
+    private:
+        SamplerSettings samplerSettings;
+
+        TexelFormat texelFormat;
     };
-
-    struct CreationInput {
-        std::shared_ptr<Scene> parentScene;
-
-        std::string name;
-        PUtilities::UniqueIdentifier uniqueIdentifier;
-
-        std::function<void(const Buffer &)> updateCallback;
-
-        UsageType usageType = UsageType::UNIFORM;
-
-        unsigned char *initialDataPointer = nullptr;
-        unsigned long initialDataSizeInBytes = 0;
-
-        // TODO - store information about the format of the data
-
-        std::shared_ptr<Sampler> sampler = nullptr;
-    };
-
-    explicit TexelBuffer(const CreationInput &creationInput) : Buffer(Buffer::CreationInput{
-            creationInput.parentScene,
-            creationInput.name,
-            creationInput.uniqueIdentifier,
-            creationInput.updateCallback
-    }), usageType(creationInput.usageType) {
-        rawDataContainer = std::make_shared<RawDataContainer>(RawDataContainer::CreationInput{
-                creationInput.name,
-                creationInput.uniqueIdentifier,
-                creationInput.initialDataPointer,
-                creationInput.initialDataSizeInBytes
-        });
-
-        sampler = creationInput.sampler;
-    }
-
-    [[nodiscard]] unsigned long getSizeInBytes() const override {
-        return rawDataContainer->getRawDataSizeInBytes();
-    }
-
-    [[nodiscard]] UsageType getUsageType() const {
-        return usageType;
-    }
-
-    [[nodiscard]] const std::shared_ptr<RawDataContainer> &getRawDataContainer() const {
-        return rawDataContainer;
-    }
-
-    [[nodiscard]] const std::shared_ptr<Sampler> &getSampler() const {
-        return sampler;
-    }
-
-private:
-    UsageType usageType;
-
-    std::shared_ptr<RawDataContainer> rawDataContainer;
-
-    std::shared_ptr<Sampler> sampler;
-};
+}

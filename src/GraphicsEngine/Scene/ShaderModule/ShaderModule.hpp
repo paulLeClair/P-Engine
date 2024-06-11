@@ -4,67 +4,241 @@
 
 #pragma once
 
-/**
- * BIG TODO (probably in a future issue) -> add a lot of support for mesh shading techniques! I think they can be used for both
- * traditional pipelines and raytracing, at least on modern hardware (GPUs that are < 3-4 years old should support it hopefully)
- *
- *
- */
-class ShaderModule {
-public:
-    ~ShaderModule() = default;
+#include <fstream>
+#include <filesystem>
 
-    enum class EnabledShaderUsageBits {
-        VERTEX_SHADER = 1,
-        FRAGMENT_SHADER = 2,
-        TESSELLATION_EVALUATION_SHADER = 4,
-        TESSELLATION_CONTROL_SHADER = 8,
-        GEOMETRY_SHADER = 16,
-        MESH_TASK_SHADER = 32,
-        MESH_SHADER = 64
-    };
-    using EnabledShaderUsages = unsigned int;
+#include "../../GraphicsIR/ShaderModuleIR/ShaderModuleIR.hpp"
+#include "../../GraphicsIR/ShaderModuleIR/SpirVShaderModuleIR/SpirVShaderModuleIR.hpp"
 
-    enum class ShaderFileType {
-        HLSL,
-        GLSL,
-        MSL
-    };
+namespace pEngine::girEngine::gir {
+    class GraphicsIntermediateRepresentation;
+}
 
-    struct CreateInfo {
-        std::string name;// name of overall shader module
+namespace pEngine::girEngine::scene {
+
+    /**
+     * I'm not sure how the final design will look, but I think the
+     * scene-facing shader module will just read in the shader file data
+     * itself, and then the backend will actually process the shader.
+     *
+     * For example, with the Vulkan backend, it'll take the shader and do
+     * reflection and all that.
+     *
+     * I could consider moving all the reflection stuff into the scene,
+     * or maybe even put it into the GIR code, but that's kinda
+     * messy and I think it makes sense to split it off like that.
+     *
+     */
+    class ShaderModule {
+    public:
+
+        enum class ShaderUsage {
+            VERTEX_SHADER = 1,
+            FRAGMENT_SHADER = 2,
+            TESSELLATION_EVALUATION_SHADER = 4,
+            TESSELLATION_CONTROL_SHADER = 8,
+            GEOMETRY_SHADER = 16,
+            MESH_TASK_SHADER = 32,
+            MESH_SHADER = 64
+            // TODO - add more shader usage types
+        };
+
+        enum class ShaderLanguage {
+            HLSL,
+            GLSL,
+            MSL
+        };
+
+        struct CreationInput {
+            std::string name;
+            util::UniqueIdentifier uid;
+
+            std::string shaderFileNameWithoutFileExtension;
+            std::string shaderEntryPointName;
+            ShaderUsage enabledShaderUsages;
+            ShaderLanguage shaderFileType;
+        };
+
+        explicit ShaderModule(const CreationInput &createInfo) : name(createInfo.name),
+                                                                 uid(createInfo.uid),
+                                                                 shaderFileName(
+                                                                         createInfo.shaderFileNameWithoutFileExtension),
+                                                                 usage(createInfo.enabledShaderUsages),
+                                                                 shaderFileType(createInfo.shaderFileType),
+                                                                 shaderEntryPointName(createInfo.shaderEntryPointName) {
+
+        }
+
+        ShaderModule() = default;
+
+        [[nodiscard]] const util::UniqueIdentifier &getUid() const {
+            return uid;
+        }
+
+        [[nodiscard]] const std::string &getName() const {
+            return name;
+        }
+
+        [[nodiscard]] const std::string &getShaderFileName() const {
+            return shaderFileName;
+        }
+
+        [[nodiscard]] ShaderUsage getUsage() const {
+            return usage;
+        }
+
+        [[nodiscard]] ShaderLanguage getShaderFileType() const {
+            return shaderFileType;
+        }
+
+        std::shared_ptr<gir::GraphicsIntermediateRepresentation> bakeToGIR() {
+            // TODO - extend this when there are more than just spir V shader modules
+            return std::make_shared<gir::SpirVShaderModuleIR>(gir::SpirVShaderModuleIR::CreationInput{
+                    name,
+                    uid,
+                    gir::GIRSubtype::SHADER_MODULE,
+                    shaderFileName,
+                    gir::ShaderModuleIR::IntermediateRepresentation::SPIR_V,
+                    getGirShaderModuleUsage(usage),
+                    shaderEntryPointName,
+                    getSpirVCodeFromShaderModuleFile(
+                            shaderFileType, shaderFileName, usage)
+            });
+        }
+
+    private:
+        util::UniqueIdentifier uid;
+        std::string name;
         std::string shaderFileName;
-        EnabledShaderUsages enabledShaderUsages;
-        ShaderFileType shaderFileType;
+        std::string shaderEntryPointName;
+        ShaderUsage usage;
+        ShaderLanguage shaderFileType;
+
+        static gir::SpirVShaderModuleIR::ShaderUsage
+        getGirShaderModuleUsage(ShaderUsage sceneShaderUsages) {
+            switch (sceneShaderUsages) {
+                case (ShaderUsage::VERTEX_SHADER): {
+                    return gir::SpirVShaderModuleIR::ShaderUsage::VERTEX_SHADER;
+                }
+                case (ShaderUsage::FRAGMENT_SHADER): {
+                    return gir::SpirVShaderModuleIR::ShaderUsage::FRAGMENT_SHADER;
+                }
+                case (ShaderUsage::TESSELLATION_EVALUATION_SHADER): {
+                    return gir::SpirVShaderModuleIR::ShaderUsage::TESSELLATION_EVALUATION_SHADER;
+                }
+                case (ShaderUsage::TESSELLATION_CONTROL_SHADER): {
+                    return gir::SpirVShaderModuleIR::ShaderUsage::TESSELLATION_CONTROL_SHADER;
+                }
+                case (ShaderUsage::GEOMETRY_SHADER): {
+                    return gir::SpirVShaderModuleIR::ShaderUsage::GEOMETRY_SHADER;
+                }
+                case (ShaderUsage::MESH_TASK_SHADER): {
+                    return gir::SpirVShaderModuleIR::ShaderUsage::MESH_TASK_SHADER;
+                }
+                case (ShaderUsage::MESH_SHADER): {
+                    return gir::SpirVShaderModuleIR::ShaderUsage::MESH_SHADER;
+                }
+                default: {
+                    throw std::runtime_error(
+                            "Error in PShaderModule::getGirShaderModuleUsage() - unrecognized scene shader usage");
+                }
+            }
+        }
+
+        static std::vector<unsigned int>
+        getSpirVCodeFromShaderModuleFile(ShaderModule::ShaderLanguage shaderLanguage,
+                                         const std::string &fileName,
+                                         ShaderModule::ShaderUsage shaderUsage) {
+            std::vector<unsigned int> spirVCode = {};
+
+            // NOTE - this forces the C++ standard to be 17 or greater
+            std::string shaderModulePath = getShaderModuleBinaryPath(
+                    fileName,
+                    shaderLanguage,
+                    shaderUsage);
+
+            std::ifstream file(shaderModulePath, std::ios::binary | std::ios::ate);
+            if (!file.is_open()) {
+                throw std::runtime_error("Unable to open shader file " + shaderModulePath);
+            }
+
+            auto fileSize = static_cast<uint32_t>( file.tellg());
+            unsigned int packedFileSize = fileSize / sizeof(uint32_t);
+
+            spirVCode.resize(packedFileSize);
+            file.seekg(0);
+            file.read((char *) spirVCode.data(), fileSize);
+            file.close();
+
+            return spirVCode;
+        }
+
+        static std::string
+        getShaderModuleBinaryPath(
+                const std::string &fileName,
+                ShaderModule::ShaderLanguage shaderLanguage,
+                ShaderModule::ShaderUsage shaderUsage) {
+            static const char *const SHADER_BINARIES_PROJECT_RELATIVE_PATH = R"(src\shaders\bin\)";
+            static const char *const WIN32_INSTALL_HARD_DRIVE_PATH = "C:\\";
+
+            std::string shaderModuleName = fileName + getShaderModuleFileExtension(shaderLanguage,
+                                                                                   shaderUsage);
+            // NOTE - this forces the C++ standard to be 17 or greater
+            std::filesystem::path currentPath = std::filesystem::current_path().relative_path();
+            std::filesystem::path shaderModulePath;
+#ifdef _WIN32
+            shaderModulePath = std::filesystem::path(WIN32_INSTALL_HARD_DRIVE_PATH);
+#endif
+            for (const auto &currentRelativePathElementItr: currentPath) {
+                if (currentRelativePathElementItr.string() == "build") {
+                    break;
+                }
+
+                shaderModulePath += currentRelativePathElementItr;
+                shaderModulePath += std::filesystem::path("\\");
+            }
+
+            std::string shaderSpirVModuleName
+                    = shaderModuleName.substr(0, shaderModuleName.find_first_of('.')) + ".spv";
+            shaderModulePath += std::filesystem::path(SHADER_BINARIES_PROJECT_RELATIVE_PATH + shaderSpirVModuleName);
+            return shaderModulePath.string();
+        }
+
+        static std::string getShaderModuleFileExtension(
+                ShaderModule::ShaderLanguage type,
+                ShaderModule::ShaderUsage shaderUsage) {
+            switch (type) {
+                case (ShaderLanguage::GLSL): {
+                    switch (shaderUsage) {
+                        case (ShaderUsage::VERTEX_SHADER): {
+                            return ".vert";
+                        }
+                        case (ShaderUsage::FRAGMENT_SHADER): {
+                            return ".frag";
+                        }
+                        case (ShaderUsage::GEOMETRY_SHADER): {
+                            return ".geom";
+                        }
+                        case (ShaderUsage::TESSELLATION_CONTROL_SHADER): {
+                            return ".tesc";
+                        }
+                        case (ShaderUsage::TESSELLATION_EVALUATION_SHADER): {
+                            return ".tese";
+                        }
+                        default:
+                            return ".glsl";
+                    }
+                }
+                case (ShaderLanguage::HLSL):
+                    return ".hlsl";
+                case (ShaderLanguage::MSL):
+                    return ".msl";
+                default: {
+                    throw std::runtime_error(
+                            "Error in PShaderModule::getShaderModuleFileExtension() - unrecognized shader file type");
+                }
+            }
+        }
     };
 
-    explicit ShaderModule(const CreateInfo &createInfo) : name(createInfo.name),
-                                                          shaderFileName(createInfo.shaderFileName),
-                                                          enabledShaderUsages(createInfo.enabledShaderUsages),
-                                                          shaderFileType(createInfo.shaderFileType) {
-
-    }
-
-    [[nodiscard]] const std::string &getName() const {
-        return name;
-    }
-
-    [[nodiscard]] const std::string &getShaderFileName() const {
-        return shaderFileName;
-    }
-
-    [[nodiscard]] EnabledShaderUsages getEnabledShaderUsages() const {
-        return enabledShaderUsages;
-    }
-
-    [[nodiscard]] ShaderFileType getShaderFileType() const {
-        return shaderFileType;
-    }
-
-
-protected:
-    const std::string name;
-    const std::string shaderFileName;
-    const EnabledShaderUsages enabledShaderUsages;
-    const ShaderFileType shaderFileType;
-};
+} // scene

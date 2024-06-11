@@ -1,23 +1,34 @@
 #pragma once
 
 #include "ApplicationContext/ApplicationContext.hpp"
-#include "FrameExecutionController/FrameExecutionController.hpp"
+#include "Renderer/Renderer.hpp"
 #include "../Scene/Scene.hpp"
 
-class Backend {
-public:
-    ~Backend() = default;
+namespace pEngine::girEngine::backend {
+    class GraphicsBackend {
+    public:
+        virtual ~GraphicsBackend() = default;
 
-    enum class DrawFrameResult {
-        SUCCESS,
-        FAILURE
+        // TODO - evaluate whether we need this
+        enum class DrawFrameResult {
+            SUCCESS,
+            FAILURE
+        };
+
+        virtual DrawFrameResult drawFrame() = 0;
+
+        virtual std::shared_ptr<appContext::ApplicationContext> getApplicationContext() = 0;
+
+        virtual std::shared_ptr<render::Renderer>
+        getFrameContext() = 0;
+
+        enum class BakeResult {
+            FAILURE,
+            SUCCESS
+        };
+
+        virtual BakeResult
+        bakeGirs(const std::vector<std::shared_ptr<gir::GraphicsIntermediateRepresentation> > &girList) = 0;
+
     };
-
-    virtual void bakeRenderData() = 0;
-
-    virtual DrawFrameResult drawFrame() = 0;
-
-    virtual std::shared_ptr<ApplicationContext> getApplicationContext() = 0;
-
-    virtual std::shared_ptr<FrameExecutionController> getFrameExecutionController() = 0;
-};
+}

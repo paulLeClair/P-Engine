@@ -6,28 +6,22 @@
 
 #include <memory>
 #include "../Renderable.hpp"
-#include "../../../../../EngineCore/utilities/UniqueIdentifier/UniqueIdentifier.hpp"
+#include "../../../../../utilities/UniqueIdentifier/UniqueIdentifier.hpp"
 #include "../../../Scene.hpp"
 #include "../../Buffer/VertexBuffer/VertexBuffer.hpp"
 
+namespace pEngine::girEngine::scene {
 
-class TriangleMesh : public Renderable {
-public:
-    struct CreationInput {
-        std::shared_ptr<Scene> parentScene;
+    class TriangleMesh : public Renderable {
+    public:
+        struct CreationInput : public Renderable::CreationInput {
+        };
 
-        std::string name;
-        PUtilities::UniqueIdentifier uniqueIdentifier;
+        explicit TriangleMesh(const CreationInput &creationInput)
+                : Renderable(creationInput) {
 
-        RenderableType renderableType;
+        }
 
-        std::vector<std::shared_ptr<Buffer>> initialVertexBuffers;
     };
 
-    explicit TriangleMesh(const CreationInput &creationInput);
-
-    UpdateResult update() override;
-
-private:
-    std::vector<std::shared_ptr<Buffer>> vertexBuffers;
-};
+}

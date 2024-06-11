@@ -9,43 +9,31 @@
 #include "../../SceneResource.hpp"
 #include "../Buffer.hpp"
 
-/**
- * Storage buffers are slower than Uniform buffers but they can be a lot bigger. Example use case: storing all objects
- * in a scene.
- */
-class StorageBuffer : public Buffer {
-public:
-    struct CreationInput {
-        std::shared_ptr<Scene> parentScene;
+namespace pEngine::girEngine::scene {
+    /**
+     * Storage buffers are slower than Uniform buffers but they support store operations
+     * and they can be a lot bigger. \n\n
+     *
+     * Example use case: storing all objects
+     * in a scene.
+     */
+    class StorageBuffer : public Buffer {
+    public:
+        struct CreationInput : public Buffer::CreationInput {
+        };
 
-        std::string name;
-        PUtilities::UniqueIdentifier uniqueIdentifier;
+        explicit StorageBuffer(const CreationInput &creationInput) : Buffer(creationInput) {
+        }
 
-        std::function<void(const Buffer &)> updateCallback;
-
-        unsigned char *initialDataPointer = nullptr;
-        unsigned long initialDataSizeInBytes = 0;
+        std::shared_ptr<gir::GraphicsIntermediateRepresentation> bakeToGIR() override {
+            return std::make_shared<gir::BufferIR>(gir::BufferIR::CreationInput{
+                getName(),
+                getUid(),
+                gir::GIRSubtype::BUFFER,
+                {gir::BufferIR::BufferUsage::STORAGE_BUFFER},
+                getRawDataContainer().getRawDataByteArray(),
+                getRawDataContainer().getRawDataSizeInBytes()
+            });
+        }
     };
-
-    explicit StorageBuffer(const CreationInput &creationInput) : Buffer(Buffer::CreationInput{
-            creationInput.parentScene,
-            creationInput.name,
-            creationInput.uniqueIdentifier,
-            creationInput.updateCallback
-    }) {
-
-    }
-
-    bool isStorageBuffer() const override {
-        return true;
-    }
-
-    [[nodiscard]] unsigned long getSizeInBytes() const override {
-        return rawDataContainer->getRawDataSizeInBytes();
-    }
-
-private:
-    std::shared_ptr<RawDataContainer> rawDataContainer;
-
-
-};
+}

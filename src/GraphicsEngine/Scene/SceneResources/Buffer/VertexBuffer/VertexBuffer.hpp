@@ -5,145 +5,136 @@
 #pragma once
 
 #include "../Buffer.hpp"
-#include "../../../PScene/PScene.hpp"
 #include "VertexTypes/VertexTypes.hpp"
+#include "../../../../../utilities/Hash/Hash.hpp"
 
-using namespace PGraphics;
+#include "../../../../../lib/murmur3/MurmurHash3.hpp"
 
-template<typename VertexType>
-class VertexBuffer : public Buffer {
-public:
-    struct CreationInput {
-        std::shared_ptr<PScene> parentScene;
+namespace pEngine::girEngine::scene {
 
-        std::string name;
-        PUtilities::UniqueIdentifier uniqueIdentifier;
+    /**
+     * OKAY - 04-28 -> returning to this, I am now potentially running into an issue with using template classes;
+     * accessing certain member functions becomes tricky because you cant pointer cast to a particular type if you
+     * don't know what the vertex type will be. To make it work the way I want with templates is probably too much
+     * headache and misery to be worth doing.
+     *
+     * Instead, my main idea:
+     * 1. remove the class template and just have the buffer provide some template arguments for situations where
+     * you do have a vertex type that you have in mind; this isn't strictly necessary I think with the new design
+     * tho so these methods might not see much use
+     * 2. have the vertex attribute information (and maybe some new fields if req'd) accomplish the task of describing
+     * what's inside the buffer without needing to use templates. Since this is just raw data with format info, we
+     * don't really need to do much to it other than get it ready to be packaged up for Vulkan
+     *
+     *
+     */
 
-        std::function<void(const Buffer &)> updateCallback;
+    class VertexBuffer : public Buffer {
+    public:
+        struct CreationInput {
+            // note: this is not a subclass of Buffer::CreationInput
+            std::string name;
+            util::UniqueIdentifier uid;
+            BufferSubtype bufferType = BufferSubtype::UNKNOWN;
 
-        std::vector<VertexType> initialVertexData = {};
+            // TODO - evaluate whether passing in initial vertex data as a byte array is suitable (seems ok for now)
+            const std::vector<unsigned char> initialVertexData = {};
 
-        VertexTypeToken vertexTypeToken = VertexTypeToken::UNKNOWN;
-    };
+            const std::vector<vertex::VertexAttributeDescription> vertexAttributes = {};
+        };
 
-    explicit VertexBuffer(const CreationInput &creationInput) : Buffer(Buffer::CreationInput{
-            std::dynamic_pointer_cast<Scene>(creationInput.parentScene),
-            creationInput.name,
-            creationInput.uniqueIdentifier,
-            creationInput.updateCallback
-    }) {
-        vertexTypeToken = determineVertexTypeToken(creationInput.vertexTypeToken);
-        if (vertexTypeToken == VertexTypeToken::UNKNOWN) {
-            // TODO - better logging
-            throw std::runtime_error("Error in VertexBuffer<>() - Unable to determine VertexTypeToken!");
-        }
-
-        rawDataContainer = std::make_shared<RawDataContainer>(RawDataContainer::CreationInput{
-                this->getName() + "templatedVertexBuffer", // todo - incorporate the vertex type here
-                this->getUniqueIdentifier(),
-                nullptr,
-                0
-        });
-
-        if (creationInput.initialVertexData.empty()) {
-            numberOfVertices = 0;
-        } else {
-            rawDataContainer->setRawDataAsArray<VertexType>(creationInput.initialVertexData);
+        explicit VertexBuffer(const CreationInput &creationInput)
+                : vertexAttributes(creationInput.vertexAttributes),
+                  vertexAttributeHash(computeVertexAttributeHash(creationInput.vertexAttributes)),
+                  Buffer(Buffer::CreationInput{
+                          creationInput.name,
+                          creationInput.uid,
+                          creationInput.bufferType
+                  }) {
+            if (!creationInput.initialVertexData.empty()) {
+                bufferData->setRawData(creationInput.initialVertexData.data(),
+                                       creationInput.initialVertexData.size() * sizeof(unsigned char));
+            }
             numberOfVertices = creationInput.initialVertexData.size();
         }
-    }
 
-    [[nodiscard]] unsigned long getNumberOfVertices() const {
-        return numberOfVertices;
-    }
-
-    [[nodiscard]] unsigned int getVertexSizeInBytes() const {
-        return sizeof(VertexType);
-    }
-
-    [[nodiscard]] unsigned long getSizeInBytes() const override {
-        return numberOfVertices * sizeof(VertexType);
-    }
-
-    [[nodiscard]] void *getRawDataPointer() {
-        return rawDataContainer->getRawDataPointer<void>();
-    }
-
-    VertexType *getVertexDataPointer() {
-        return rawDataContainer->getRawDataPointer<VertexType>();
-    }
-
-    const std::vector<VertexType> &getVertexData() const {
-        return rawDataContainer->getRawDataArray<VertexType>();
-    }
-
-    std::vector<VertexType> &getMutableVertexData() {
-        return rawDataContainer->getRawDataArray<VertexType>();
-    }
-
-    void setVertexData(std::vector<VertexType> &newVertexData) {
-        rawDataContainer->template setRawDataAsArray<VertexType>(newVertexData);
-    }
-
-    VertexType &getVertex(unsigned long vertexIndex) {
-        if (vertexIndex > numberOfVertices) {
-            // TODO - better logging
-            throw std::runtime_error(
-                    "Error in TemplatedVertexBuffer::getVertex() - Attempting to get out-of-bound vertex!");
-        }
-        return rawDataContainer->getRawDataPointer<VertexType>()[vertexIndex];
-    }
-
-    void setVertex(VertexType vertex, unsigned long index) {
-        rawDataContainer->getRawDataPointer<VertexType>()[index] = vertex;
-    }
-
-    [[nodiscard]] VertexTypeToken getVertexTypeToken() const {
-        return vertexTypeToken;
-    }
-
-private:
-    VertexTypeToken vertexTypeToken = VertexTypeToken::UNKNOWN;
-
-    std::shared_ptr<RawDataContainer> rawDataContainer;
-
-    unsigned long numberOfVertices;
-
-    VertexTypeToken determineVertexTypeToken(VertexTypeToken creationInputTypeToken) {
-        if (creationInputTypeToken != VertexTypeToken::UNKNOWN) {
-            return creationInputTypeToken;
+        [[nodiscard]] unsigned long getNumberOfVertices() const {
+            return numberOfVertices;
         }
 
-        bool isPositionOnlyVertexBuffer = std::is_same<VertexType, VertexTypes::PositionOnlyVertex>::value;
-        if (isPositionOnlyVertexBuffer) {
-            return VertexTypeToken::POSITION_ONLY;
+        std::shared_ptr<gir::GraphicsIntermediateRepresentation> bakeToGIR() override {
+            return std::make_shared<gir::BufferIR>(gir::BufferIR::CreationInput{
+                    getName(),
+                    getUid(),
+                    gir::GIRSubtype::BUFFER,
+                    gir::BufferIR::BufferUsage::VERTEX_BUFFER,
+                    getRawDataContainer().getRawDataByteArray(),
+                    getRawDataContainer().getRawDataSizeInBytes()
+            });
         }
 
-        bool isPositionColorVertexBuffer = std::is_same<VertexType, VertexTypes::PositionColorVertex>::value;
-        if (isPositionColorVertexBuffer) {
-            return VertexTypeToken::POSITION_COLOR;
+        // TODO - write versions of this that are actually practical; maybe these will work after all tho
+        template<typename VertexType>
+        VertexType getVertex(unsigned long index) {
+            if (index >= numberOfVertices) {
+                throw std::runtime_error("Error in vertexBuffer<>::getVertex() - index is out of bounds!");
+            }
+            return bufferData->getRawDataAsVector<VertexType>()[index];
         }
 
-        bool isPositionColorNormalVertexBuffer = std::is_same<VertexType, VertexTypes::PositionColorNormalVertex>::value;
-        if (isPositionColorNormalVertexBuffer) {
-            return VertexTypeToken::POSITION_COLOR_NORMAL;
+        template<typename VertexType>
+        void setVertexAt(unsigned long index, VertexType newVertexValue) {
+            if (index >= numberOfVertices) {
+                throw std::runtime_error("Error in vertexBuffer<>::setVertexAt() - index is out of bounds!");
+            }
+            auto data = bufferData->getRawDataAsVector<VertexType>();
+            data[index] = newVertexValue;
+            bufferData->setRawDataAsArray<VertexType>(data);
         }
 
-        bool isPositionColorNormalUVVertexBuffer = std::is_same<VertexType, VertexTypes::PositionColorNormalUVVertex>::value;
-        if (isPositionColorNormalUVVertexBuffer) {
-            return VertexTypeToken::POSITION_COLOR_NORMAL_UV;
+        template<typename VertexType>
+        const std::vector<VertexType> &getVertexData() {
+            return bufferData->getRawDataAsVector<VertexType>();
         }
 
-        bool isPositionColorNormalUVTangentVertexBuffer = std::is_same<VertexType, VertexTypes::PositionColorNormalUVTangentVertex>::value;
-        if (isPositionColorNormalUVTangentVertexBuffer) {
-            return VertexTypeToken::POSITION_COLOR_NORMAL_UV_TANGENT;
+        template<typename VertexType>
+        void setVertexData(const std::vector<VertexType> &newVertices) {
+            bufferData->setRawDataAsArray<VertexType>(newVertices);
         }
 
-        bool isPositionColorNormalUVTangentBitangentVertexBuffer = std::is_same<VertexType, VertexTypes::PositionColorNormalUVTangentBitangentVertex>::value;
-        if (isPositionColorNormalUVTangentBitangentVertexBuffer) {
-            return VertexTypeToken::POSITION_COLOR_NORMAL_UV_TANGENT_BITANGENT;
+        /**
+         * TODO: rewrite all the update logic stuff
+         * @return
+         */
+        UpdateResult update() override {
+            return UpdateResult::FAILURE;
         }
 
-        return VertexTypeToken::UNKNOWN;
-    }
-};
+        [[nodiscard]] const std::vector<vertex::VertexAttributeDescription> &getVertexAttributes() const {
+            return vertexAttributes;
+        }
+
+        util::Hash vertexAttributeHash;
+
+    private:
+        unsigned long numberOfVertices;
+
+        // 04-23 - coming back to this, we're gonna have to have each vertex buffer maintain its own attributes
+        std::vector<vertex::VertexAttributeDescription> vertexAttributes = {};
+
+
+        static util::Hash
+        computeVertexAttributeHash(const std::vector<vertex::VertexAttributeDescription> &vertexAttributes) {
+            constexpr size_t MURMURHASH_SEED = 128u; // arbitrary
+
+            uint64_t tmp[2] = {0};
+            // idea: just murmur hash these?
+            // note: gotta make sure murmur hash is working fine for the optionals; i think it should be ok tho
+            MurmurHash3_x64_128(vertexAttributes.data(),
+                                vertexAttributes.size() * sizeof(vertex::VertexAttributeDescription), //NOLINT
+                                MURMURHASH_SEED,
+                                &tmp);
+            return tmp[0];
+        }
+    };
+}

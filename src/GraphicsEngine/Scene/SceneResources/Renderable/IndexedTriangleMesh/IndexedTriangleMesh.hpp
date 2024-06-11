@@ -11,9 +11,8 @@
 #include "../../Buffer/IndexBuffer/IndexBuffer.hpp"
 #include "../../Buffer/VertexBuffer/VertexBuffer.hpp"
 
-using namespace PUtilities;
 
-namespace PGraphics {
+namespace pEngine::girEngine::scene {
 
     /**
      * This will be one of the first built-in high-level geometry representations and probably also one of the most commonly used,
@@ -32,39 +31,16 @@ namespace PGraphics {
      */
     class IndexedTriangleMesh : public Renderable {
     public:
-        struct CreationInput {
-            std::shared_ptr<Scene> parentScene;
-
-            std::string name;
-
-            UniqueIdentifier uniqueIdentifier;
-
-            RenderableType renderableType;
-
-            std::vector<std::shared_ptr<Buffer>> initialVertexBuffers;
-            std::vector<std::shared_ptr<Buffer>> initialIndexBuffers;
+        struct CreationInput : public Renderable::CreationInput {
         };
 
         explicit IndexedTriangleMesh(const CreationInput &creationInput)
-                : Renderable(Renderable::CreationInput{
-                creationInput.parentScene,
-                creationInput.name,
-                creationInput.uniqueIdentifier,
-                creationInput.renderableType}),
-                  vertexBuffers(creationInput.initialVertexBuffers),
-                  indexBuffers(creationInput.initialIndexBuffers) {
+                : Renderable(creationInput) {
 
-        }
-
-        UpdateResult update() override {
-            // TODO
-            return UpdateResult::SUCCESS;
         }
 
     private:
-        std::vector<std::shared_ptr<Buffer>> vertexBuffers;
-        std::vector<std::shared_ptr<Buffer>> indexBuffers;
 
     };
 
-} // PGraphics
+} // scene

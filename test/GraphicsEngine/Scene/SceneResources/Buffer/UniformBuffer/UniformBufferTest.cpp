@@ -1,8 +1,7 @@
 #include <gtest/gtest.h>
-#include "../../../../../../src/GraphicsEngine/Scene/PScene/PScene.hpp"
 #include "../../../../../../src/GraphicsEngine/Scene/SceneResources/Buffer/UniformBuffer/UniformBuffer.hpp"
 
-using namespace PGraphics;
+using namespace pEngine::girEngine::scene;
 
 class UniformBufferTest : public ::testing::Test {
 protected:
@@ -56,12 +55,9 @@ protected:
     };
 
     void SetUp() override {
-        scene = std::make_shared<PScene>(PScene::CreationInput{
 
-        });
     }
 
-    std::shared_ptr<PScene> scene;
 };
 
 TEST_F(UniformBufferTest, BasicCreation) {
@@ -71,18 +67,14 @@ TEST_F(UniformBufferTest, BasicCreation) {
     };
 
     auto buffer = std::make_shared<UniformBuffer>(UniformBuffer::CreationInput{
-            scene,
             "test",
-            UniqueIdentifier(),
-            [&](const Buffer &) {
-                // nothing
-            },
+            pEngine::util::UniqueIdentifier(),
+            Buffer::BufferSubtype::UNIFORM_BUFFER,
             (unsigned char *) &TEST_DATA,
             sizeof(UniformBufferType)
     });
 
-    ASSERT_TRUE(buffer->isUniformBuffer());
-    ASSERT_TRUE(*buffer->getRawDataAs<UniformBufferType>() == TEST_DATA);
+    ASSERT_TRUE(*buffer->getBufferDataAsPointer<UniformBufferType>() == TEST_DATA);
 }
 
 TEST_F(UniformBufferTest, CreateAndModifyData) {
@@ -97,22 +89,20 @@ TEST_F(UniformBufferTest, CreateAndModifyData) {
     };
 
     auto buffer = std::make_shared<UniformBuffer>(UniformBuffer::CreationInput{
-            scene,
             "test",
-            UniqueIdentifier(),
-            [&](const Buffer &) {
-                // nothing
-            },
+            pEngine::util::UniqueIdentifier(),
+            Buffer::BufferSubtype::UNIFORM_BUFFER,
             (unsigned char *) &TEST_DATA,
             sizeof(UniformBufferType)
     });
 
-    ASSERT_TRUE(buffer->isUniformBuffer());
-    ASSERT_EQ(*buffer->getRawDataAs<UniformBufferType>(), TEST_DATA);
+    ASSERT_EQ(*buffer->getBufferDataAsPointer<UniformBufferType>(), TEST_DATA);
     ASSERT_EQ(buffer->getSizeInBytes(), sizeof(UniformBufferType));
 
     ASSERT_NO_THROW(
-            buffer->setRawDataAs<AlternativeUniformBufferType>(&ALT_TEST_DATA, sizeof(AlternativeUniformBufferType)));
-    ASSERT_EQ(*buffer->getRawDataAs<AlternativeUniformBufferType>(), ALT_TEST_DATA);
+            buffer->setBufferDataFromPointer<AlternativeUniformBufferType>(&ALT_TEST_DATA,
+                                                                           sizeof(AlternativeUniformBufferType))
+    );
+    ASSERT_EQ(*buffer->getBufferDataAsPointer<AlternativeUniformBufferType>(), ALT_TEST_DATA);
     ASSERT_EQ(buffer->getSizeInBytes(), sizeof(AlternativeUniformBufferType));
 }

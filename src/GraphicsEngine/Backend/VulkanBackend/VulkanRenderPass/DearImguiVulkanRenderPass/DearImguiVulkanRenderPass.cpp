@@ -333,7 +333,6 @@ namespace pEngine::girEngine::backend::vulkan {
 
     void DearImguiVulkanRenderPass::setupImguiRenderables() {
         executeDearImGuiCallbacksToDrawRenderables();
-        ImGui::Render();
     }
 
     void DearImguiVulkanRenderPass::beginRenderPassForCurrentFrame(VkCommandBuffer &commandBuffer,

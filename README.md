@@ -6,11 +6,11 @@
 
 Here's a screenshot of the engine, with a description of the current features.
 
-![]()
+![](https://github.com/paulLeClair/P-Engine/blob/main/Original_Core_Menu_Demo_Screenshot.png)
 
 Below is a gif showing the engine in action, with some basic interactable DearImGui widgets.
 
-![]()
+![](https://github.com/paulLeClair/P-Engine/blob/main/Original_Core_Menu_Demo_Gif.gif)
 
 ### Current Features list (taken directly from demo)
 

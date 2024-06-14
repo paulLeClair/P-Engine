@@ -104,6 +104,6 @@ For general game engine information, **Game Engine Architecture** by Jason Grego
 
 ## License
 
-As of right now, I haven't settled on an open-source license. That means you shouldn't really touch this code right now, except maybe to build and run it. This codebase is still very much in flux, so it doesn't make much sense to use it at this point. I will add some kind of open-source license once the engine is more mature and capable of being used to create their own engines/games.
+As of right now, I haven't settled on an open-source license. That means you shouldn't really touch this code right now, except maybe to build and run it. This codebase is still very much in flux, so it doesn't make much sense to use it at this point. I will add some kind of open-source license once the engine is more mature and capable of being used to create their own games or modifications of GirEngine.
 
 The end goal is to have this be a good starting point for other people to fork their own versions and go nuts with it, but I want to make sure I make the right decision here!

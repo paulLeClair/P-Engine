@@ -101,3 +101,9 @@ In general there's a lot of good information about render graph architecture on 
 For books, the **Vulkan Programming Guide** by Sellers and Kessenich is something I refer to all the time, as well as the **Vulkan Cookbook** by Pawel Lapinski. When learning Vulkan, you'll unavoidably have to dive into the **Vulkan Specification**. The [**Vulkan Guide**](https://vkguide.dev) and other such online tutorials are also very helpful and I've referred to them often.
 
 For general game engine information, **Game Engine Architecture** by Jason Gregory is very helpful! Thankfully there are lots of great resources and books out there for learning the art and science of computer graphics. I often use **Real-Time Rendering** by Akenine-Moller et al, as well as the graphics bible, **Computer Graphics: Principles and Practice** by Hughes et al. There are plenty of other great graphics books on more specialized topics, such as **Level of Detail for 3D Graphics** by Luebke et al.
+
+## License
+
+As of right now, I haven't settled on an open-source license. That means you shouldn't really touch this code right now, except maybe to build and run it. This codebase is still very much in flux, so it doesn't make much sense to use it at this point. I will add some kind of open-source license once the engine is more mature and capable of being used to create their own engines/games.
+
+The end goal is to have this be a good starting point for other people to fork their own versions and go nuts with it, but I want to make sure I make the right decision here!

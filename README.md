@@ -1,4 +1,4 @@
-# GirEngine
+# GirEngine (formerly P-Engine)
 
 GIR -> Graphics Intermediate Representation, meant to be pronounced as "gear."
 

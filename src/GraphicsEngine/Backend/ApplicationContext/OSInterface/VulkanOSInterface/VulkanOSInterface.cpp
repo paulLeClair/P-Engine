@@ -30,6 +30,11 @@ namespace pEngine::girEngine::backend::appContext::osInterface::vulkan {
 #ifdef _WIN32
         createWin32WindowAndSurface(input.initialWidth, input.initialHeight);// TODO - split this into 2 calls
 #endif
+
+#ifdef __linux__
+        createXLibWindowAndSurface(input.initialWidth, input.initialHeight);
+#endif
+
         createSwapchain(input);
 
         viewport = {
@@ -74,6 +79,40 @@ namespace pEngine::girEngine::backend::appContext::osInterface::vulkan {
 
         if (vkCreateWin32SurfaceKHR(instance, &surfaceCreateInfo, nullptr, &surface) != VK_SUCCESS) {
             throw std::runtime_error("Unable to create win32 surface!");
+        }
+    }
+
+#endif
+
+#ifdef __linux__
+
+    void VulkanOSInterface::createXLibWindowAndSurface(int initialWidth, int initialHeight) {
+        // create x11 display (server?) not sure how x11 works in detail lol
+        x11Display = XOpenDisplay(nullptr);
+        if (!x11Display) {
+            // TODO - log!
+        }
+
+        window = std::make_shared<osWindow::xlib::XLibWindow>(osWindow::xlib::XLibWindow::CreationInput{
+                x11Display,
+                static_cast<unsigned int>(initialWidth),
+                static_cast<unsigned int>(initialHeight),
+                0,
+                0,
+                0 // no clue what this background value should be
+        });
+
+        VkXlibSurfaceCreateInfoKHR xlibSurface{
+                VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
+                nullptr,
+                0,
+                x11Display,
+                std::dynamic_pointer_cast<osWindow::xlib::XLibWindow>(window)->getX11Window()
+        };
+
+        auto result = vkCreateXlibSurfaceKHR(instance, &xlibSurface, nullptr, &surface);
+        if (result != VK_SUCCESS) {
+            // TODO - log!
         }
     }
 

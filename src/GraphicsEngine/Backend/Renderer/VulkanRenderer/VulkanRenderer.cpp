@@ -6,15 +6,6 @@
 using namespace pEngine::girEngine::backend;
 
 render::vulkan::VulkanRenderer::RenderFrameResult render::vulkan::VulkanRenderer::renderFrame() {
-    // okay I guess this is where we'll actually draw an individual frame;
-    // for now I'll keep it simplified so that the renderer acquires, draws, and presents
-    // entirely within this function; not sure if this will even need to change much lol
-
-    // PROBLEM -> barriers only work within a single command buffer!
-    // therefore, I'll have to refactor all this to be writing into 1 command buffer...
-    // kinda lame but not that bad. In the future I can break it up so that 1 single thread
-    // will do this whole process and so we'll basically have as many command buffers as threads
-    // (no idea how well that'll work lmfao)
 
     // 1. acquire image
     boost::optional<unsigned> nextSwapchainIndex = presentationEngine->acquireNextSwapchainImageIndex();
@@ -27,7 +18,7 @@ render::vulkan::VulkanRenderer::RenderFrameResult render::vulkan::VulkanRenderer
 
     // maybe the problem is that we want to wait to reset the command pool until we've acquired the whole next frame
     vkResetCommandPool(applicationContext->getLogicalDevice()->getVkDevice(), commandPool,
-                       0); // TODO - determine if we need flags here
+                       VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT); // ensure resources are released
 
     // 1a. transition swapchain to write-optimal layout
     // (I think a pipeline barrier will be sufficient for this and the other transition)
@@ -92,7 +83,7 @@ render::vulkan::VulkanRenderer::RenderFrameResult render::vulkan::VulkanRenderer
             nullptr,
             imageAcquiredSemaphore,
             0, // this value is ignored unless its a timeline semaphore (which we aren't using here)
-            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, // is this the right stage?
             0, // device group index?? i'm assuming you leave it 0 if you're not using these
     };
 
@@ -142,6 +133,9 @@ render::vulkan::VulkanRenderer::RenderFrameResult render::vulkan::VulkanRenderer
         return RenderFrameResult::FAILURE;
     }
 
+    // prevent memory leaks by FREEING COMMAND BUFFERS!
+    vkFreeCommandBuffers(applicationContext->getLogicalDevice()->getVkDevice(), commandPool, 1, &frameCommandBuffer);
+
     // 4. present (which should hopefully be auto-sync'd with the render complete semaphore)
     auto presentedSuccessfully = presentationEngine->presentSwapchainImage(nextSwapchainIndex.get());
 
@@ -171,9 +165,9 @@ render::vulkan::VulkanRenderer::recordTransitionSwapchainImageLayoutToColorAttac
     VkImageMemoryBarrier2 transitionBarrier{
             VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
             nullptr,
-            VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, // no clue if this src stage flag works...
-            VK_ACCESS_2_TRANSFER_WRITE_BIT,
-            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, // this one seems to be firing off too early...
+            VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT,
+            VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_2_INDEX_READ_BIT,
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
             VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
             VK_IMAGE_LAYOUT_GENERAL,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,

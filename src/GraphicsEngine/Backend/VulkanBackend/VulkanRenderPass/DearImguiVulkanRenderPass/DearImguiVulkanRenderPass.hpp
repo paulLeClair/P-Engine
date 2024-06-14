@@ -143,21 +143,18 @@ namespace pEngine::girEngine::backend::vulkan {
 
         void initializeImmediateSubmissionFence();
 
-        void initializeDearImguiFontsTexture();
+        static void initializeDearImguiFontsTexture();
 
         void immediatelySubmitCommand(const std::function<void(VkCommandBuffer)> &command);
 
-        void beginNewImguiFrame() const;
+        static void beginNewImguiFrame();
 
         void executeDearImGuiCallbacksToDrawRenderables();
-
-        void beginCommandBufferForCurrentFrame(unsigned int currentFrameIndex);
 
         void beginRenderPassForCurrentFrame(VkCommandBuffer &commandBuffer, unsigned int currentFrameIndex);
 
         void setupImguiRenderables();
 
-        void endCommandBufferForCurrentFrame(unsigned int currentFrameIndex);
     };
 
 } // PGraphics

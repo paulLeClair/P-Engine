@@ -18,6 +18,10 @@
 
 using namespace pEngine::core;
 
+// BACK TO THIS SHITE AGAIN!
+// now that the backend can draw frames, we can probably try to get this core menu
+// mode running;
+
 namespace pEngine::app::mode {
     template<typename GirGeneratorType, typename BackendType>
     class CoreMenuEngineMode : public EngineMode<GirGeneratorType, BackendType> {
@@ -239,7 +243,17 @@ namespace pEngine::app::mode {
                 return PrepareSceneResult::FAILURE;
             }
             // for now, maybe we can just create a single imgui render pass?
-            // we'll use no resources, and only the minimum vertex and fragment shaders
+            // we'll use no resources, and only the simple vertex and fragment shaders
+
+            // one thing i have to figure out now: going back to some of the windowing/presentation stuff
+            // and also revisiting the scene's abstraction for render targets...
+            // the ideal behavior would be if it just generates as many render targets as your
+            // chosen presentation mode (which I'll also have to add to the scene I think)
+            // tbh, that stuff might all go into the scene bake code anyway; by default it can generate
+            // a set of render targets or else the user can specify all of them. But it will force the user
+            // to match up the number of manually-specified render targets to be at least as many is required
+            // for the presentation mode chosen.
+            // i can't remember the specifics of all that shit in Vulkan so I'll have to do some reviewing as well.
 
             // create basic unused vertex shader (for now?)
             const std::shared_ptr<scene::ShaderModule> &vertexShaderModule = std::make_shared<scene::ShaderModule>(
@@ -272,7 +286,7 @@ namespace pEngine::app::mode {
                             util::UniqueIdentifier(),
                             scene::graph::renderPass::RenderPass::Subtype::DEAR_IMGUI_RENDER_PASS,
                             obtainGraphicsPipelineConfiguration(),
-                            obtainDearImguiCoreMenuCallbacks() // no imgui callbacks for now
+                            obtainDearImguiCoreMenuCallbacks()
                     });
             scene->getSceneRenderGraph().addNewRenderPass(dearImguiRenderPass);
 
@@ -329,13 +343,9 @@ namespace pEngine::app::mode {
                 MSG uMsg;
                 while (PeekMessage(
                         &uMsg,
-                        // HIDEOUS way of obtaining the HWND lol
-                        std::dynamic_pointer_cast<backend::appContext::osInterface::vulkan::VulkanOSInterface>(
-                                std::dynamic_pointer_cast<backend::appContext::vulkan::VulkanApplicationContext>(
-                                        backend->getApplicationContext())
-                                        ->getOSInterface())->getWin32Window()->getWinApiHWND(),
-                        WM_MOUSEFIRST,
-                        WM_KEYLAST,
+                        0, //NOLINT
+                        0,
+                        0,
                         PM_REMOVE
                 )) {
                     TranslateMessage(&uMsg);

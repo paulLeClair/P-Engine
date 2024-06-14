@@ -69,18 +69,18 @@ namespace pEngine::girEngine::backend::vulkan {
         };
 
         explicit VulkanBufferSuballocator(const CreationInput &creationInput)
-            : bufferUsageFlags(
-                  // basically we just ensure that transfer source and destination usages are enabled unless specifically disabled
-                  getInitialBufferUsageFlags(creationInput.disableTransferDestinationBufferUsage,
-                                             creationInput.disableTransferSourceBufferUsage)
-                  | creationInput.bufferUsageFlags
-              ),
-              defragmentationThreshold(creationInput.defragmentationThreshold),
-              disableTransferDestinationBufferUsage(creationInput.disableTransferDestinationBufferUsage),
-              disableTransferSourceBufferUsage(creationInput.disableTransferSourceBufferUsage),
-              allocator(creationInput.allocator),
-              bufferSize(0u),
-              currentDefragmentationAmount(0u) {
+                : bufferUsageFlags(
+                // basically we just ensure that transfer source and destination usages are enabled unless specifically disabled
+                getInitialBufferUsageFlags(creationInput.disableTransferDestinationBufferUsage,
+                                           creationInput.disableTransferSourceBufferUsage)
+                | creationInput.bufferUsageFlags
+        ),
+                  defragmentationThreshold(creationInput.defragmentationThreshold),
+                  disableTransferDestinationBufferUsage(creationInput.disableTransferDestinationBufferUsage),
+                  disableTransferSourceBufferUsage(creationInput.disableTransferSourceBufferUsage),
+                  allocator(creationInput.allocator),
+                  bufferSize(0u),
+                  currentDefragmentationAmount(0u) {
             // since we'll generally want to be able to copy data to/from buffers, the new approach will be to
             // have the user specifically enable/disable transfer operations with some simple bool flags.
             // i can modify this pretty easily later but for now it should be fine
@@ -102,7 +102,7 @@ namespace pEngine::girEngine::backend::vulkan {
 
         // TODO - modify this so that it doesn't use a unique identifier (?)
         [[nodiscard]] const VulkanBufferSuballocation *findSuballocation(
-            const util::UniqueIdentifier &suballocationUid) const {
+                const util::UniqueIdentifier &suballocationUid) const {
             for (auto &suballocation: suballocations) {
                 if (suballocation->getUniqueIdentifier() == suballocationUid) {
                     return suballocation.get();
@@ -150,9 +150,9 @@ namespace pEngine::girEngine::backend::vulkan {
             }
 
             MemoryBlock(const size_t &offset, const size_t &size, const util::UniqueIdentifier &suballocation_uid)
-                : offset(offset),
-                  size(size),
-                  suballocationUid(suballocation_uid) {
+                    : offset(offset),
+                      size(size),
+                      suballocationUid(suballocation_uid) {
             }
         };
 
@@ -178,7 +178,7 @@ namespace pEngine::girEngine::backend::vulkan {
         void createVulkanBuffer();
 
         void suballocateBuffer(const std::shared_ptr<gir::BufferIR> &bufferToSuballocate,
-                               unsigned long long suballocationOffset);
+                               size_t suballocationOffset);
 
         [[nodiscard]] size_t
         computeNewBufferSize(const std::vector<std::shared_ptr<gir::BufferIR> > &buffersToSuballocate) const;

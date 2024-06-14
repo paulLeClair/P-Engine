@@ -91,7 +91,10 @@ namespace pEngine::girEngine::backend::vulkan {
         imguiInitInfo.MinImageCount = creationInput.numberOfSwapchainImages;
         imguiInitInfo.Allocator = nullptr;
         imguiInitInfo.CheckVkResultFn = nullptr;
-        ImGui_ImplVulkan_Init(&imguiInitInfo, guiRenderPass);
+        // new update allows for dynamic rendering; we can skip it for now I think but it'll simplify things later
+        imguiInitInfo.RenderPass = guiRenderPass;
+        imguiInitInfo.UseDynamicRendering = false;
+        ImGui_ImplVulkan_Init(&imguiInitInfo);
 
 #ifdef _WIN32
         ImGui_ImplWin32_Init(creationInput.hwnd);
@@ -172,7 +175,7 @@ namespace pEngine::girEngine::backend::vulkan {
         attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
         VkAttachmentReference attachmentReference = {};
         attachmentReference.attachment = 0;
@@ -236,15 +239,12 @@ namespace pEngine::girEngine::backend::vulkan {
     }
 
     void DearImguiVulkanRenderPass::initializeDearImguiFontsTexture() {
-        immediatelySubmitCommand([&](VkCommandBuffer cmd) {
-                                     if (!ImGui_ImplVulkan_CreateFontsTexture(cmd)) {
-                                         throw std::runtime_error(
-                                                 "Error in DearImguiVulkanRenderPass creation: Unable to create ImGui Vulkan fonts texture!");
-                                     }
-                                 }
-        );
+        if (!ImGui_ImplVulkan_CreateFontsTexture()) {
+            throw std::runtime_error(
+                    "Error in DearImguiVulkanRenderPass creation: Unable to create ImGui Vulkan fonts texture!");
+        }
 
-        ImGui_ImplVulkan_DestroyFontUploadObjects();
+        ImGui_ImplVulkan_DestroyFontsTexture();
     }
 
     /**
@@ -317,18 +317,11 @@ namespace pEngine::girEngine::backend::vulkan {
             throw std::runtime_error("Unable to submit to core command pool!");
         }
 
-        vkWaitForFences(logicalDevice, 1, &guiCommandPoolImmediateSubmissionFence, true, 9999999);
+        vkWaitForFences(logicalDevice, 1, &guiCommandPoolImmediateSubmissionFence, true, UINT64_MAX);
         vkResetFences(logicalDevice, 1, &guiCommandPoolImmediateSubmissionFence);
 
         vkResetCommandPool(logicalDevice, guiImmediateSubmissionCommandPool, 0);
         vkDestroyCommandPool(logicalDevice, guiImmediateSubmissionCommandPool, nullptr);
-    }
-
-    void DearImguiVulkanRenderPass::endCommandBufferForCurrentFrame(unsigned int currentFrameIndex) {
-        auto result = vkEndCommandBuffer(guiCommandBuffers[currentFrameIndex]);
-        if (result != VK_SUCCESS) {
-            throw std::runtime_error("Error during DearImguiVulkanRenderPass::draw: Unable to end command buffer!");
-        }
     }
 
     void DearImguiVulkanRenderPass::setupImguiRenderables() {
@@ -350,24 +343,13 @@ namespace pEngine::girEngine::backend::vulkan {
         vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
     }
 
-    void DearImguiVulkanRenderPass::beginCommandBufferForCurrentFrame(unsigned int currentFrameIndex) {
-        VkCommandBufferBeginInfo beginInfo = {};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.pNext = nullptr;
-        beginInfo.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        auto result = vkBeginCommandBuffer(guiCommandBuffers[currentFrameIndex], &beginInfo);
-        if (result != VK_SUCCESS) {
-            throw std::runtime_error("Unable to begin gui command buffer!");
-        }
-    }
-
     void DearImguiVulkanRenderPass::executeDearImGuiCallbacksToDrawRenderables() {
         for (auto it = guiRenderableCallbacks.begin(); it != guiRenderableCallbacks.end(); it++) {
             (*it)();
         }
     }
 
-    void DearImguiVulkanRenderPass::beginNewImguiFrame() const {
+    void DearImguiVulkanRenderPass::beginNewImguiFrame() {
         ImGui_ImplVulkan_NewFrame();
 #ifdef _WIN32
         ImGui_ImplWin32_NewFrame();

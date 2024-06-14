@@ -15,20 +15,7 @@ namespace pEngine::girEngine::backend::appContext::osInterface::osWindow::win32 
         }
 
         switch (uMsg) {
-            case WM_SIZE: {
-                int width = LOWORD(lParam);
-                int height = HIWORD(lParam);
-
-                WindowProc_resize(hWnd, (UINT) wParam, width, height);
-
-                // acquire windowsystem pointer attribute from the HWND
-//                auto *windowSystem = reinterpret_cast<OSInterface *>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
-//                windowSystem->resizeWindow((unsigned int) width, (unsigned int) height);
-            }
-                // TODO - sort this hideous win32 api stuff out. For now I'm just looking for bare minimum
-            case WM_DESTROY:
-                ::PostQuitMessage(0);
-                return 0;
+            // TODO - sort this hideous win32 api stuff out. For now I'm just looking for bare minimum
             default:
                 return ::DefWindowProcW(hWnd, uMsg, wParam, lParam);
         }
@@ -100,30 +87,6 @@ namespace pEngine::girEngine::backend::appContext::osInterface::osWindow::win32 
             auto lastError = GetLastError();
             throw std::runtime_error(
                     "Unable to create Win32 HWND! Last Win32 error number: " + std::to_string(lastError));
-        }
-
-        // set HWND property for windowSystem pointer
-
-        // ... have to call SetLastError(0) to be able to determine whether this succeeds or fails?
-        SetLastError(0);
-
-        if (!SetWindowLongPtr(win32Window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(windowSystemPtr))) {
-            auto lastError = GetLastError();
-            if (lastError != 0) {
-                throw std::runtime_error(
-                        "Unable to set HWND's OSInterface pointer attribute! Last Win32 error number: " +
-                        std::to_string(lastError));
-            }
-        }
-
-        // have to call SetWindowPos to make changes effective
-        if (!SetWindowPos(win32Window, nullptr, 0, 0, 0, 0,
-                          SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
-                          SWP_FRAMECHANGED)) { // TODO - change these flags to be user-specified
-            auto lastError = GetLastError();
-            throw std::runtime_error(
-                    "Call to SetWindowPos failed during Win32Window creation! Last Win32 error number: " +
-                    std::to_string(lastError));
         }
 
         // finally, store width and height (TODO - ensure this gets updated when resizing (not implemented yet))

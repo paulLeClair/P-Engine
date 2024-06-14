@@ -13,6 +13,14 @@
 
 #endif
 
+#ifdef __linux__
+
+#include <X11/Xlib.h>
+
+#include <vulkan/vulkan_xlib.h>
+
+#endif
+
 #include <memory>
 #include <vector>
 #include <stdexcept>
@@ -21,6 +29,7 @@
 #include "../OSWindow/OSWindow.h"
 #include "VulkanSwapchain/VulkanSwapchain.hpp"
 #include "../OSWindow/Win32Window/Win32Window.hpp"
+#include "../OSWindow/XLibWindow/XLibWindow.hpp"
 
 namespace pEngine::girEngine::backend::appContext::osInterface::vulkan {
 
@@ -65,9 +74,23 @@ namespace pEngine::girEngine::backend::appContext::osInterface::vulkan {
             return vulkanSwapchain;
         }
 
+#ifdef _WIN32
         std::shared_ptr<osWindow::win32::Win32Window> getWin32Window() {
             return std::dynamic_pointer_cast<osWindow::win32::Win32Window>(window);
         }
+
+        void createWin32WindowAndSurface(int initialWidth, int initialHeight);
+#endif
+
+#ifdef __linux__
+
+        std::shared_ptr<osWindow::xlib::XLibWindow> getXLibWindow() {
+            return std::dynamic_pointer_cast<osWindow::xlib::XLibWindow>(window);
+        }
+
+        void createXLibWindowAndSurface(int initialWidth, int initialHeight);
+
+#endif
 
         [[nodiscard]] const VkViewport &getViewport() const {
             return viewport;
@@ -100,6 +123,11 @@ namespace pEngine::girEngine::backend::appContext::osInterface::vulkan {
         VkRect2D scissor;
 
         // TODO - refactor this so we can easily resize the window and recreate the swapchain/acquire images when we do
+
+#ifdef __linux__
+
+        Display *x11Display = nullptr;
+#endif
 
         [[nodiscard]] std::vector<VkSurfaceFormatKHR> getPhysicalDeviceSurfaceFormats() const {
             uint32_t numberOfSurfaceFormats = 0;
@@ -178,8 +206,6 @@ namespace pEngine::girEngine::backend::appContext::osInterface::vulkan {
                             boost::none // TODO - support old swapchain usage lol
                     });
         }
-
-        void createWin32WindowAndSurface(int initialWidth, int initialHeight);
 
         void build(const CreationInput &input);
 

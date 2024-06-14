@@ -27,10 +27,6 @@ namespace pEngine::threadPool {
 
         ~ThreadPool() = default;
 
-        unsigned int getNumberOfWorkerThreads() {
-
-        }
-
 
     private:
         // One amazing implementation I've found (which boasts crazy performance and is very lightweight)

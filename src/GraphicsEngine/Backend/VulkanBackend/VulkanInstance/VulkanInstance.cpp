@@ -9,9 +9,11 @@
 namespace pEngine::girEngine::backend::appContext::vulkan {
 
     const std::map<VulkanInstance::SupportedInstanceExtension, std::string> VulkanInstance::SUPPORTED_INSTANCE_EXTENSION_NAMES = {
-            {VulkanInstance::SupportedInstanceExtension::SURFACE_EXTENSION, VK_KHR_SURFACE_EXTENSION_NAME},
+            {VulkanInstance::SupportedInstanceExtension::SURFACE_EXTENSION,      VK_KHR_SURFACE_EXTENSION_NAME},
             {VulkanInstance::SupportedInstanceExtension::WINDOWS_SURFACE_EXTENSION,
-                                                                            VK_KHR_WIN32_SURFACE_EXTENSION_NAME},
+                                                                                 VK_KHR_WIN32_SURFACE_EXTENSION_NAME},
+            {VulkanInstance::SupportedInstanceExtension::XLIB_SURFACE_EXTENSION, VK_KHR_XLIB_SURFACE_EXTENSION_NAME},
+
             // TODO - any other instance extensions we want to support
     };
 
@@ -73,7 +75,7 @@ namespace pEngine::girEngine::backend::appContext::vulkan {
                                                                  info.vulkanApiVersion);
 
         VkInstanceCreateInfo singleInstanceCreateInfo = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-                                                         NULL,// NOLINT(modernize-use-nullptr)
+                                                         nullptr,
                                                          0,
                                                          &applicationInfo,
                                                          static_cast<uint32_t>( enabledInstanceLayers.size()),

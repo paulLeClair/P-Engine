@@ -16,8 +16,6 @@
 #include "../IntrusiveHashMap/IntrusiveHashMap.hpp"
 
 namespace pEngine::util::objectPool {
-    using ObjectPoolIndex = unsigned int;
-    using UpdatesSinceLastUsage = unsigned int;
 
     template<typename ObjectType>
     class ObjectHashPoolEntry : public IntrusiveHashMapEntry<ObjectType> {

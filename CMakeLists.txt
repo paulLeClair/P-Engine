@@ -24,6 +24,7 @@ foreach (GLSL ${GLSL_SOURCE_FILES})
     get_filename_component(FILE_NAME ${GLSL} NAME_WE)
     set(SPIRV_BINARY "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/bin/${FILE_NAME}.spv")
     message(STATUS ${GLSL})
+    message(STATUS "spir-v binary output dir: ${SPIRV_BINARY}")
     ##execute glslang command to compile that specific shader
     add_custom_command(
             OUTPUT ${SPIRV_BINARY}
@@ -32,8 +33,11 @@ foreach (GLSL ${GLSL_SOURCE_FILES})
     list(APPEND SPIRV_BINARY_FILES ${SPIRV_BINARY})
 endforeach (GLSL)
 
+message(STATUS "Spir-V binary files: ${SPIRV_BINARY_FILES}")
+
 add_custom_target(
         Shaders
+        ALL
         DEPENDS ${SPIRV_BINARY_FILES}
 )
 
@@ -302,7 +306,8 @@ set(PEngine_src
         src/GraphicsEngine/Backend/Renderer/PresentationEngine/VulkanPresentationEngine/VulkanPresentationEngine.hpp
         src/GraphicsEngine/GraphicsIR/RenderPassIR/DearImguiRenderPassIR/DearImguiRenderPassIR.hpp
         src/GraphicsEngine/Scene/RenderGraph/RenderPass/DynamicRenderPass/DynamicRenderPass.hpp
-        src/GraphicsEngine/Backend/Renderer/VulkanRenderer/VulkanRenderer.cpp)
+        src/GraphicsEngine/Backend/Renderer/VulkanRenderer/VulkanRenderer.cpp
+        src/GraphicsEngine/Backend/ApplicationContext/OSInterface/OSWindow/XLibWindow/XLibWindow.hpp)
 
 if (WIN32)
     list(APPEND PEngine_src
@@ -311,21 +316,41 @@ if (WIN32)
 endif (WIN32)
 
 if (UNIX)
-    # TODO - include GLFW and what not
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 endif (UNIX)
 
 # SET UP PGAME EXECUTABLE
 add_executable(pgame WIN32 ${Pgame_main} ${PEngine_src})
-target_include_directories(pgame PUBLIC BEFORE ${Vulkan_INCLUDE_DIRS} src/lib/vk_mem_alloc/vk_mem_alloc.h)
+target_include_directories(
+        pgame
+        PUBLIC BEFORE ${Vulkan_INCLUDE_DIRS}
+        src/lib/vk_mem_alloc/vk_mem_alloc.h
+)
 target_link_libraries(pgame Vulkan::Vulkan)
+
+if (UNIX)
+    find_package(X11 REQUIRED)
+    if (X11_FOUND)
+        message(STATUS "X11 found: ${X11_LIBRARIES}")
+        target_include_directories(pgame PUBLIC AFTER "${X11_INCLUDE_DIR}/X11")
+        target_link_directories(pgame PUBLIC "${X11_INCLUDE_DIR}/X11")
+        target_link_libraries(pgame ${X11_LIBRARIES})
+    endif (X11_FOUND)
+
+    #actually it might be way easier to just use glfw
+    find_package(glfw3 3.3 REQUIRED)
+
+    target_link_libraries(pgame glfw)
+
+endif (UNIX)
 
 # SETUP GOOGLETEST
 include(FetchContent)
 FetchContent_Declare(
         googletest
         # UPDATE COMMIT HASH REGULARLY (the part before the ".zip")
-        URL https://github.com/google/googletest/archive/f2d71f0be2ff2230789cfaf37d4c4f38db5b1c7c.zip
+        DOWNLOAD_EXTRACT_TIMESTAMP ON
+        URL https://github.com/google/googletest/archive/1d17ea141d2c11b8917d2c7d029f1c4e2b9769b2.zip
 )
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
@@ -414,8 +439,12 @@ set(Boost_USE_STATIC_RUNTIME OFF)
 
 find_package(Boost 1.83.0 REQUIRED)
 message(STATUS "Boost found: " ${BOOST_FOUND})
+
 include_directories(${Boost_INCLUDE_DIRS})
 #target_link_libraries(pgame PUBLIC Boost::container)
+
+# experiment: add utilities to include?
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/utilities SYSTEM)
 
 add_executable(pgameTest WIN32 ${PEngine_src} ${PEngine_test})
 target_include_directories(pgameTest PUBLIC BEFORE ${Vulkan_INCLUDE_DIRS})

@@ -6,30 +6,21 @@
 
 #include <windows.h>
 
-// this macro will be used to control whether the main actually runs the application or just returns
-#define RUN_APPLICATION_WINDOW
+#endif
 
-#ifdef RUN_APPLICATION_WINDOW
 // application includes
 #include "Application/Application.hpp"
 #include "EngineCore/EngineCore.hpp"
 #include "GraphicsEngine/Backend/VulkanBackend/VulkanBackend.hpp"
 #include "Application/EngineMode/CoreMenuEngineMode/CoreMenuEngineMode.hpp"
 
+//#define DISABLE_VALIDATION_LAYER
 
 using namespace pEngine;
 using namespace pEngine::app;
 using namespace pEngine::core;
 
-#endif
-
-
-INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow) {
-
-    std::cout << "Pee Engine, Activate!" << std::endl;
-
-#ifdef RUN_APPLICATION_WINDOW
-
+void runEngine() {
     auto scene = std::make_shared<scene::Scene>(scene::Scene::CreationInput{
             "Core Menu Demo scene",
             "Core Menu Demo Render Graph"
@@ -41,9 +32,17 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
             nullptr, // ignore threadpool for now
             {
                     backend::appContext::vulkan::VulkanInstance::SupportedInstanceExtension::SURFACE_EXTENSION,
-                    backend::appContext::vulkan::VulkanInstance::SupportedInstanceExtension::WINDOWS_SURFACE_EXTENSION},
+#ifdef _WIN32
+                    backend::appContext::vulkan::VulkanInstance::SupportedInstanceExtension::WINDOWS_SURFACE_EXTENSION
+#endif
+#ifdef __linux__
+                    backend::appContext::vulkan::VulkanInstance::SupportedInstanceExtension::XLIB_SURFACE_EXTENSION
+#endif
+            },
             {
+#ifndef DISABLE_VALIDATION_LAYER
                     backend::appContext::vulkan::VulkanInstance::SupportedLayers::VALIDATION_LAYER
+#endif
             },
             {
                     backend::appContext::vulkan::VulkanLogicalDevice::SupportedDeviceExtension::SWAPCHAIN_EXTENSION,
@@ -100,8 +99,15 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     catch (std::exception &e) {
         std::cout << "Pee Engine has died! Reason: " << e.what() << std::endl;
     }
+}
 
-#endif
+#ifdef _WIN32
+
+INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow) {
+
+    std::cout << "Pee Engine, Activate!" << std::endl;
+
+    runEngine();
 
     return 0;
 }
@@ -109,11 +115,15 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 #endif
 
 #ifdef __linux__
+
 // LINUX/MAC(?) ENTRY POINT
-int main( int argc, char *argv[] ) {
+int main(int argc, char *argv[]) {
 
-  std::cout << "Pee Engine, Activate!" << std::endl;
+    std::cout << "Pee Engine, Activate!" << std::endl;
 
-  return 0;
+    runEngine();
+
+    return 0;
 }
+
 #endif

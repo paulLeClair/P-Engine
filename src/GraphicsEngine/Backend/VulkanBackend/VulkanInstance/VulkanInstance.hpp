@@ -9,6 +9,18 @@
 
 #include <vulkan/vulkan.h>
 
+#define VK_KHR_XLIB_SURFACE_EXTENSION_NAME ""
+
+#ifdef __linux__
+
+#include <X11/Xlib.h>
+#include <vulkan/vulkan_xlib.h>
+
+// to fix issue with the surface name not existing if the vulkan X11 stuff isn't included
+#define VK_KHR_XLIB_SURFACE_EXTENSION_NAME "VK_KHR_xlib_surface"
+
+#endif
+
 #include <map>
 #include <memory>
 #include <string>
@@ -30,6 +42,7 @@ namespace pEngine::girEngine::backend::appContext::vulkan {
             UNKNOWN,
             SURFACE_EXTENSION,
             WINDOWS_SURFACE_EXTENSION,
+            XLIB_SURFACE_EXTENSION
         };
 
         /**

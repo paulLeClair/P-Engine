@@ -6,7 +6,7 @@
 
 #include <boost/optional/optional.hpp>
 
-#include "../../../../utilities/UniqueIdentifier/UniqueIdentifier.hpp"
+#include "../../../../../utilities/UniqueIdentifier/UniqueIdentifier.hpp"
 
 namespace pEngine::girEngine::backend::vulkan::descriptor::set {
     /**
@@ -40,7 +40,7 @@ namespace pEngine::girEngine::backend::vulkan::descriptor::set {
         // purpose
 
         explicit DescriptorBinding(const util::UniqueIdentifier &resource_id)
-            : boundResourceUid(resource_id) {
+                : boundResourceUid(resource_id) {
         }
 
         friend bool operator==(const DescriptorBinding &lhs, const DescriptorBinding &rhs) {
@@ -123,20 +123,21 @@ namespace pEngine::girEngine::backend::vulkan::descriptor::set {
          */
         boost::optional<VkBufferView> boundTexelBufferView = boost::none;
 
-        WriteBinding(const UniqueIdentifier &resourceId, const uint32_t bindingIndex, const uint32_t descriptorArrayIndex,
+        WriteBinding(const UniqueIdentifier &resourceId, const uint32_t bindingIndex,
+                     const uint32_t descriptorArrayIndex,
                      const uint32_t descriptorCount, const VkDescriptorType descriptorType,
                      const boost::optional<VkDescriptorImageInfo> &boundImage,
                      const boost::optional<VkDescriptorBufferInfo> &boundBuffer,
                      const boost::optional<VkBufferView> &boundTexelBufferView) : DescriptorBinding(resourceId),
-            bindingIndex(bindingIndex),
-            descriptorArrayIndex(
-                descriptorArrayIndex),
-            descriptorCount(descriptorCount),
-            descriptorType(descriptorType),
-            boundImage(boundImage),
-            boundBuffer(boundBuffer),
-            boundTexelBufferView(
-                boundTexelBufferView) {
+                                                                                  bindingIndex(bindingIndex),
+                                                                                  descriptorArrayIndex(
+                                                                                          descriptorArrayIndex),
+                                                                                  descriptorCount(descriptorCount),
+                                                                                  descriptorType(descriptorType),
+                                                                                  boundImage(boundImage),
+                                                                                  boundBuffer(boundBuffer),
+                                                                                  boundTexelBufferView(
+                                                                                          boundTexelBufferView) {
         }
     };
 
@@ -175,12 +176,12 @@ namespace pEngine::girEngine::backend::vulkan::descriptor::set {
                               const uint32_t sourceBindingIndex,
                               const uint32_t sourceArrayElement, const uint32_t destinationBindingIndex,
                               const uint32_t destinationArrayElement)
-            : DescriptorBinding(uid),
-              descriptorCount(descriptorCount),
-              sourceBindingIndex(sourceBindingIndex),
-              sourceArrayElement(sourceArrayElement),
-              destinationBindingIndex(destinationBindingIndex),
-              destinationArrayElement(destinationArrayElement) {
+                : DescriptorBinding(uid),
+                  descriptorCount(descriptorCount),
+                  sourceBindingIndex(sourceBindingIndex),
+                  sourceArrayElement(sourceArrayElement),
+                  destinationBindingIndex(destinationBindingIndex),
+                  destinationArrayElement(destinationArrayElement) {
         }
     };
 
@@ -205,9 +206,9 @@ namespace pEngine::girEngine::backend::vulkan::descriptor::set {
                           const uint32_t sourceBindingIndex,
                           const uint32_t sourceArrayElement, const uint32_t destinationBindingIndex,
                           const uint32_t destinationArrayElement, VkDescriptorSet destinationDescriptorSet)
-            : CopyDescriptorBinding(uid, descriptorCount, sourceBindingIndex, sourceArrayElement,
-                                    destinationBindingIndex, destinationArrayElement),
-              destinationDescriptorSet(destinationDescriptorSet) {
+                : CopyDescriptorBinding(uid, descriptorCount, sourceBindingIndex, sourceArrayElement,
+                                        destinationBindingIndex, destinationArrayElement),
+                  destinationDescriptorSet(destinationDescriptorSet) {
         }
     };
 
@@ -231,9 +232,9 @@ namespace pEngine::girEngine::backend::vulkan::descriptor::set {
                                const uint32_t sourceBindingIndex,
                                const uint32_t sourceArrayElement, const uint32_t destinationBindingIndex,
                                const uint32_t destinationArrayElement, VkDescriptorSet sourceDescriptorSet)
-            : CopyDescriptorBinding(uid, descriptorCount, sourceBindingIndex, sourceArrayElement,
-                                    destinationBindingIndex, destinationArrayElement),
-              sourceDescriptorSet(sourceDescriptorSet) {
+                : CopyDescriptorBinding(uid, descriptorCount, sourceBindingIndex, sourceArrayElement,
+                                        destinationBindingIndex, destinationArrayElement),
+                  sourceDescriptorSet(sourceDescriptorSet) {
         }
     };
 

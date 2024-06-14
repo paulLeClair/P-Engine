@@ -71,7 +71,9 @@ cmake --build ./build --config Debug --target pgame
 
 Currently the engine doesn't do much when you run it, but with a few more additions it should be able to do something interesting I hope! The base implementation of the engine shouldn't do a lot on its own, anyway; the user has to specialize it by extending it with their own code. When it's ready, I'll refit this entire build process so that you only have to supply your relevant source files and the engine will hook them in (assuming that's doable).
 
-## External Libraries
+## External Libraries 
+
+NOTE - there has been a ton of updates since I wrote this. This is not exhaustive! External library code can be found in `src/libs`
 
   - GTest - this is what we use for testing! Ubiquitous C++ testing library by Google, very easy to use and convenient
 

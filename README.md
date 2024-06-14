@@ -36,8 +36,8 @@ Below is a gif showing the engine in action, with some basic interactable DearIm
   - prepares required data and facilitates real-time rendering using the Vulkan 1.3 API
   - operates by accepting a set of GraphicsIntermediateRepresentation objects as input
   - translates backend-agnostic info into the analogous Vulkan data structures & API calls
-  - integration of SPIRVReflect for SPIR-V shader module reflection"
-  - aiming to automate a lot of boilerplate code, but with configurability where needed"
+  - integration of SPIRVReflect for SPIR-V shader module reflection
+  - aiming to automate a lot of boilerplate code, but with configurability where needed
   - provides general interface for integration with different OS window systems
     
 - Basic integration with Windows, partial integration with Linux

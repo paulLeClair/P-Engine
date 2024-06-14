@@ -8,11 +8,11 @@ GIR -> Graphics Intermediate Representation, meant to be pronounced as "gear."
 
 The text in the screenshot & animation is kind of squashed in the readme itself, you may want to click the files to view them in higher resolution!
 
-Here's a screenshot of the engine, with a description of the current features. 
+Here's a screenshot and short clip of the core menu demo running on Windows. The demo text contains a description of the engine's current features, which can also be found below for your convenience.
 
 ![](https://github.com/paulLeClair/P-Engine/blob/main/Original_Core_Menu_Demo_Screenshot.png)
 
-Below is a gif showing the engine in action, with some basic interactable DearImGui widgets.
+Below is a gif showing the engine in action, with some basic interactable DearImGui widgets rendered in real-time.
 
 ![](https://github.com/paulLeClair/P-Engine/blob/main/Original_Core_Menu_Demo_Gif.gif)
 

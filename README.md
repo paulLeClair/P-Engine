@@ -78,19 +78,14 @@ NOTE - there has been a ton of updates since I wrote this. This is not exhaustiv
   - GTest - this is what we use for testing! Ubiquitous C++ testing library by Google, very easy to use and convenient
 
   - [DearIMGUI](https://github.com/ocornut/imgui)
-    - This is used to provide a sort of default GUI option, although implementing your own GUI library or integrating another should be an option. It's an amazing library in its own right, and I imagine I'll be leveraging it a lot especially when the engine is ready to support complex logic.
 
   - [Mesh Optimizer](https://github.com/zeux/meshoptimizer)
-    - Incredible library, will be used for geometry processing!
 
   - [SPIR-V Reflect](https://github.com/KhronosGroup/SPIRV-Reflect)
-    - Another great library (in addition to SPIRV-Cross) which is used for shader reflection, very useful in the design of the renderer!
 
   - [OpenGL Mathematics (GLM)](https://github.com/g-truc/glm)
-    - This is a pretty common mathematics library for graphics programming, and the engine makes extensive use of it.
 
   - [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator)
-    - This wonderful work of art provides super-convenient memory management, which can be quite intense and time-consuming to set up on your own.
 
 ## Good Resources
 

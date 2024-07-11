@@ -12,7 +12,7 @@ Here's a screenshot and short clip of the core menu demo running on Windows. The
 
 ![](https://github.com/paulLeClair/P-Engine/blob/main/Original_Core_Menu_Demo_Screenshot.png)
 
-Below is a gif showing the engine in action, with some basic interactable DearImGui widgets rendered in real-time.
+Below is a gif showing the engine in action on Windows, with some basic interactable DearImGui widgets rendered in real-time.
 
 ![](https://github.com/paulLeClair/P-Engine/blob/main/Original_Core_Menu_Demo_Gif.gif)
 

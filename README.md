@@ -43,6 +43,10 @@ Below is a gif showing the engine in action, with some basic interactable DearIm
 - Basic integration with Windows, partial integration with Linux
   - pre-alpha window system integration and input handling
 
+## License
+
+There is no license present until the project matures a little bit more - I retain full ownership for now.
+
 ## Build Instructions
 
 This project uses CMake 3.15+. It should build and run on Windows, and it should build (but not run) on Linux.

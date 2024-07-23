@@ -43,6 +43,10 @@ Below is a gif showing the engine in action on Windows, with some basic interact
 - Basic integration with Windows, partial integration with Linux
   - pre-alpha window system integration and input handling
 
+## License
+
+There is no license present until the project matures a little bit more - I retain full ownership for now.
+
 ## Build Instructions
 
 This project uses CMake 3.15+. It should build and run on Windows, and it should build (but not run) on Linux.
@@ -68,8 +72,6 @@ To build the engine itself, run the following command (I only ever use the defau
 ~~~~Shell
 cmake --build ./build --config Debug --target pgame
 ~~~~
-
-Currently the engine doesn't do much when you run it, but with a few more additions it should be able to do something interesting I hope! The base implementation of the engine shouldn't do a lot on its own, anyway; the user has to specialize it by extending it with their own code. When it's ready, I'll refit this entire build process so that you only have to supply your relevant source files and the engine will hook them in (assuming that's doable).
 
 ## External Libraries 
 

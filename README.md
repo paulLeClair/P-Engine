@@ -45,7 +45,7 @@ Below is a gif showing the engine in action on Windows, with some basic interact
 
 ## License
 
-There is no license present until the project matures a little bit more - I retain full ownership for now.
+There is no license present until the project matures a little bit more - I reserve all rights for now.
 
 ## Build Instructions
 

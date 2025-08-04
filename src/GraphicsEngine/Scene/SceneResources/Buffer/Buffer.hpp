@@ -58,12 +58,10 @@ namespace pEngine::girEngine::scene {
 
             boost::optional<uint32_t> descriptorSetIndex = boost::none;
 
-            boost::optional<bool> containsAnimationPoses = false;
         };
 
         explicit Buffer(const CreationInput &createInfo)
-            : containsAnimationPoseData(createInfo.containsAnimationPoses.get_value_or(false)),
-              name(createInfo.name),
+            : name(createInfo.name),
               uid(createInfo.uid),
               maxBufferSize(createInfo.optionalMaxBufferSize),
               bufferSubtype(createInfo.bufferType),
@@ -141,9 +139,6 @@ namespace pEngine::girEngine::scene {
                 maxBufferSize
             };
         }
-
-        // temporary hacky mechanism for labeling animation data that the system will grab out for you
-        bool containsAnimationPoseData = false;
 
         std::string name;
         util::UniqueIdentifier uid;

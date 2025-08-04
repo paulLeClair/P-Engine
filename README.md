@@ -44,6 +44,7 @@ As the screen recording shows, the interim release GUI is minimal as far as prac
 - [ ] Ability to export modified model to a new file
 - [ ] Model file loading is fully integrated into GUI
 - [ ] Ability to load multiple animations and switch between them
+- [ ] Texture support
 
  Since the remaining features are just "cherry-on-top" things that go on top of the core update, they'll come a bit later in a separate PR.
 

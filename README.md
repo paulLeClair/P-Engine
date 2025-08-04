@@ -1,4 +1,4 @@
-# GirEngine - Animated Model Demo Interim Release
+# GearEngine - Animated Model Demo Interim Release
 
 > 07/2025 - This is the Interim Model Demo Release! Full version coming soon
 

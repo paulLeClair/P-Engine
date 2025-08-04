@@ -21,6 +21,8 @@
 
 #endif
 
+#include <format>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <string>
@@ -42,7 +44,8 @@ namespace pEngine::girEngine::backend::appContext::vulkan {
             UNKNOWN,
             SURFACE_EXTENSION,
             WINDOWS_SURFACE_EXTENSION,
-            XLIB_SURFACE_EXTENSION
+            XLIB_SURFACE_EXTENSION,
+            DEBUG_UTILS
         };
 
         /**
@@ -134,7 +137,30 @@ namespace pEngine::girEngine::backend::appContext::vulkan {
          */
         const static std::map<SupportedLayers, std::string> SUPPORTED_INSTANCE_LAYER_NAMES;
 
+        // FOR DEBUG UTILS -> this is our callback
+        VKAPI_ATTR static VkBool32 VKAPI_CALL debug_utils_messenger_callback(
+            VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
+            VkDebugUtilsMessageTypeFlagsEXT message_type,
+            const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
+            void *user_data) {
+            std::string message_id_name = callback_data->pMessageIdName
+                                              ? std::string(callback_data->pMessageIdName)
+                                              : "<No message ID>";
+            if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+                std::cout << std::format("{} - {}: {}", callback_data->messageIdNumber, message_id_name,
+                                         callback_data->pMessage) << std::endl;
+            } else if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+                std::cout << std::format("{} - {}: {}", callback_data->messageIdNumber, message_id_name,
+                                         callback_data->pMessage) << std::endl;
+            } else if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
+                std::cout << std::format("{} - {}: {}", callback_data->messageIdNumber, message_id_name,
+                                         callback_data->pMessage) << std::endl;
+            }
+            return VK_FALSE;
+        }
+
         VkInstance instance;
+        VkDebugUtilsMessengerEXT messenger;
 
         enum class CreateInstanceResult {
             SUCCESS,

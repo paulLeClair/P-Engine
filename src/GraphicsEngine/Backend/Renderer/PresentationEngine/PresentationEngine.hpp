@@ -5,22 +5,27 @@
 #pragma once
 
 
-namespace pEngine::girEngine::backend::render::present {
-
-/**
- * Current idea (subject to change):
- * This will be the base class for different presentation modes that the user may want;
- * since all presentation modes involve first acquiring a swapchain image and then presenting
- * it after rendering has completed, those are the main 2 points where polymorphism will come into play.
- *
- * This way I can easily add new presentation modes in later issues and it should nicely separate out all the
- * swapchain-specific code into this one place; as far as the actual renderer will be concerned, it shouldn't matter
- * where the image came from (ie it's a swapchain image, or otherwise (most likely) it's some kind of image you created
- * explicitly for offline rendering/dynamic textures/whatever).
- *
- * This base class will serve as the "interface" but the majority of implementation details will have to be
- * implemented as subclasses that are focused around a backend (or multiple backends if you're kooky insane)
- */
+namespace pEngine::girEngine::backend {
+    /**
+     * Current idea (subject to change):
+     * This will be the base class for different presentation modes that the user may want;
+     * since all presentation modes involve first acquiring a swapchain image and then presenting
+     * it after rendering has completed, those are the main 2 points where polymorphism will come into play.
+     *
+     * This way I can easily add new presentation modes in later issues and it should nicely separate out all the
+     * swapchain-specific code into this one place; as far as the actual renderer will be concerned, it shouldn't matter
+     * where the image came from (ie it's a swapchain image, or otherwise (most likely) it's some kind of image you created
+     * explicitly for offline rendering/dynamic textures/whatever).
+     *
+     * This base class will serve as the "interface" but the majority of implementation details will have to be
+     * implemented as subclasses that are focused around a backend (or multiple backends if you're kooky insane)
+     *
+     * NOTE -> it seems like this is not the best use case for the interface->impl/dependency injeection kinda design
+     * that exists ATOW. Unless of course I decide to just hide the interface method behind another method which defeats
+     * the purpose of having an interface at all (since our VulkanPresentationEngine is gonna have a different func sig)
+     *
+     *
+     */
     class PresentationEngine {
     public:
         virtual ~PresentationEngine() = default;
@@ -43,7 +48,6 @@ namespace pEngine::girEngine::backend::render::present {
 
         // the other thing that using indices makes necessary: the presentation engine itself will need to hold onto these images.
         // That's kinda okay though I think because it can just hold onto a handle to the swapchain itself.
-        virtual bool presentSwapchainImage(unsigned swapchainImageIndex) = 0;
+        // virtual bool presentSwapchainImage(unsigned swapchainImageIndex) = 0;
     };
-
 }

@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 #include "../../../../../src/GraphicsEngine/GraphicsIR/ResourceIR/BufferIR/BufferIR.hpp"
-#include "../../../../../src/lib/glm/vec3.hpp"
+#include <glm/vec3.hpp>
 
 using namespace pEngine::girEngine::gir;
 
@@ -18,13 +18,13 @@ protected:
 
 TEST_F(BufferIRTest, BasicCreationWithNoData) {
     ASSERT_NO_THROW(buffer = std::make_shared<BufferIR>(BufferIR::CreationInput{
-        "testBufferIR",
-        pEngine::util::UniqueIdentifier(),
-        GIRSubtype::BUFFER,
-        {BufferIR::BufferUsage::UNIFORM_BUFFER}, // arbitrary buffer usage
-        nullptr,
-        0
-        }));
+            "testBufferIR",
+            pEngine::util::UniqueIdentifier(),
+            GIRSubtype::BUFFER,
+            {BufferIR::BufferUsage::UNIFORM_BUFFER}, // arbitrary buffer usage
+            nullptr,
+            0
+    }));
 }
 
 TEST_F(BufferIRTest, BasicCreationWithData) {
@@ -35,9 +35,9 @@ TEST_F(BufferIRTest, BasicCreationWithData) {
     static const TestVectorType &thirdVector = glm::vec3(2.0);
 
     static const std::vector<TestVectorType> TEST_DATA = {
-        firstVector,
-        secondVector,
-        thirdVector
+            firstVector,
+            secondVector,
+            thirdVector
     };
 
     const char *testName = "testBufferIR";
@@ -45,13 +45,13 @@ TEST_F(BufferIRTest, BasicCreationWithData) {
     constexpr auto testBufferUsage = BufferIR::BufferUsage::UNIFORM_BUFFER;
 
     ASSERT_NO_THROW(buffer = std::make_shared<BufferIR>(BufferIR::CreationInput{
-        testName,
-        testUid,
-        GIRSubtype::BUFFER,
-        {testBufferUsage},
-        reinterpret_cast<const unsigned char *>(TEST_DATA.data()),
-        static_cast<unsigned long>(TEST_DATA.size() * sizeof(TestVectorType))
-        }));
+            testName,
+            testUid,
+            GIRSubtype::BUFFER,
+            {testBufferUsage},
+            reinterpret_cast<const unsigned char *>(TEST_DATA.data()),
+            static_cast<unsigned long>(TEST_DATA.size() * sizeof(TestVectorType))
+    }));
 
     constexpr auto testUsages = testBufferUsage;
     ASSERT_EQ(testName, buffer->getName());

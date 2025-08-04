@@ -9,245 +9,158 @@
 #include "../../../GraphicsIR/ResourceIR/ImageIR/ImageIR.hpp"
 #include "../../../GraphicsIR/ResourceIR/ShaderConstantIR/ShaderConstantIR.hpp"
 #include "../VulkanImage/VulkanImage.hpp"
+#include "../Model/VulkanModel.hpp"
+#include "../VulkanPushConstant/VulkanPushConstant.hpp"
 
 namespace pEngine::girEngine::backend::vulkan {
     /**
-     * Idea: to prevent having to pass in a handle to the backend for this functionality,
-     * I'll make this class be responsible for hanging on to the resources in an active
-     * Vulkan rendering context (which I guess is just the entire state of girEngine
-     * running a vulkan backend).
-     *
-     * The idea should be that the "scene" (n2b confused with frontend scene) will have a
-     * a bunch of resources that may be created/destroyed etc as execution happens;
-     *
-     * One thing: should I be having this object just receiving already-created resources?
-     * Or should I have this thing act as an allocator or something?
-     *
-     * Hmm it might make sense to have it be more of an allocator because it's kind of handling
-     * that one aspect for the backend itself;
-     *
-     * That's definitely a solid idea I think and it would make sense to break off the allocation stuff
-     * into a class where I can more easily fuck with the allocation process itself; for this current bout of work
-     * it may make sense to just throw in some relatively-empty interface methods that allow you to acquire
-     * a resource by its UID or w/e
-     *
+     * This is deprecated
      */
     class VulkanResourceRepository {
     public:
         struct CreationInput {
-            appContext::vulkan::VulkanLogicalDevice &device;
-            VmaAllocator allocator;
+            VkDevice device = VK_NULL_HANDLE;
+            uint32_t deviceGraphicsQueueFamilyIndex = 0;
+            VmaAllocator allocator = VK_NULL_HANDLE;
 
-            std::vector<std::shared_ptr<gir::BufferIR> > bufferGirs = {};
-            std::vector<std::shared_ptr<gir::ImageIR> > imageGirs = {};
-            std::vector<std::shared_ptr<gir::ShaderConstantIR> > shaderConstantGirs = {};
+            std::vector<gir::BufferIR> bufferGirs = {};
+            std::vector<gir::ImageIR> imageGirs = {}; // not used right now
+            std::vector<gir::ShaderConstantIR> shaderConstantGirs = {};
+            std::vector<gir::model::ModelIR> modelGirs = {};
+
+            uint32_t minUniformBufferAlignment;
         };
 
 
         explicit VulkanResourceRepository(const CreationInput &creationInput)
-                : device(creationInput.device), allocator(creationInput.allocator) {
-            // first we create the buffers
+            : minimumUniformBufferAlignment(creationInput.minUniformBufferAlignment), device(creationInput.device),
+              queueFamilyIndices({creationInput.deviceGraphicsQueueFamilyIndex}) {
+            allocator = creationInput.allocator;
+
+            // initialize buffer suballocators (just uniforms are used right now)
+            uniformBufferSuballocator = VulkanBufferSuballocator(
+                VulkanBufferSuballocator::CreationInput{
+                    allocator,
+                    VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                    {},
+                    queueFamilyIndices,
+                    creationInput.minUniformBufferAlignment
+                }
+            );
+
+            // create the buffers
             suballocateBufferGirs(creationInput.bufferGirs);
 
             // then we create images
-            allocateImageGirs(creationInput.imageGirs);
+            allocateImageGirs(creationInput.imageGirs); // non-swapchain images are temporarily disabled
 
-            // then we set up the shader constants
-            allocateShaderConstantGirs(creationInput.shaderConstantGirs);
+            // then we set up the shader constants (push constants in vulkan terminology)
+            // TODO!
+            // allocateShaderConstantGirs(creationInput.shaderConstantGirs);
 
-            // TODO - any other resources we want to stick in this classs
-        }
-
-        [[nodiscard]] const VulkanBufferSuballocator &getUniformBufferSuballocator() const {
-            return *uniformBufferSuballocator;
-        }
-
-
-        [[nodiscard]] const VulkanBufferSuballocator &getIndexBufferSuballocation() const {
-            return *indexBufferSuballocator;
-        }
-
-        [[nodiscard]] const VulkanBufferSuballocator &getVertexBufferSuballocation() const {
-            return *vertexBufferSuballocator;
-        }
-
-        [[nodiscard]] const VulkanBufferSuballocator &getTexelBufferSuballocation() const {
-            return *texelBufferSuballocator;
-        }
-
-        [[nodiscard]] const VulkanBufferSuballocator &getStorageBufferSuballocation() const {
-            return *storageBufferSuballocator;
-        }
-
-    private:
-        appContext::vulkan::VulkanLogicalDevice &device;
-
-        // allocator for creating resources
-        VmaAllocator allocator;
-
-        // buffer suballocators
-        std::shared_ptr<VulkanBufferSuballocator> uniformBufferSuballocator;
-        std::shared_ptr<VulkanBufferSuballocator> indexBufferSuballocator;
-        std::shared_ptr<VulkanBufferSuballocator> vertexBufferSuballocator;
-        std::shared_ptr<VulkanBufferSuballocator> texelBufferSuballocator;
-        std::shared_ptr<VulkanBufferSuballocator> storageBufferSuballocator;
-
-        // not entirely sure how we want to store these images but simple vectors will do for now
-        std::vector<std::shared_ptr<VulkanImage> > storageImages;
-        std::vector<std::shared_ptr<VulkanImage> > sampledImages;
-        std::vector<std::shared_ptr<VulkanImage> > depthAttachments;
-        std::vector<std::shared_ptr<VulkanImage> > depthStencilAttachments;
-        std::vector<std::shared_ptr<VulkanImage> > stencilAttachments;
-        std::vector<std::shared_ptr<VulkanImage> > colorAttachments;
-        std::vector<std::shared_ptr<VulkanImage> > inputAttachments;
-
-        // might change this too of course
-        std::vector<std::shared_ptr<VulkanPushConstant> > shaderConstants;
-
-        // TODO - we forgot about combined image-samplers! add that in
-
-        // TODO -  future expansions as needed (raytracing might need some new types)
-
-        void suballocateBufferGirs(const std::vector<std::shared_ptr<gir::BufferIR> > &bufferGirs) const {
-            std::vector<std::shared_ptr<gir::BufferIR> > uniformBufferGirs = {};
-            std::vector<std::shared_ptr<gir::BufferIR> > dynamicUniformBufferGirs = {}; // TODO - add support for this
-            std::vector<std::shared_ptr<gir::BufferIR> > storageBufferGirs = {};
-            std::vector<std::shared_ptr<gir::BufferIR> > dynamicStorageBufferGirs = {}; // TODO - add support for this
-            std::vector<std::shared_ptr<gir::BufferIR> > texelBufferGirs = {};
-            std::vector<std::shared_ptr<gir::BufferIR> > storageTexelBufferGirs = {};
-            std::vector<std::shared_ptr<gir::BufferIR> > vertexBufferGirs = {};
-            std::vector<std::shared_ptr<gir::BufferIR> > indexBufferGirs = {};
-            for (auto &bufferGir: bufferGirs) {
-                // this has to be refactored a bit I think... or at least I need to support transfer stuff easily...
-                switch (bufferGir->getUsage()) {
-                    case (gir::BufferIR::BufferUsage::UNIFORM_BUFFER): {
-                        uniformBufferGirs.push_back(bufferGir);
-                        break;
-                    }
-                    case (gir::BufferIR::BufferUsage::DYNAMIC_UNIFORM_BUFFER): {
-                        dynamicUniformBufferGirs.push_back(bufferGir);
-                        break;
-                    }
-                    case (gir::BufferIR::BufferUsage::STORAGE_BUFFER): {
-                        storageBufferGirs.push_back(bufferGir);
-                        break;
-                    }
-                    case (gir::BufferIR::BufferUsage::DYNAMIC_STORAGE_BUFFER): {
-                        dynamicStorageBufferGirs.push_back(bufferGir);
-                        break;
-                    }
-                    case (gir::BufferIR::BufferUsage::TEXEL_BUFFER): {
-                        texelBufferGirs.push_back(bufferGir);
-                        break;
-                    }
-                    case (gir::BufferIR::BufferUsage::STORAGE_TEXEL_BUFFER): {
-                        storageTexelBufferGirs.push_back(bufferGir);
-                        break;
-                    }
-                    case (gir::BufferIR::BufferUsage::VERTEX_BUFFER): {
-                        vertexBufferGirs.push_back(bufferGir);
-                        break;
-                    }
-                    case (gir::BufferIR::BufferUsage::INDEX_BUFFER): {
-                        indexBufferGirs.push_back(bufferGir);
-                        break;
-                    }
-                    default: {
-                        // TODO - log
-                        break;
+            // temporary until render graph refactor (well, so is all of this tbh)
+            for (auto &model: creationInput.modelGirs) {
+                std::vector<gir::BufferIR> initialUniformBuffers = {};
+                for (auto &buffer: model.buffers) {
+                    switch (buffer.usage) {
+                        case (gir::BufferIR::BufferUsage::UNIFORM_BUFFER): {
+                            initialUniformBuffers.push_back(buffer);
+                            continue;
+                        }
+                        // TODO -> more buffer usage types
+                        default:
+                            continue;
                     }
                 }
-            }
 
-            // then we have to actually suballocate all the buffers I guess?
-            uniformBufferSuballocator->suballocateBuffers(uniformBufferGirs);
-            vertexBufferSuballocator->suballocateBuffers(vertexBufferGirs);
-            indexBufferSuballocator->suballocateBuffers(indexBufferGirs);
-            storageBufferSuballocator->suballocateBuffers(storageBufferGirs);
-            texelBufferSuballocator->suballocateBuffers(texelBufferGirs);
-        }
+                std::vector<GeometryGIRAttachment> geometryAttachments = {};
+                for (auto &drawAttachment: model.drawAttachments) {
+                    for (auto &[vertexBuffers, indexBuffers, animation]: drawAttachment.meshAttachments) {
+                        if (vertexBuffers.size() != indexBuffers.size()) {
+                            // TODO -> proper logging! no throwing!
+                            throw std::runtime_error(
+                                "Error in VulkanResourceRepository() -> draw attachment sizes mismatch!");
+                        }
 
-        static VkFormat getVkFormatFromImageGir(const std::shared_ptr<gir::ImageIR> &imageGir) {
-            // TODO - add a bunch of IR and Scene enums for different common image formats
-            switch (imageGir->getFormat()) {
-                // TODO - add in formats when we start actually trying to use image resources lol
-                // (not gonna spend a ton of time implementing the formats from VkSpec  all at once)
-                default: {
-                    // TODO - log
-                    return VK_FORMAT_UNDEFINED;
+                        // TODO -> evaluate this, make sure everything's in place...
+                        for (unsigned attachmentIndex = 0;
+                             attachmentIndex < vertexBuffers.size();
+                             attachmentIndex++) {
+                            geometryAttachments.emplace_back(
+                                GeometryGIRAttachment{
+                                    vertexBuffers[attachmentIndex].attachedBuffer,
+                                    indexBuffers[attachmentIndex].attachedBuffer,
+                                    vertexBuffers[attachmentIndex].vertexCount,
+                                    indexBuffers[attachmentIndex].indexCount
+                                }
+                            );
+                        }
+                    }
                 }
+
+                std::vector<VulkanBufferSuballocationHandle> suballocatedBuffers = {};
+                for (auto &buffer: initialUniformBuffers) {
+                    auto suballocationHandleOptional = uniformBufferSuballocator.findSuballocation(buffer.uid);
+
+                    if (!suballocationHandleOptional.has_value()) {
+                        // TODO -> proper logging!
+                        break; // for now, just abort the loop and end up with malformed data
+                    }
+
+                    VulkanBufferSuballocationHandle suballocationHandle = *suballocationHandleOptional;
+                    suballocatedBuffers.push_back(
+                        suballocationHandle
+                    );
+                }
+
+                models.insert({
+                        model.uid,
+                        VulkanModel{
+                            VulkanModel::CreationInput{
+                                model.name,
+                                model.uid,
+                                allocator,
+                                suballocatedBuffers,
+                                minimumUniformBufferAlignment,
+                                geometryAttachments,
+                                queueFamilyIndices,
+                                0.4,
+                            }
+                        }
+                    }
+                );
             }
         }
 
-        static VkExtent3D getVkExtentFromImageGir(const std::shared_ptr<gir::ImageIR> &imageIR) {
-            return VkExtent3D{
-                    imageIR->getWidth(),
-                    imageIR->getHeight(),
-                    0 // TODO -> support 3D
-            };
+        VulkanResourceRepository() = default;
+
+        VulkanModel *obtainModel(const UniqueIdentifier &resourceId) {
+            if (!models.contains(resourceId)) {
+                return nullptr;
+            }
+            return &models.at(resourceId);
         }
 
-        static unsigned getNumberOfMipLevelsFromImageGir(const std::shared_ptr<gir::ImageIR> &imageIR) {
-            return 1; // TODO - implement mip-mapping support
+        [[nodiscard]] VulkanBufferSuballocationHandle obtainBufferHandle(const UniqueIdentifier &resourceId) {
+            auto handle = uniformBufferSuballocator.findSuballocation(resourceId);
+            if (!handle.has_value()) {
+                return {};
+            }
+            return handle.get();
         }
 
-        static unsigned getNumberOfArrayLevelsFromImageGir(const std::shared_ptr<gir::ImageIR> &imageIR) {
-            return 1; // TODO - implement image arrays
-        }
-
-        static VkSampleCountFlagBits getSampleCountFromImageGir(const std::shared_ptr<gir::ImageIR> &imageIR) {
-            return VK_SAMPLE_COUNT_1_BIT; // TODO - implement MSAA support (I think that's what this is?)
-        }
-
-        static VkImageTiling getImageTilingFromImageGir(
-                const std::shared_ptr<gir::ImageIR> &imageIR) {
-            return VK_IMAGE_TILING_OPTIMAL; // TODO - figure out how we determine when other image tilings are needed
-        }
-
-        static VkImageLayout getInitialImageLayoutFromImageGir(const std::shared_ptr<gir::ImageIR> &value) {
-            // TODO - add some more complex logic (backed by a bit of research) for choosing a good
-            // initial layout, or potentially adding whatever relevant contextual information
-            // that we'd need to
-            return VK_IMAGE_LAYOUT_GENERAL;
-        }
-
-        void allocateImageGirs(const std::vector<std::shared_ptr<gir::ImageIR> > &imageGirs) {
-            std::vector<std::shared_ptr<gir::ImageIR> > storageImageGirs = {};
-            std::vector<std::shared_ptr<gir::ImageIR> > sampledImageGirs = {};
-            std::vector<std::shared_ptr<gir::ImageIR> > colorAttachmentGirs = {};
-            std::vector<std::shared_ptr<gir::ImageIR> > inputAttachmentGirs = {};
-            std::vector<std::shared_ptr<gir::ImageIR> > depthAttachmentGirs = {};
-            std::vector<std::shared_ptr<gir::ImageIR> > stencilAttachmentGirs = {};
-            std::vector<std::shared_ptr<gir::ImageIR> > depthStencilAttachmentGirs = {};
-            for (const auto &imageGir: imageGirs) {
-                switch (imageGir->getImageUsage()) {
-                    case (gir::ImageIR::ImageUsage::STORAGE_IMAGE): {
-                        storageImageGirs.push_back(imageGir);
-                        break;
-                    }
-                    case (gir::ImageIR::ImageUsage::SAMPLED_TEXTURE): {
-                        sampledImageGirs.push_back(imageGir);
-                        break;
-                    }
+        void bakeSwapchainImageGirs(const std::vector<gir::ImageIR> &swapchainImageGirs) {
+            std::vector<gir::ImageIR> colorAttachmentGirs = {};
+            std::vector<gir::ImageIR> depthAttachmentGirs = {};
+            for (const auto &imageGir: swapchainImageGirs) {
+                switch (imageGir.imageUsage) {
+                    // for single-animated-model demo, only supporting color attachments for now
                     case (gir::ImageIR::ImageUsage::COLOR_ATTACHMENT): {
                         colorAttachmentGirs.push_back(imageGir);
                         break;
                     }
-                    case (gir::ImageIR::ImageUsage::INPUT_ATTACHMENT): {
-                        inputAttachmentGirs.push_back(imageGir);
-                        break;
-                    }
-                    case (gir::ImageIR::ImageUsage::DEPTH_STENCIL_ATTACHMENT): {
-                        depthStencilAttachmentGirs.push_back(imageGir);
-                        break;
-                    }
-                    case (gir::ImageIR::ImageUsage::STENCIL_ATTACHMENT): {
-                        stencilAttachmentGirs.push_back(imageGir);
-                        break;
-                    }
                     case (gir::ImageIR::ImageUsage::DEPTH_ATTACHMENT): {
                         depthAttachmentGirs.push_back(imageGir);
-                        break;
                     }
                     default: {
                         // TODO - log!
@@ -255,82 +168,164 @@ namespace pEngine::girEngine::backend::vulkan {
                 }
             }
 
-            bakeNewVulkanImagesFromGirList(allocator, device, VK_IMAGE_USAGE_STORAGE_BIT, storageImageGirs,
-                                           storageImages);
-
-            bakeNewVulkanImagesFromGirList(allocator, device, VK_IMAGE_USAGE_SAMPLED_BIT, sampledImageGirs,
-                                           sampledImages);
-
-            bakeNewVulkanImagesFromGirList(allocator, device, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, colorAttachmentGirs,
+            bakeNewVulkanImagesFromGirList(allocator,
+                                           device,
+                                           queueFamilyIndices,
+                                           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                                           colorAttachmentGirs,
                                            colorAttachments);
+        }
 
-            bakeNewVulkanImagesFromGirList(allocator, device, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, inputAttachmentGirs,
-                                           inputAttachments);
+        VulkanImage *obtainImage(UniqueIdentifier &resourceUid) {
+            // TODO -> search other image sub-repositories (maps) as they get added
 
-            bakeNewVulkanImagesFromGirList(allocator, device, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                                           depthStencilAttachmentGirs, depthStencilAttachments);
+            for (auto &colorAttachment: colorAttachments) {
+                if (colorAttachment.uid == resourceUid) {
+                    return &colorAttachment;
+                }
+            }
 
-            // TODO - consider whether to separate depth and stencil out ? for now maybe combined depth-stencil is okay lol...
-            bakeNewVulkanImagesFromGirList(allocator, device, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                                           depthAttachmentGirs, depthAttachments);
-            bakeNewVulkanImagesFromGirList(allocator, device, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                                           stencilAttachmentGirs, stencilAttachments);
+            for (auto &depthAttachment: depthImages) {
+                if (depthAttachment.uid == resourceUid) {
+                    return &depthAttachment;
+                }
+            }
+
+            return {};
+        }
+
+        // buffer suballocators
+        VulkanBufferSuballocator uniformBufferSuballocator = {};
+        uint32_t minimumUniformBufferAlignment;
+
+    private:
+        VkDevice device = VK_NULL_HANDLE;
+
+        std::vector<uint32_t> queueFamilyIndices = {};
+
+        // allocator for creating resources
+        VmaAllocator allocator = {};
+
+        // for the single-animated model demo we're not supporting all the image types; that will change
+        // NOTE -> when we fully implement the render graph, the specific usages of the images will be encoded there, not here
+        std::vector<VulkanImage> colorAttachments = {};
+
+        // depth attachments and images
+        std::vector<VulkanImage> depthImages = {};
+
+        // currently unused
+        std::vector<VulkanPushConstant> shaderConstants = {};
+
+        std::unordered_map<UniqueIdentifier, VulkanModel> models = {};
+
+        // TODO -  future expansions as needed (incl the other types of modern pipelines eg raytracing, mesh shading, workgroups, so forth)
+
+        void suballocateBufferGirs(const std::vector<gir::BufferIR> &uniformBufferGirs) {
+            uniformBufferSuballocator.suballocateBuffers(uniformBufferGirs);
+        }
+
+        static VkExtent3D getVkExtentFromImageGir(const gir::ImageIR &imageIR) {
+            return VkExtent3D{
+                imageIR.width,
+                imageIR.height,
+                1 // TODO -> support 3D
+            };
+        }
+
+        static unsigned getNumberOfMipLevelsFromImageGir(const gir::ImageIR &imageIR) {
+            return 1; // TODO - implement mip-mapping support
+        }
+
+        static unsigned getNumberOfArrayLevelsFromImageGir(const gir::ImageIR &imageIR) {
+            return 1; // TODO - implement image arrays
+        }
+
+        static VkSampleCountFlagBits getSampleCountFromImageGir(const gir::ImageIR &imageIR) {
+            return VK_SAMPLE_COUNT_1_BIT; // TODO - implement MSAA support (I think that's what this is?)
+        }
+
+        static VkImageTiling getImageTilingFromImageGir(
+            const gir::ImageIR &imageIR) {
+            return VK_IMAGE_TILING_OPTIMAL; // TODO - figure out how we determine when other image tilings are needed
+        }
+
+        static VkImageLayout getInitialImageLayoutFromImageGir(const gir::ImageIR &value) {
+            // TODO - add some more complex logic (backed by a bit of research) for choosing a good initial layout
+            return VK_IMAGE_LAYOUT_GENERAL;
+        }
+
+        /**
+         * ATOW, this only builds depth attachment images (we'll expand to the other applicable
+         * image resource types once the single-animated-model demo is done)
+         * @param imageGirs
+         */
+        void allocateImageGirs(const std::vector<gir::ImageIR> &imageGirs) {
+            std::vector<gir::ImageIR> depthAttachmentGirs = {};
+            for (const auto &imageGir: imageGirs) {
+                switch (imageGir.imageUsage) {
+                    case (gir::ImageIR::ImageUsage::DEPTH_STENCIL_ATTACHMENT): {
+                        depthAttachmentGirs.push_back(imageGir);
+                    }
+                    default: {
+                        // TODO - log!
+                    }
+                }
+            }
+            bakeNewVulkanImagesFromGirList(allocator,
+                                           device,
+                                           queueFamilyIndices,
+                                           VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                                           depthAttachmentGirs,
+                                           depthImages);
         }
 
         static void bakeNewVulkanImagesFromGirList(const VmaAllocator &allocator,
-                                                   const appContext::vulkan::VulkanLogicalDevice &device,
-                                                   const VkImageUsageFlags initialImageUsageFlags,
-                                                   const std::vector<std::shared_ptr<gir::ImageIR> > &newImageGirs,
-                                                   std::vector<std::shared_ptr<VulkanImage> > &imageList) {
+                                                   VkDevice device,
+                                                   const std::vector<uint32_t> &deviceFamilyQueueIndices,
+                                                   const VkImageUsageFlags initialImageUsageFlags, //NOLINT
+                                                   const std::vector<gir::ImageIR> &newImageGirs,
+                                                   std::vector<VulkanImage> &imageList) {
             VkImageUsageFlags imageUsageFlags = initialImageUsageFlags;
             for (const auto &newImageGir: newImageGirs) {
-                if (!newImageGir->isTransferDestinationDisabled()) {
+                if (!newImageGir.disableTransferDestination) {
                     imageUsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
                 }
-                if (!newImageGir->isTransferSourceDisabled()) {
+                if (!newImageGir.disableTransferSource) {
                     imageUsageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
                 }
 
-                imageList.push_back(
-                        std::make_shared<VulkanImage>(VulkanImage::CreationInput{
-                                newImageGir->getName(),
-                                newImageGir->getUid(),
-                                VK_IMAGE_TYPE_2D,
-                                getVkFormatFromImageGir(newImageGir),
-                                getVkExtentFromImageGir(newImageGir),
-                                getNumberOfMipLevelsFromImageGir(newImageGir),
-                                getNumberOfArrayLevelsFromImageGir(newImageGir),
-                                getSampleCountFromImageGir(newImageGir),
-                                getImageTilingFromImageGir(newImageGir),
-                                imageUsageFlags,
-                                // TODO - change this so it's not hardcoded to use graphics queue
-                                {device.getGraphicsQueueFamilyIndex()},
-                                getInitialImageLayoutFromImageGir(newImageGir),
-                                VMA_MEMORY_USAGE_AUTO, // TODO - add configurability for this as needed
-                                allocator
-                        })
-                );
+                // since swapchain images are not constructed directly and are used in a unique way (atow), we'll skip em
+                if (newImageGir.imageUsage == gir::ImageIR::ImageUsage::SWAPCHAIN_IMAGE) continue;
+
+                imageList.emplace_back(VulkanImage::CreationInput{
+                    newImageGir.name,
+                    newImageGir.uid,
+                    device,
+                    VK_IMAGE_TYPE_2D,
+                    (VkFormat) newImageGir.imageFormat, // NOTE -> assumes 1-1 correspondence with VkFormat
+                    getVkExtentFromImageGir(newImageGir),
+                    getNumberOfMipLevelsFromImageGir(newImageGir),
+                    getNumberOfArrayLevelsFromImageGir(newImageGir),
+                    getSampleCountFromImageGir(newImageGir),
+                    getImageTilingFromImageGir(newImageGir),
+                    imageUsageFlags,
+                    // TODO - change this so it's not hardcoded to use graphics queue
+                    deviceFamilyQueueIndices,
+                    getInitialImageLayoutFromImageGir(newImageGir),
+                    VMA_MEMORY_USAGE_AUTO, // TODO - add configurability for this as needed
+                    allocator
+                });
             }
         }
 
         static VkShaderStageFlags getShaderStageFlagsFromShaderConstantGir(
-                const std::shared_ptr<gir::ShaderConstantIR> &shaderConstantGir) {
+            const std::shared_ptr<gir::ShaderConstantIR> &shaderConstantGir) {
             // TODO - represent shader constant stage usages? pretty simple to throw in a simple enum converter
             return VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; // just hardcoding this for now
         }
 
         void allocateShaderConstantGirs(
-                const std::vector<std::shared_ptr<gir::ShaderConstantIR> > &shaderConstantGirs) {
-            // aite...
-            for (const auto &shaderConstantGir: shaderConstantGirs) {
-                shaderConstants.push_back(std::make_shared<VulkanPushConstant>(VulkanPushConstant::CreationInput{
-                        shaderConstantGir->getName(),
-                        shaderConstantGir->getUid(),
-                        getShaderStageFlagsFromShaderConstantGir(shaderConstantGir),
-                        shaderConstantGir->getByteOffset(),
-                        shaderConstantGir->getSizeInBytes()
-                }));
-            }
+            const std::vector<gir::ShaderConstantIR> &shaderConstantGirs) {
         }
     };
 }

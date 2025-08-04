@@ -44,7 +44,7 @@ namespace pEngine::girEngine::scene::graph::renderPass {
             FRAGMENT
         };
 
-        std::shared_ptr<Texture> textureResource = nullptr;
+        Texture *textureResource = nullptr;
 
         std::vector<ShaderStage> shaderStages = {ShaderStage::FRAGMENT};
     };

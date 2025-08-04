@@ -9,10 +9,6 @@ namespace pEngine::threadPool {
      * Alright! I'm currently in a car driving from Kelowna to Edmonton so I have no internet, and I think I'll need the
      * internet to move all the thread pool stuff over here
      *
-     * lol @ the above comment :) no idea why i would need internet for that but maybe i had to pull changes?
-     *
-     * Back to this over a year later as part of doing the 900th backend rewrite!
-     *
      * TODO - write our own version of Barack Shoshany's thread pool (since it's simple and would be informative for me)
      */
     class ThreadPool {

@@ -14,128 +14,93 @@
 #endif
 
 #include "../VulkanRenderPass.hpp"
-#include "../../../ApplicationContext/OSInterface/OSInterface.hpp"
 #include "../../../../../lib/dear_imgui/imgui.h"
 
 #include "../../../../../lib/dear_imgui/imgui_impl_vulkan.h"
-#include "../../../../../lib/dear_imgui/imgui_impl_win32.h"
 
 namespace pEngine::girEngine::backend::vulkan {
-
-    /**
-     * This class is handled differently from other VulkanRenderPass subclasses - it contains mostly ancient code
-     * that I'll likely have to reconfigure a bit, but it's also a special case where we're using an external library
-     * that has its own requirements for Vulkan boilerplate and what not. \n\n
-     *
-     * In the end, it'll probably be a little janky but is mainly supposed to be a sort of "baseline" GUI render pass
-     * for debugging, prototyping, etc - fancier GUI stuff is probably better handled by setting up a custom render
-     * pass (with whatever shaders/resources are required) for fancier GUI stuff. That said, DearImGui is super handy
-     * and I'll likely use it for a ton of "production" GUI stuff because I don't want to spend a lot of time trying to
-     * make my own ultra-fancy GUI implementation until I learn more and attempting to make my own becomes
-     * less daunting of a task. \n\n
-     *
-     * COMING BACK TO THIS:\n\n
-     * 1. the swapchain shit is going to be ported out of this class and into the new swapchain stuff; actually
-     * now that I look at it more closely, the swapchain stuff is all just being handed in so we can just use this
-     * to inform what we need to be passing in from the new swapchain class\n
-     * 2. this (and probably all classes in the RenderPass hierarchy) will need to be modified to work with the forthcoming
-     * present mode shite; not entirely sure what that'll look like off the bat but I'll return to it once swapchains are somewhat fleshed out
-     *
-     *
-     */
-    class DearImguiVulkanRenderPass : public VulkanRenderPass {
+    class DearImguiVulkanRenderPass final : public VulkanRenderPass {
     public:
         struct CreationInput {
-            VkInstance instance;
-            VkPhysicalDevice physicalDevice;
-            VkDevice logicalDevice;
+            VkInstance instance = VK_NULL_HANDLE;
+            VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+            VkDevice logicalDevice = VK_NULL_HANDLE;
 
-            VkRenderPass guiRenderPass; // temporary solution: pass in an externally-created render pass (init with public static function)
+            unsigned int numberOfSwapchainImages = 0;
+            VkFormat swapchainImageFormat = VK_FORMAT_UNDEFINED;
+            VkExtent2D swapchainImageSize = {};
 
-            unsigned int numberOfSwapchainImages;
-            VkFormat swapchainImageFormat;
-            VkExtent2D swapchainImageSize;
-
-            // TODO - figure out whether this needs to respect the chosen present mode; might require some new abstractions
-            // but hopefully i can make it so this interface can be used by any present mode and that part is assumed
-            // to be managed externally
-            VkQueue graphicsAndPresentQueue;
-            unsigned int graphicsAndPresentQueueFamilyIndex;
-            std::vector<VkImageView> swapchainImageViews;
-
-            std::vector<std::function<void()>> initialGuiRenderableCallbacks = {};
+            VkQueue graphicsAndPresentQueue = VK_NULL_HANDLE;
+            unsigned int graphicsAndPresentQueueFamilyIndex = 0;
+            std::vector<VkImageView> swapchainImageViews = {};
 
 #ifdef _WIN32
             HWND hwnd;
 #endif
+
+            std::vector<std::function<void()> > initialGuiRenderableCallbacks = {};
+            VkRenderingInfo dynamicRenderingInfo = {};
         };
 
         explicit DearImguiVulkanRenderPass(const CreationInput &creationInput);
 
-        ~DearImguiVulkanRenderPass() = default;
+        DearImguiVulkanRenderPass() = default;
 
-        [[nodiscard]] bool isDearImguiRenderPass() const override; // TODO - rip out these stupid "is*()" methods
+        ~DearImguiVulkanRenderPass() override = default;
 
-        // TODO -> FIX THIS PRESSING ISSUE (delete this comment when fixed):
-        // I think the imgui stuff is memory leaking, the performance tanks after not that long..
-        // it's likely I'm just missing an API call somewhere
-        void recordDearImguiCommandBuffers(VkCommandBuffer &frameCommandBuffer, unsigned currentFrameIndex) {
-            if (guiRenderableCallbacks.empty()) {
-                return;
-            }
-            beginNewImguiFrame();
-
+        void recordDearImguiCommandBuffers(const VkCommandBuffer &frameCommandBuffer,
+                                           const VkRenderingInfo &renderingInfo) {
+            // run imgui callbacks and commit the rendered components
             setupImguiRenderables();
-
-            beginRenderPassForCurrentFrame(frameCommandBuffer, currentFrameIndex);
-
             ImGui::Render();
-            ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), frameCommandBuffer);
 
-            vkCmdEndRenderPass(frameCommandBuffer);
+            // record the draw commands for the interface encoded in our callbacks
+            vkCmdBeginRendering(frameCommandBuffer, &renderingInfo);
+            ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), frameCommandBuffer);
+            vkCmdEndRendering(frameCommandBuffer);
         }
 
         [[nodiscard]] const VkCommandBuffer &getImguiCommandBuffer(const unsigned bufferIndex) const {
             return guiCommandBuffers[bufferIndex];
         }
 
-        static bool
-        initializeVulkanRenderPass(const VkDevice &device, VkFormat swapchainImageFormat,
-                                   VkRenderPass &guiRenderPass);
+        void setCallbacks(std::vector<std::function<void()> > &&callbacks) {
+            guiRenderableCallbacks = std::move(callbacks);
+        }
+
+        void immediatelySubmitCommand(const std::function<void(VkCommandBuffer)> &command) const;
+
+        static void beginNewImguiFrame();
 
     private:
         static const std::vector<VkDescriptorPoolSize> DESCRIPTOR_POOL_SIZES;
 
-        VkInstance instance;
-        VkPhysicalDevice physicalDevice;
-        VkDevice logicalDevice;
+        VkInstance instance = VK_NULL_HANDLE;
+        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+        VkDevice logicalDevice = VK_NULL_HANDLE;
 
-        VkExtent2D swapchainImageSize;
-        unsigned numberOfSwapchainImages;
+        VkExtent2D swapchainImageSize = {};
+        unsigned numberOfSwapchainImages = 0;
 
-        VkQueue graphicsAndPresentQueue;
-        unsigned int graphicsAndPresentQueueFamilyIndex;
+        VkQueue graphicsAndPresentQueue = VK_NULL_HANDLE;
+        unsigned int graphicsAndPresentQueueFamilyIndex = 0;
 
-        ImGuiContext *context;
-        ImGuiIO &io = ImGui::GetIO();
+        ImGuiContext *context = nullptr;
 
-        VkDescriptorPool guiDescriptorPool;
+        VkDescriptorPool guiDescriptorPool = VK_NULL_HANDLE;
 
-        VkCommandPool guiCommandPool;
-        VkFence guiCommandPoolImmediateSubmissionFence;
+        VkCommandPool guiCommandPool = VK_NULL_HANDLE;
+        VkFence guiCommandPoolImmediateSubmissionFence = VK_NULL_HANDLE;
 
         std::vector<VkCommandBuffer> guiCommandBuffers = {};
 
-        VkRenderPass guiRenderPass;
+        VkRenderPass guiRenderPass = VK_NULL_HANDLE;
         std::vector<VkFramebuffer> guiFramebuffers = {};
 
-        std::vector<std::function<void()>> guiRenderableCallbacks = {};
+        std::vector<std::function<void()> > guiRenderableCallbacks = {};
 
         void initializeVulkanDescriptorPool(unsigned int swapchainImages);
 
-        void initializeDearImguiVulkanImplementation(const CreationInput &creationInput);
-
-        void initializeVulkanFramebuffers(const CreationInput &creationInput);
 
         void initializeVulkanCommandPool(const CreationInput &creationInput);
 
@@ -145,16 +110,10 @@ namespace pEngine::girEngine::backend::vulkan {
 
         static void initializeDearImguiFontsTexture();
 
-        void immediatelySubmitCommand(const std::function<void(VkCommandBuffer)> &command);
-
-        static void beginNewImguiFrame();
-
         void executeDearImGuiCallbacksToDrawRenderables();
 
-        void beginRenderPassForCurrentFrame(VkCommandBuffer &commandBuffer, unsigned int currentFrameIndex);
+        void beginRenderPassForCurrentFrame(const VkCommandBuffer &commandBuffer, unsigned int currentFrameIndex) const;
 
         void setupImguiRenderables();
-
     };
-
 } // PGraphics

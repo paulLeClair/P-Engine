@@ -61,7 +61,6 @@ namespace pEngine::app::mode {
     public:
         struct CreationInput {
             std::string name;
-            util::UniqueIdentifier uid;
 
             std::shared_ptr<core::EngineCore<GirGeneratorType, BackendType>> engineCore;
 
@@ -71,13 +70,13 @@ namespace pEngine::app::mode {
         };
 
         explicit EngineMode(const CreationInput &creationInput) : name(creationInput.name),
-                                                                  uid(creationInput.uid),
+                                                                  uid(util::UniqueIdentifier()),
                                                                   engineCore(creationInput.engineCore),
                                                                   nextEngineMode(creationInput.nextEngineMode) {
 
         }
 
-        ~EngineMode() = default;
+        virtual ~EngineMode() = default;
 
         [[nodiscard]] const std::string &getName() const {
             return name;

@@ -46,7 +46,8 @@ namespace pEngine::girEngine::gir::renderPass {
          * This state signifies that the image is able to be presented via a
          * windowing system
         */
-        PRESENT_MODE
+        PRESENT_MODE,
+        SWAPCHAIN_COLOR_ATTACHMENT
     };
 
 } // scene

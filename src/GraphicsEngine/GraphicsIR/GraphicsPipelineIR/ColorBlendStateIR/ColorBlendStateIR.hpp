@@ -166,6 +166,21 @@ namespace pEngine::girEngine::gir::pipeline {
          * the render pass' color attachment state.
          */
         std::vector<ColorAttachmentBlendState> colorAttachmentBlendStates = {};
+
+
+        ColorBlendStateIR(bool enableColorBlend,
+                          bool enableColorBlendLogicOperation,
+                          LogicOperation logicOp,
+                          const std::vector<float> &blendConstants,
+                          const std::vector<ColorAttachmentBlendState> &colorAttachmentBlendStates)
+                : enableColorBlend(enableColorBlend),
+                  enableColorBlendLogicOperation(enableColorBlendLogicOperation),
+                  logicOp(logicOp),
+                  blendConstants(blendConstants),
+                  colorAttachmentBlendStates(colorAttachmentBlendStates) {
+
+        }
+
     };
 
 }

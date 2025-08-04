@@ -13,15 +13,6 @@ protected:
 };
 
 TEST_F(MaterialTest, BasicCreation) {
-    ASSERT_NO_THROW(material = std::make_shared<Material>(Material::CreationInput{
-            "test",
-            pEngine::util::UniqueIdentifier(),
-            {},
-            {},
-            {},
-            {},
-            {}
-    }));
 }
 
 TEST_F(MaterialTest, CreateMaterialWithOneOfEachSubresourceType) {

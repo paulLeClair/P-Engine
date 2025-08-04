@@ -4,4 +4,6 @@ build/
 src/shaders/bin
 _deps/
 .cache/
-cmake-*/
+p-engine/
+assets/dev_screenshots/
+*.rdc

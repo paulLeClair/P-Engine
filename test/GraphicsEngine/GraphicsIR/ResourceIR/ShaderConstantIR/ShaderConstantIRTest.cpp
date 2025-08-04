@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 #include "../../../../../src/GraphicsEngine/GraphicsIR/ResourceIR/ShaderConstantIR/ShaderConstantIR.hpp"
-#include "../../../../../src/lib/glm/ext/matrix_float4x4.hpp"
+#include <glm/ext/matrix_float4x4.hpp>
 
 using namespace pEngine::girEngine::gir;
 

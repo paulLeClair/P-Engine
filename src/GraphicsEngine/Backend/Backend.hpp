@@ -9,7 +9,6 @@ namespace pEngine::girEngine::backend {
     public:
         virtual ~GraphicsBackend() = default;
 
-        // TODO - evaluate whether we need this
         enum class DrawFrameResult {
             SUCCESS,
             FAILURE
@@ -17,10 +16,8 @@ namespace pEngine::girEngine::backend {
 
         virtual DrawFrameResult drawFrame() = 0;
 
+        // TODO -> probably rip out this one too
         virtual std::shared_ptr<appContext::ApplicationContext> getApplicationContext() = 0;
-
-        virtual std::shared_ptr<render::Renderer>
-        getFrameContext() = 0;
 
         enum class BakeResult {
             FAILURE,
@@ -28,7 +25,7 @@ namespace pEngine::girEngine::backend {
         };
 
         virtual BakeResult
-        bakeGirs(const std::vector<std::shared_ptr<gir::GraphicsIntermediateRepresentation> > &girList) = 0;
+        bakeGirs(const gir::generator::GirGenerator::BakeOutput &girList) = 0;
 
     };
 }

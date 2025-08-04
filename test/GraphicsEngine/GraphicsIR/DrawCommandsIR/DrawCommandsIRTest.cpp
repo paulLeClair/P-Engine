@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 #include "../../../../src/GraphicsEngine/GraphicsIR/DrawAttachmentIR/DrawAttachmentIR.hpp"
-#include "../../../../src/lib/glm/vec4.hpp"
+#include <glm/vec4.hpp>
 
 using namespace pEngine::girEngine::gir;
 
@@ -19,19 +19,16 @@ protected:
 TEST_F(DrawCommandsIRTest, BasicCreationOfEmptyDrawCommandsGir) {
     std::string testName = "testEmptyDrawCommandsIR";
     pEngine::util::UniqueIdentifier uniqueIdentifier = pEngine::util::UniqueIdentifier();
-    DrawAttachmentIR::DrawType drawType = DrawAttachmentIR::DrawType::UNKNOWN;
     ASSERT_NO_THROW(drawCommands = std::make_shared<DrawAttachmentIR>(DrawAttachmentIR::CreationInput{
             testName,
             uniqueIdentifier,
             GIRSubtype::DRAW_COMMANDS,
-            drawType,
             {}, // no vertices
             {} // no indices
     }));
 
     ASSERT_EQ(testName, drawCommands->getName());
     ASSERT_EQ(uniqueIdentifier, drawCommands->getUid());
-    ASSERT_EQ(drawType, drawCommands->getDrawType());
     ASSERT_EQ(GIRSubtype::DRAW_COMMANDS, drawCommands->getSubtype());
 }
 
@@ -79,7 +76,6 @@ TEST_F(DrawCommandsIRTest, BasicCreationOfNonemptyGir) {
 
     static const std::string testName = "testNonemptyDrawCommandsIR";
     static const pEngine::util::UniqueIdentifier uniqueIdentifier = pEngine::util::UniqueIdentifier();
-    static const DrawAttachmentIR::DrawType drawType = DrawAttachmentIR::DrawType::INDEXED_DRAW;
 
 //    ASSERT_NO_THROW(drawCommands = std::make_shared<DrawAttachmentIR>(DrawAttachmentIR::CreationInput{
 //            testName,

@@ -12,7 +12,7 @@
  */
 
 namespace pEngine::util {
-    template<typename ElementType>
+    template<class ElementType>
     struct IntrusiveListNode {
         IntrusiveListNode<ElementType> *next = nullptr;
         IntrusiveListNode<ElementType> *prev = nullptr;
@@ -23,8 +23,11 @@ namespace pEngine::util {
     template<typename ElementType>
     class IntrusiveList {
     public:
+        /**
+         * Basically just wraps a pointer to an intrusive list element in some particular intrusive list
+         */
         struct Iterator {
-            friend class IntrusiveList<ElementType>;
+            friend class IntrusiveList;
 
             explicit Iterator(IntrusiveListNode<ElementType> *node) : node(node) {
                 // TODO - make sure the node is not nullptr
@@ -147,8 +150,6 @@ namespace pEngine::util {
             }
 
             // set inserted node so that it's before the current head and has no previous element
-
-            // ISSUE: setting node->next to head causes an uninit'd "next" pointer somewhere
             node->next = head;
             node->prev = nullptr;
 
@@ -174,12 +175,12 @@ namespace pEngine::util {
             size++;
         }
 
-        void moveToFront(IntrusiveList<ElementType> &other, Iterator itr) {
+        void moveToFront(IntrusiveList<ElementType> &other, const Iterator itr) {
             other.erase(itr);
             insertFront(itr);
         }
 
-        void moveToBack(IntrusiveList<ElementType> &other, Iterator itr) {
+        void moveToBack(IntrusiveList<ElementType> &other, const Iterator itr) {
             other.erase(itr);
             insertBack(itr);
         }

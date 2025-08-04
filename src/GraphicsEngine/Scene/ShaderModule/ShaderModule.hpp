@@ -15,23 +15,14 @@ namespace pEngine::girEngine::gir {
 }
 
 namespace pEngine::girEngine::scene {
-
     /**
      * I'm not sure how the final design will look, but I think the
      * scene-facing shader module will just read in the shader file data
      * itself, and then the backend will actually process the shader.
      *
-     * For example, with the Vulkan backend, it'll take the shader and do
-     * reflection and all that.
-     *
-     * I could consider moving all the reflection stuff into the scene,
-     * or maybe even put it into the GIR code, but that's kinda
-     * messy and I think it makes sense to split it off like that.
-     *
      */
     class ShaderModule {
     public:
-
         enum class ShaderUsage {
             VERTEX_SHADER = 1,
             FRAGMENT_SHADER = 2,
@@ -51,7 +42,7 @@ namespace pEngine::girEngine::scene {
 
         struct CreationInput {
             std::string name;
-            util::UniqueIdentifier uid;
+            UniqueIdentifier uid;
 
             std::string shaderFileNameWithoutFileExtension;
             std::string shaderEntryPointName;
@@ -62,16 +53,15 @@ namespace pEngine::girEngine::scene {
         explicit ShaderModule(const CreationInput &createInfo) : name(createInfo.name),
                                                                  uid(createInfo.uid),
                                                                  shaderFileName(
-                                                                         createInfo.shaderFileNameWithoutFileExtension),
+                                                                     createInfo.shaderFileNameWithoutFileExtension),
                                                                  usage(createInfo.enabledShaderUsages),
                                                                  shaderFileType(createInfo.shaderFileType),
                                                                  shaderEntryPointName(createInfo.shaderEntryPointName) {
-
         }
 
         ShaderModule() = default;
 
-        [[nodiscard]] const util::UniqueIdentifier &getUid() const {
+        [[nodiscard]] const UniqueIdentifier &getUid() const {
             return uid;
         }
 
@@ -91,18 +81,18 @@ namespace pEngine::girEngine::scene {
             return shaderFileType;
         }
 
-        std::shared_ptr<gir::GraphicsIntermediateRepresentation> bakeToGIR() {
+        gir::SpirVShaderModuleIR bakeToGIR() const {
             // TODO - extend this when there are more than just spir V shader modules
-            return std::make_shared<gir::SpirVShaderModuleIR>(gir::SpirVShaderModuleIR::CreationInput{
-                    name,
-                    uid,
-                    gir::GIRSubtype::SHADER_MODULE,
-                    shaderFileName,
-                    gir::ShaderModuleIR::IntermediateRepresentation::SPIR_V,
-                    getGirShaderModuleUsage(usage),
-                    shaderEntryPointName,
-                    getSpirVCodeFromShaderModuleFile(
-                            shaderFileType, shaderFileName, usage)
+            return gir::SpirVShaderModuleIR(gir::SpirVShaderModuleIR::CreationInput{
+                name,
+                uid,
+                gir::GIRSubtype::SHADER_MODULE,
+                shaderFileName,
+                gir::ShaderModuleIR::IntermediateRepresentation::SPIR_V,
+                getGirShaderModuleUsage(usage),
+                shaderEntryPointName,
+                getSpirVCodeFromShaderModuleFile(
+                    shaderFileType, shaderFileName, usage)
             });
         }
 
@@ -140,29 +130,29 @@ namespace pEngine::girEngine::scene {
                 }
                 default: {
                     throw std::runtime_error(
-                            "Error in PShaderModule::getGirShaderModuleUsage() - unrecognized scene shader usage");
+                        "Error in PShaderModule::getGirShaderModuleUsage() - unrecognized scene shader usage");
                 }
             }
         }
 
         static std::vector<unsigned int>
-        getSpirVCodeFromShaderModuleFile(ShaderModule::ShaderLanguage shaderLanguage,
+        getSpirVCodeFromShaderModuleFile(ShaderLanguage shaderLanguage,
                                          const std::string &fileName,
-                                         ShaderModule::ShaderUsage shaderUsage) {
+                                         ShaderUsage shaderUsage) {
             std::vector<unsigned int> spirVCode = {};
 
             // NOTE - this forces the C++ standard to be 17 or greater
             std::string shaderModulePath = getShaderModuleBinaryPath(
-                    fileName,
-                    shaderLanguage,
-                    shaderUsage);
+                fileName,
+                shaderLanguage,
+                shaderUsage);
 
             std::ifstream file(shaderModulePath, std::ios::binary | std::ios::ate);
             if (!file.is_open()) {
                 throw std::runtime_error("Unable to open shader file " + shaderModulePath);
             }
 
-            auto fileSize = static_cast<uint32_t>( file.tellg());
+            auto fileSize = static_cast<uint32_t>(file.tellg());
             unsigned int packedFileSize = fileSize / sizeof(uint32_t);
 
             spirVCode.resize(packedFileSize);
@@ -175,14 +165,14 @@ namespace pEngine::girEngine::scene {
 
         static std::string
         getShaderModuleBinaryPath(
-                const std::string &fileName,
-                ShaderModule::ShaderLanguage shaderLanguage,
-                ShaderModule::ShaderUsage shaderUsage) {
+            const std::string &fileName,
+            ShaderLanguage shaderLanguage,
+            ShaderUsage shaderUsage) {
             static const char *const SHADER_BINARIES_PROJECT_RELATIVE_PATH = R"(src\shaders\bin\)";
             static const char *const WIN32_INSTALL_HARD_DRIVE_PATH = "C:\\";
 
             std::string shaderModuleName = fileName + getShaderModuleFileExtension(shaderLanguage,
-                                                                                   shaderUsage);
+                                               shaderUsage);
             // NOTE - this forces the C++ standard to be 17 or greater
             std::filesystem::path currentPath = std::filesystem::current_path().relative_path();
             std::filesystem::path shaderModulePath;
@@ -205,8 +195,8 @@ namespace pEngine::girEngine::scene {
         }
 
         static std::string getShaderModuleFileExtension(
-                ShaderModule::ShaderLanguage type,
-                ShaderModule::ShaderUsage shaderUsage) {
+            ShaderLanguage type,
+            ShaderUsage shaderUsage) {
             switch (type) {
                 case (ShaderLanguage::GLSL): {
                     switch (shaderUsage) {
@@ -235,10 +225,9 @@ namespace pEngine::girEngine::scene {
                     return ".msl";
                 default: {
                     throw std::runtime_error(
-                            "Error in PShaderModule::getShaderModuleFileExtension() - unrecognized shader file type");
+                        "Error in PShaderModule::getShaderModuleFileExtension() - unrecognized shader file type");
                 }
             }
         }
     };
-
 } // scene

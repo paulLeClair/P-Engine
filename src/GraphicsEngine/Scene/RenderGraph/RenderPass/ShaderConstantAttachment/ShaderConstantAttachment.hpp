@@ -5,6 +5,7 @@
 #pragma once
 
 namespace pEngine::girEngine::scene::graph::renderPass {
+    class ShaderConstant;
 
     /**
      * This binds a push constant, called "shader constants" in this engine.
@@ -17,5 +18,4 @@ namespace pEngine::girEngine::scene::graph::renderPass {
          */
         std::shared_ptr<ShaderConstant> attachedShaderConstant = nullptr;
     };
-
 } // renderPass

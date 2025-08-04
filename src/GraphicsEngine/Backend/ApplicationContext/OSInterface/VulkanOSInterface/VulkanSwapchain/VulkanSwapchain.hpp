@@ -4,11 +4,13 @@
 
 #pragma once
 
+#include <ranges>
 #include <boost/optional.hpp>
 #include <vulkan/vulkan.hpp>
 
-namespace pEngine::girEngine::backend::appContext::osInterface::swapchain::vulkan {
+#include "../../../utilities/UniqueIdentifier/UniqueIdentifier.hpp"
 
+namespace pEngine::girEngine::backend::appContext::osInterface::swapchain::vulkan {
     /**
      *
      */
@@ -30,7 +32,8 @@ namespace pEngine::girEngine::backend::appContext::osInterface::swapchain::vulka
             VkImageUsageFlags swapchainImageUsageFlags = 0u;
 
             VkSurfaceKHR appWindowSurface;
-            VkSurfaceTransformFlagBitsKHR swapchainImagePreTransform = VkSurfaceTransformFlagBitsKHR::VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+            VkSurfaceTransformFlagBitsKHR swapchainImagePreTransform =
+                    VkSurfaceTransformFlagBitsKHR::VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 
             bool isClipped = true;
 
@@ -39,18 +42,18 @@ namespace pEngine::girEngine::backend::appContext::osInterface::swapchain::vulka
 
 
         explicit VulkanSwapchain(const CreationInput &creationInput)
-                : instance(creationInput.instance),
-                  logicalDevice(creationInput.logicalDevice),
-                  physicalDevice(creationInput.physicalDevice),
-                  surface(creationInput.appWindowSurface),
-                  swapchainImageFormat(creationInput.swapchainImageFormat),
-                  swapchainPresentMode(creationInput.swapchainPresentMode),
-                  swapchainCompositeAlphaFlag(creationInput.swapchainCompositeAlphaFlag),
-                  swapchainImageColorSpace(creationInput.swapchainImageColorSpace),
-                  swapchainImageUsageFlags(creationInput.swapchainImageUsageFlags),
-                  swapchainImagePreTransform(creationInput.swapchainImagePreTransform),
-                  isClipped(creationInput.isClipped),
-                  oldSwapchain(creationInput.oldSwapchain) {
+            : instance(creationInput.instance),
+              logicalDevice(creationInput.logicalDevice),
+              physicalDevice(creationInput.physicalDevice),
+              surface(creationInput.appWindowSurface),
+              swapchainImageFormat(creationInput.swapchainImageFormat),
+              swapchainPresentMode(creationInput.swapchainPresentMode),
+              swapchainCompositeAlphaFlag(creationInput.swapchainCompositeAlphaFlag),
+              swapchainImageColorSpace(creationInput.swapchainImageColorSpace),
+              swapchainImageUsageFlags(creationInput.swapchainImageUsageFlags),
+              swapchainImagePreTransform(creationInput.swapchainImagePreTransform),
+              isClipped(creationInput.isClipped),
+              oldSwapchain(creationInput.oldSwapchain) {
             // validate input extent
             maximumSwapchainImageExtent = getMaximumImageExtent();
             minimumSwapchainImageExtent = getMinimumImageExtent();
@@ -63,24 +66,25 @@ namespace pEngine::girEngine::backend::appContext::osInterface::swapchain::vulka
             }
 
             VkSwapchainCreateInfoKHR swapchainCreateInfo{
-                    VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-                    nullptr,
-                    0,
-                    surface,
-                    creationInput.numberOfSwapchainImages,
-                    swapchainImageFormat,
-                    swapchainImageColorSpace,
-                    swapchainImageExtent,
-                    1, // TODO - support image arrays (i'm ignoring it for now)
-                    swapchainImageUsageFlags,
-                    VK_SHARING_MODE_EXCLUSIVE,// TODO - change this if we ever support concurrent stuff (i'm ignoring it for now)
-                    0,// TODO - change this if we ever support concurrent stuff (i'm ignoring it for now)
-                    nullptr,// TODO - change this if we ever support concurrent stuff (i'm ignoring it for now)
-                    swapchainImagePreTransform,
-                    swapchainCompositeAlphaFlag,
-                    swapchainPresentMode,
-                    isClipped ? VK_TRUE : VK_FALSE,
-                    creationInput.oldSwapchain.get_value_or(VK_NULL_HANDLE)
+                VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+                nullptr,
+                0,
+                surface,
+                creationInput.numberOfSwapchainImages,
+                swapchainImageFormat,
+                swapchainImageColorSpace,
+                swapchainImageExtent,
+                1, // TODO - support image arrays (i'm ignoring it for now)
+                swapchainImageUsageFlags,
+                VK_SHARING_MODE_EXCLUSIVE,
+                // TODO - change this if we ever support concurrent stuff (i'm ignoring it for now)
+                0, // TODO - change this if we ever support concurrent stuff (i'm ignoring it for now)
+                nullptr, // TODO - change this if we ever support concurrent stuff (i'm ignoring it for now)
+                swapchainImagePreTransform,
+                swapchainCompositeAlphaFlag,
+                swapchainPresentMode,
+                isClipped ? VK_TRUE : VK_FALSE,
+                creationInput.oldSwapchain.get_value_or(VK_NULL_HANDLE)
             };
 
             if (vkCreateSwapchainKHR(logicalDevice, &swapchainCreateInfo, nullptr,
@@ -92,15 +96,25 @@ namespace pEngine::girEngine::backend::appContext::osInterface::swapchain::vulka
             if (!acquireSwapchainImages()) {
                 // TODO - log!
             }
-
-
         }
 
         ~VulkanSwapchain() = default;
 
-        VkImage getSwapchainImage(unsigned imageIndex) {
+        VkImage getSwapchainImage(unsigned imageIndex) const {
             // TODO - re-evaluate how this works; however, to keep it agnostic w.r.t present mode, an index-based access seems ok
             return swapchainImages[imageIndex];
+        }
+
+        VkImage getSwapchainImage(util::UniqueIdentifier imageId) const {
+            const auto findResult = std::ranges::find_if(swapchainImageUids,
+                                                         [&](const auto &pair) {
+                                                             return pair.second == imageId;
+                                                         });
+            if (findResult == std::ranges::end(swapchainImageUids)) {
+                // TODO -> log!
+                return VK_NULL_HANDLE;
+            }
+            return findResult->first;
         }
 
         [[nodiscard]] const uint32_t &getSwapchainImageWidth() const {
@@ -121,14 +135,14 @@ namespace pEngine::girEngine::backend::appContext::osInterface::swapchain::vulka
                 newSwapchainImageExtent.height > maximumSwapchainImageExtent.height) {
                 // TODO - log
                 throw std::runtime_error(
-                        "Error in setSwapchainImageExtent - new swapchain image extent is beyond the maximum!");
+                    "Error in setSwapchainImageExtent - new swapchain image extent is beyond the maximum!");
             }
 
             if (newSwapchainImageExtent.width < minimumSwapchainImageExtent.width ||
                 newSwapchainImageExtent.height < minimumSwapchainImageExtent.height) {
                 // TODO - log
                 throw std::runtime_error(
-                        "Error in setSwapchainImageExtent - new swapchain image extent is less than the minimum!");
+                    "Error in setSwapchainImageExtent - new swapchain image extent is less than the minimum!");
             }
 
             swapchainImageExtent = newSwapchainImageExtent;
@@ -144,6 +158,40 @@ namespace pEngine::girEngine::backend::appContext::osInterface::swapchain::vulka
 
         [[nodiscard]] const std::vector<VkImage> &getSwapchainImages() const {
             return swapchainImages;
+        }
+
+        VkSwapchainKHR getHandle() {
+            return swapchain;
+        }
+
+        util::UniqueIdentifier getSwapchainImageUniqueIdentifier(VkImage value) const {
+            for (auto &image: swapchainImages) {
+                if (value == image) {
+                    return swapchainImageUids.at(image);
+                }
+            }
+            return {};
+        }
+
+
+        VkImageView getSwapchainImageView(uint32_t index) {
+            if (index >= swapchainImages.size()) {
+                // TODO -> log!
+                return VK_NULL_HANDLE;
+            }
+            return swapchainImageViews[index];
+        }
+
+        std::unordered_map<util::UniqueIdentifier, uint32_t> swapchainImageViewIndices;
+
+        VkImageView getSwapchainImageView(util::UniqueIdentifier imageId) {
+            const auto findResult = std::ranges::find_if(swapchainImageUids, [&](const auto &pair) {
+                return pair.second == imageId;
+            });
+            if (findResult == std::ranges::end(swapchainImageUids)) {
+                return VK_NULL_HANDLE;
+            }
+            return swapchainImageViews[swapchainImageViewIndices[findResult->second]];
         }
 
         // TODO - evaluate whether we should make it so that you can trigger recreation of the internal swapchain;
@@ -166,8 +214,9 @@ namespace pEngine::girEngine::backend::appContext::osInterface::swapchain::vulka
 
         VkSwapchainKHR swapchain{};
 
-
+        std::unordered_map<VkImage, util::UniqueIdentifier> swapchainImageUids = {};
         std::vector<VkImage> swapchainImages = {};
+        std::vector<VkImageView> swapchainImageViews = {};
 
         VkExtent2D swapchainImageExtent{};
 
@@ -187,8 +236,49 @@ namespace pEngine::girEngine::backend::appContext::osInterface::swapchain::vulka
             }
 
             swapchainImages.resize(swapchainImageCount);
-            return vkGetSwapchainImagesKHR(logicalDevice, swapchain, &swapchainImageCount, swapchainImages.data())
-                   == VK_SUCCESS;
+            result = vkGetSwapchainImagesKHR(logicalDevice, swapchain, &swapchainImageCount,
+                                             swapchainImages.data());
+            if (result != VK_SUCCESS) {
+                return false;
+            }
+
+            for (auto &image: swapchainImages) {
+                swapchainImageUids[image] = util::UniqueIdentifier();
+
+                swapchainImageViews.push_back(VK_NULL_HANDLE);
+                auto &view = swapchainImageViews.back();
+
+                VkImageViewCreateInfo imageViewCreateInfo{
+                    VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                    nullptr,
+                    0,
+                    image,
+                    VK_IMAGE_VIEW_TYPE_2D,
+                    swapchainImageFormat,
+                    VkComponentMapping{
+                        // default component mapping
+                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                        VK_COMPONENT_SWIZZLE_IDENTITY
+                    },
+                    VkImageSubresourceRange{
+                        VK_IMAGE_ASPECT_COLOR_BIT,
+                        0,
+                        VK_REMAINING_MIP_LEVELS,
+                        0,
+                        VK_REMAINING_ARRAY_LAYERS
+                    }
+                };
+                if (const VkResult imageViewCreationResult = vkCreateImageView(
+                        logicalDevice, &imageViewCreateInfo, nullptr, &view);
+                    imageViewCreationResult != VK_SUCCESS) {
+                    // TODO -> log!
+                    return false;
+                }
+                swapchainImageViewIndices[swapchainImageUids[image]] = swapchainImageViews.size() - 1;
+            }
+            return true;
         }
 
         VkExtent2D getMaximumImageExtent() {
@@ -217,7 +307,5 @@ namespace pEngine::girEngine::backend::appContext::osInterface::swapchain::vulka
                    && (extent2D.width >= minimumSwapchainImageExtent.width &&
                        extent2D.height >= minimumSwapchainImageExtent.height);
         }
-
     };
-
 }

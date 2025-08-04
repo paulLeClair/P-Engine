@@ -8,7 +8,7 @@ namespace pEngine::girEngine::backend::appContext::osInterface::osWindow {
 
     class OSWindow {
     public:
-        ~OSWindow() = default;
+        virtual ~OSWindow() = default;
 
         enum class ExecuteWindowCommandResult {
             SUCCESS,

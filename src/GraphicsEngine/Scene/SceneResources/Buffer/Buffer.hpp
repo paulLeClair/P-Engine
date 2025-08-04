@@ -10,15 +10,17 @@
 
 #include "../SceneResource.hpp"
 
-#include "../../../../utilities/RawDataContainer/RawDataContainer.hpp"
+#include "../../../../utilities/ByteArray/ByteArray.hpp"
 
 #include "../../../GraphicsIR/ResourceIR/BufferIR/BufferIR.hpp"
 
 namespace pEngine::girEngine::scene {
-
-    class Buffer : public scene::Resource {
+    // TODO - remove the OOPness of this design and other resources (it serves no purpose and is ugly)
+    // (I'll try ripping it out now actually)
+    class Buffer {
     public:
-        ~Buffer() override = default;
+        ~Buffer() = default;
+
 
         enum class BufferSubtype {
             UNKNOWN,
@@ -30,53 +32,76 @@ namespace pEngine::girEngine::scene {
             STORAGE_TEXEL_BUFFER
         };
 
-        struct CreationInput : public Resource::CreationInput {
+        struct CreationInput {
+            std::string name;
+            util::UniqueIdentifier uid;
+
             BufferSubtype bufferType;
 
-            // TODO - rehash update stuff later
+            /**
+             * This should either be the vertex input binding index or the binding slot within the
+             * descriptor set (note: for descriptor-bound resources you have to specify the descriptor set index below)
+             */
+            uint32_t bindingIndex = 0;
 
             unsigned char *initialDataPointer = nullptr;
             unsigned long initialDataSizeInBytes = 0;
+
+            /**
+             * This should be used for the case where you want to provide the system
+             * a particular (static) upper bound on the uniform buffer size.
+             *
+             * Not sure if it'll end up mattering, but for the animated model demo
+             * we may benefit from having this information for the animation bones uniform
+             */
+            boost::optional<uint32_t> optionalMaxBufferSize = boost::none;
+
+            boost::optional<uint32_t> descriptorSetIndex = boost::none;
+
+            boost::optional<bool> containsAnimationPoses = false;
         };
 
-        explicit Buffer(const CreationInput &createInfo) : Resource(createInfo),
-                                                           bufferSubtype(createInfo.bufferType) {
-            bufferData = std::make_unique<util::RawDataContainer>(util::RawDataContainer::CreationInput{
-                    createInfo.name,
-                    createInfo.uid,
-                    createInfo.initialDataPointer,
-                    createInfo.initialDataSizeInBytes
+        explicit Buffer(const CreationInput &createInfo)
+            : containsAnimationPoseData(createInfo.containsAnimationPoses.get_value_or(false)),
+              name(createInfo.name),
+              uid(createInfo.uid),
+              maxBufferSize(createInfo.optionalMaxBufferSize),
+              bufferSubtype(createInfo.bufferType),
+              bindingIndex(createInfo.bindingIndex) {
+            // 90% SURE THAT THIS IS NOT WORKING PROPERLY -> I don't think it's copying the right amount of bytes
+            bufferData = util::ByteArray(util::ByteArray::CreationInput{
+                createInfo.name,
+                createInfo.uid,
+                createInfo.initialDataPointer,
+                createInfo.initialDataSizeInBytes
             });
         }
 
-        /**
-         * TODO - rehash this once we get static scenes rendering
-         * @return
-         */
-        UpdateResult update() override {
-            return UpdateResult::FAILURE;
-        }
 
         [[nodiscard]] BufferSubtype getBufferSubtype() const {
             return bufferSubtype;
         }
 
         [[nodiscard]] unsigned long getSizeInBytes() const {
-            return bufferData->getRawDataSizeInBytes();
+            return bufferData.getRawDataSizeInBytes();
         }
 
         [[nodiscard]] unsigned long getNumberOfDataElements() const {
-            return bufferData->getNumberOfDataElements();
+            return bufferData.getNumberOfDataElements();
+        }
+
+        [[nodiscard]] uint32_t getBindingIndex() const {
+            return bindingIndex;
         }
 
         template<typename RawDataType>
         const RawDataType *getBufferDataAsPointer() const {
-            return bufferData->getRawDataPointer<const RawDataType>();
+            return bufferData.getRawDataPointer<const RawDataType>();
         }
 
         template<typename RawDataType>
         const std::vector<RawDataType> &getBufferDataAsArray() const {
-            return bufferData->getRawDataAsVector<RawDataType>();
+            return bufferData.getRawDataAsVector<RawDataType>();
         }
 
         template<typename RawDataType>
@@ -86,43 +111,64 @@ namespace pEngine::girEngine::scene {
 
         template<typename RawDataType>
         void setBufferData(RawDataType *newData) {
-            bufferData->setRawData(newData, sizeof(RawDataType));
+            bufferData.setRawData(newData, sizeof(RawDataType));
         }
 
         template<typename RawDataType>
         void setBufferDataAsArray(const std::vector<RawDataType> &newData) {
-            bufferData->setRawData((unsigned char *) newData.data(), newData.size() * sizeof(RawDataType));
+            bufferData.setRawData((unsigned char *) newData.data(), newData.size() * sizeof(RawDataType));
         }
 
         template<typename RawDataType>
         void setBufferDataFromPointer(const RawDataType *rawData, unsigned long long numberOfBytesToCopy) {
-            bufferData->setRawData((unsigned char *) rawData, numberOfBytesToCopy);
+            bufferData.setRawData((unsigned char *) rawData, numberOfBytesToCopy);
         }
 
-        [[nodiscard]] const util::RawDataContainer &getRawDataContainer() const {
-            return *bufferData;
+        [[nodiscard]] const util::ByteArray &getRawDataContainer() const {
+            return bufferData;
         }
 
-        std::shared_ptr<gir::GraphicsIntermediateRepresentation> bakeToGIR() override {
-            throw std::runtime_error("Error: Attempting to bake generic scene::Buffer to GIR!");
+        [[nodiscard]] gir::BufferIR bakeBuffer() const {
+            // TODO -> validation etc
+            return gir::BufferIR{
+                name,
+                uid,
+                gir::GIRSubtype::BUFFER,
+                convertBufferSubtypeToGirAnalogue(bufferSubtype),
+                bindingIndex,
+                getRawDataContainer().getRawDataByteArray(),
+                static_cast<uint32_t>(getRawDataContainer().getRawDataSizeInBytes()),
+                maxBufferSize
+            };
         }
 
+        // temporary hacky mechanism for labeling animation data that the system will grab out for you
+        bool containsAnimationPoseData = false;
 
-    private:
+        std::string name;
+        util::UniqueIdentifier uid;
+
+        boost::optional<uint32_t> maxBufferSize = boost::none;
+
+    private: // I'll leave these private for now but it's probably not necessary
+
         BufferSubtype bufferSubtype;
 
-    protected:
-        /**
-         * This is protected to allow VertexBuffer<> and IndexBuffer<> to set up the data without having
-         * to use the redundant Buffer::CreationInput initialization data parameters, if there's another
-         * way to do it without making this private then that might be worth looking into in the future
-         */
-        std::unique_ptr<util::RawDataContainer> bufferData;
+        util::ByteArray bufferData;
 
-        /**
-         * TODO - redo updates after static scenes are rendering
-         */
+        uint32_t bindingIndex;
 
+
+        static constexpr gir::BufferIR::BufferUsage convertBufferSubtypeToGirAnalogue(const BufferSubtype &subtype) {
+            switch (subtype) {
+                case (BufferSubtype::UNIFORM_BUFFER): {
+                    return gir::BufferIR::BufferUsage::UNIFORM_BUFFER;
+                };
+                // TODO -> support other buffer types; for the single-animated-model demo we'll trim it down
+                // to just the uniform buffers that we need (for now)
+                default:
+                    return gir::BufferIR::BufferUsage::UNKNOWN;
+            };
+        }
     };
-
 }

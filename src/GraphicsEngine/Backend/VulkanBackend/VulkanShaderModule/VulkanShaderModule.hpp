@@ -29,15 +29,21 @@ namespace pEngine::girEngine::backend::vulkan {
             util::UniqueIdentifier uniqueIdentifier;
             gir::ShaderModuleIR::ShaderUsage shaderUsage;
             std::string shaderEntryPointName;
+
+            // TODO - flag(s) for automatation of certain resources (for now, matrix data)
         };
 
         static void validateInfo(const CreationInput &info);
 
         explicit VulkanShaderModule(const CreationInput &info);
 
-        ~VulkanShaderModule() {
-            vkDestroyShaderModule(parentLogicalDevice, shaderModule, nullptr);
-        }
+        VulkanShaderModule() = default;
+
+        VulkanShaderModule(const VulkanShaderModule &other) = default;
+
+        VulkanShaderModule &operator=(const VulkanShaderModule &other) = default;
+
+        ~VulkanShaderModule() = default;
 
         static uint32_t getSpirVModuleSizeInBytes(const std::vector<uint32_t> &shaderSPIRV);
 
@@ -67,16 +73,16 @@ namespace pEngine::girEngine::backend::vulkan {
         }
 
     private:
-        constexpr static const VkSpecializationInfo specializationInfo{
-                0,
-                nullptr,
-                0,
-                nullptr
+        constexpr static VkSpecializationInfo specializationInfo{
+            0,
+            nullptr,
+            0,
+            nullptr
         };
 
         std::string shaderModuleSpirVName;
         util::UniqueIdentifier uniqueIdentifier;
-        gir::ShaderModuleIR::ShaderUsage shaderUsage;
+        gir::ShaderModuleIR::ShaderUsage shaderUsage = gir::ShaderModuleIR::ShaderUsage::UNKNOWN;
         VkDevice parentLogicalDevice = VK_NULL_HANDLE;
         VkShaderModule shaderModule = VK_NULL_HANDLE;
         std::vector<uint32_t> spirVByteCode = {};

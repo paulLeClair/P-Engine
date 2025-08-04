@@ -9,10 +9,10 @@
 #include <variant>
 #include <memory>
 
-#include "../../../../lib/glm/glm.hpp"
+//#include "../../../../lib/glm/glm.hpp"
 
 #include "../../../../utilities/UniqueIdentifier/UniqueIdentifier.hpp"
-#include "../../../../utilities/RawDataContainer/RawDataContainer.hpp"
+#include "../../../../utilities/ByteArray/ByteArray.hpp"
 
 #include "../SceneResource.hpp"
 
@@ -54,14 +54,15 @@ namespace pEngine::girEngine::scene {
                                                                               creationInput.shaderStages),
                                                                       offset(creationInput.offset),
                                                                       size(creationInput.size) {
-            rawDataContainer = std::make_unique<util::RawDataContainer>(
-                    util::RawDataContainer::CreationInput{
+            rawDataContainer = util::ByteArray(
+                    util::ByteArray::CreationInput{
                             getName(),
                             getUid(),
                             creationInput.initializationDataPointer,
                             creationInput.initializationDataSizeInBytes
                     });
         }
+
 
         ~ShaderConstant() override = default;
 
@@ -81,7 +82,7 @@ namespace pEngine::girEngine::scene {
             return size;
         }
 
-        [[nodiscard]] const std::unique_ptr<util::RawDataContainer> &getRawDataContainer() const {
+        [[nodiscard]] const util::ByteArray &getRawDataContainer() const {
             return rawDataContainer;
         }
 
@@ -90,8 +91,8 @@ namespace pEngine::girEngine::scene {
                     getName(),
                     getUid(),
                     gir::GIRSubtype::SHADER_CONSTANT,
-                    rawDataContainer->getRawDataByteArray(),
-                    rawDataContainer->getRawDataSizeInBytes()
+                    rawDataContainer.getRawDataByteArray(),
+                    static_cast<uint32_t>(rawDataContainer.getRawDataSizeInBytes())
             });
         }
 
@@ -100,7 +101,7 @@ namespace pEngine::girEngine::scene {
         unsigned int offset;
         unsigned int size;
 
-        std::unique_ptr<util::RawDataContainer> rawDataContainer;
+        util::ByteArray rawDataContainer;
 
     };
 

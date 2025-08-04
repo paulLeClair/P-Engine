@@ -22,7 +22,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 
 namespace pEngine::girEngine::backend::appContext::osInterface::osWindow::win32 {
 
-    class Win32Window : public OSWindow {
+    class Win32Window final : public OSWindow {
     public:
         struct CreationInput {
             std::string windowClassName;
@@ -39,7 +39,7 @@ namespace pEngine::girEngine::backend::appContext::osInterface::osWindow::win32 
 
         explicit Win32Window(const CreationInput &createInfo);
 
-        ~Win32Window() = default;
+        ~Win32Window() override = default;
 
         ExecuteWindowCommandResult executeWindowCommand(const WindowCommand &command) override;
 

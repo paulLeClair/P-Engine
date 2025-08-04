@@ -5,100 +5,76 @@
 #include "../VertexAttributeIR/VertexAttributeIR.hpp"
 
 #include "../../../utilities/Hash/Hash.hpp"
+#include "../model/AnimationIR/AnimationIR.hpp"
 
 namespace pEngine::girEngine::gir {
+    struct VertexBufferAttachment {
+        VertexBufferAttachment(const BufferIR &attachedBuffer, unsigned int vertexCount)
+            : attachedBuffer(attachedBuffer), vertexCount(vertexCount) {
+        }
+
+        BufferIR attachedBuffer = {};
+        unsigned vertexCount = 0;
+        // any other info we want to include for 1 buffer binding can go here;
+        // note that each vertex buffer must be compatible with the target vertex
+        // input binding for a particular draw attachment
+    };
+
+    struct IndexBufferAttachment {
+        IndexBufferAttachment(const BufferIR &attachedBuffer, unsigned int indexCount)
+            : attachedBuffer(attachedBuffer), indexCount(indexCount) {
+        }
+
+        BufferIR attachedBuffer = {};
+        unsigned indexCount = 0;
+    };
+
+    struct MeshAttachment {
+        // issue: when we're passing the info in from the gir, we don't want to be
+        // using these unwrapped buffers only because they can't store additional data
+        // without pollution.
+        // So instead I'll replace them with a simple wrapper that can then include
+        // any other auxiliary info that we need as the engine matures
+        std::vector<VertexBufferAttachment> vertexBuffers;
+        std::vector<IndexBufferAttachment> indexBuffers;
+
+        // TODO -> materials
+
+        // NOTE: engine-native anims are currently disabled
+        boost::optional<model::AnimationIR> animation = boost::none;
+    };
 
     /**
      * Instead of my pre-existing idea for this whole thing, I'm going to try and
      * unify geometry and draw command representation and make the overall interface as simple as possible.\n\n
      *
-     * For now, it'll just support simple indexed draws, but I'll extend this to be able to include
-     * stuff like tessellation patches or whatever else comes up.\n\n
-     *
-     * Basically, draw commands are obtained by the user setting up *geometry bindings*
-     * in the scene's RenderPass classes; this tells the system that the user's intent
-     * is to have a model (or renderable) drawn as part of a particular render pass in a scene.
-     * It's assumed that the scene object in the geometry binding (ie either a model or renderable)
-     * will be able to provide vertex and index buffers that will be bound for the draw call itself.
+     * With the new front-end/gir geometry stuff that I'm gonna add, this will probably become what
+     * our BoundGeometry class should bake to; I'll rename it actually to be a bit more logical
     */
-    class DrawAttachmentIR : public GraphicsIntermediateRepresentation {
-    public:
-        /**
-         * Each enum class member denotes a possible type of draw call. \n\n
-         *
-         * I'll go through and extend this with all the different varieties soon but for now
-         * I think we can just focus on trying to get this to be able to support a `vkCmdDrawIndexed`
-         * in the backend.\n\n
-         *
-         * Once that works we can start expanding this to support stuff like point clouds,
-         * instanced draws, etc.
-         */
-        enum class DrawType {
-            UNKNOWN,
-            INDEXED_DRAW,
-            POINT_CLOUD,
-            INSTANCED_DRAW,
-            // TODO - add stuff like tessellation, mesh shading stuff, raytracing, etc
-        };
+    struct DrawAttachmentIR : GraphicsIntermediateRepresentation {
+        struct CreationInput : GraphicsIntermediateRepresentation::CreationInput {
+            /**
+             * This specifies the index of the geometry binding GIR (which needs to be created atow)
+             * that this particular draw attachment corresponds to within a particular render pass
+             * (which is the thing that it is "attached" to)
+             */
+            unsigned vertexInputBindingIndex = 0;
 
-        struct CreationInput : public GraphicsIntermediateRepresentation::CreationInput {
-            DrawType drawType = DrawType::UNKNOWN;
 
-            std::vector<gir::vertex::VertexAttributeIR> vertexAttributes = {};
-
-            util::Hash vertexAttributeHash = 0;
-
-            // trying to store all vertex buffers and index buffers
-            // inside draw commands;
-            std::vector<std::shared_ptr<BufferIR>> vertexBuffers;
-            std::vector<std::shared_ptr<BufferIR>> indexBuffers;
-
-            // TODO - add any other types of bindings needed for a draw call
-            // for now I'll leave it just with vertex & index buffers and draw type
+            std::vector<MeshAttachment> meshAttachments;
         };
 
         explicit DrawAttachmentIR(const CreationInput &creationInput)
-                : GraphicsIntermediateRepresentation(creationInput),
-                  drawType(creationInput.drawType),
-                  vertexAttributes(creationInput.vertexAttributes),
-                  vertexAttributeHash(creationInput.vertexAttributeHash),
-                  vertexBuffers(creationInput.vertexBuffers),
-                  indexBuffers(creationInput.indexBuffers) {
+            : GraphicsIntermediateRepresentation(creationInput),
+              meshAttachments(creationInput.meshAttachments) {
+        }
 
+        DrawAttachmentIR() : DrawAttachmentIR(CreationInput()) {
         }
 
         ~DrawAttachmentIR() override = default;
 
-        [[nodiscard]] DrawType getDrawType() const {
-            return drawType;
-        }
-
-        [[nodiscard]] const std::vector<std::shared_ptr<BufferIR>> &getVertexBuffers() const {
-            return vertexBuffers;
-        }
-
-        [[nodiscard]] const std::vector<std::shared_ptr<BufferIR>> &getIndexBuffers() const {
-            return indexBuffers;
-        }
-
-        [[nodiscard]] const std::vector<vertex::VertexAttributeIR> &getVertexAttributes() const {
-            return vertexAttributes;
-        }
-
-        [[nodiscard]] util::Hash getVertexAttributeHash() const {
-            return vertexAttributeHash;
-        }
-
-    private:
-        DrawType drawType;
-
-        std::vector<vertex::VertexAttributeIR> vertexAttributes = {};
-
-        util::Hash vertexAttributeHash = 0;
-
-        std::vector<std::shared_ptr<BufferIR>> vertexBuffers;
-        std::vector<std::shared_ptr<BufferIR>> indexBuffers;
-
+        unsigned vertexBindingIndex = 0;
+        std::vector<MeshAttachment> meshAttachments;
     };
-
 }

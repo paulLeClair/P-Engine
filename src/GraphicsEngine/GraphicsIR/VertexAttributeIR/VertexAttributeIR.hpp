@@ -8,76 +8,51 @@
 #include <boost/optional/optional.hpp>
 #include <utility>
 
+// ugh coming back to this I am kind of appalled at it.
+// the idea of going through and making sure I set these up properly
+// for each format sounds like booty.
+// on the other hand a simple hardcoded static map could be somewhat doable
+
+// it appears that this VertexAttributeIR class isn't even really used;
+// it's a good example of why I shouldn't write code without having a bit of
+// background on the domain lol
+
 namespace pEngine::girEngine::gir::vertex {
 
-    enum class AttributeComponentSignedness {
-        UNKNOWN,
-        SIGNED,
-        UNSIGNED
-    };
-
-    enum class AttributeComponentSpace {
-        UNKNOWN,
-        INT,
-        FLOAT,
-        DOUBLE,
-        /**
-         * This is a float restrained to either [0,1] or [-1,1] depending on the signedness.
-         */
-        NORM,
-        /**
-         * Scaled means you take the (either unsigned or signed) integer value and convert it to a float
-         */
-        SCALED,
-        SRGB,
-    };
-
-    enum class AttributeComponentComposition {
-        UNKNOWN,
-        R,
-        RG,
-        RGB,
-        RGBA,
-        AGBR,
-        RGBA_2_BIT_ALPHA,
-        /**
-         * This corresponds to a depth-only format; functionally I'm not sure it's much different than R
-         */
-        D,
-        BGR,
-        /**
-         * This is for a packed 32-bit, 3-component unsigned float number with a 5-bit exponent; pretty niche, may delete later ;)
-         */
-        FLOAT_EBGR
-    };
-
-    // TODO - actually support different packed formats
-    enum class AttributeDataPacking {
-        NONE,
-        BLOCK,
-        PACK8,
-        PACK16,
-        PACK32,
-        ASTC
-    };
-
+    // TODO -> consider making this a GIR subclass (or whatever the alternative is if we remove inheritance)
     struct VertexAttributeIR {
+        VertexAttributeIR(const VertexAttributeIR &other) = default;
+
+        VertexAttributeIR() = default;
+
         // ideally this should match up with the attribute name in the actual shader; not sure if it'll be actually used
         std::string attributeName;
 
-        // TODO - verify that this lines up enough with what vulkan needs us to specify
+        // for simplicity, I'll just use a 1-1 matching enum with the scene attribute usage label;
+        enum class AttributeUsage {
+            UNDEFINED,
+            POSITION,
+            COLOR,
+            NORMAL,
+            TANGENT,
+            BITANGENT,
+            UV,
+            ANIMATION_BONE_INDICES,
+            ANIMATION_BONE_WEIGHTS
+            // TODO -> other commonly supported attribute types (reflectance, etc)
+        };
+
         /**
-         * This (I think) is shader-specific, it labels which of the shader's 32-bit interface slots that the
-         * attribute memory starts in (in certain cases, you can have a single attribute taking up multiple slots). \n\n
-         *
-         * This is able to be specified inside the shader, in which case the value from the shader will override this
-         * value. We should also be able to support the case that the user has the attributes
-         * specified using the "attribute" keyword, which I think forces us to determine a location on a per-binding basis
-         *
-         * Honestly I think I'll just make this an optional for now, since we might as well allow it to just be reflected from the shader
-         * or figured out automatically
+         * This is the index of the vertex input binding configuration that this attribute is mapped to
          */
-        boost::optional<unsigned> attributeShaderLocation = boost::none;
+        unsigned binding = 0;
+
+        /**
+         * This is the index of the shader resource slot
+         */
+        unsigned attributeShaderLocation = 0;
+
+        gir::resource::FormatIR attributeFormat = gir::resource::FormatIR::UNDEFINED;
 
         /**
          * This should correspond to where this attribute is located inside the vertex element memory,
@@ -91,46 +66,20 @@ namespace pEngine::girEngine::gir::vertex {
          */
         unsigned attributeByteOffset = 0u;
 
+        boost::optional<AttributeUsage> usageLabel = boost::none;
 
-        AttributeComponentSignedness componentSignedness = AttributeComponentSignedness::UNKNOWN;
-
-
-        /**
-         * This describes the types of the individual components of this attribute.
-         */
-        AttributeComponentSpace componentSpace = AttributeComponentSpace::UNKNOWN;
-
-        /**
-         * This describes the specific component format of the attribute;
-         */
-        AttributeComponentComposition componentComposition = AttributeComponentComposition::UNKNOWN;
-
-        /**
-         * This should describe the size of the components in bytes; obviously this isn't a true
-         * catch-all because there are types with different component sizes b/w them, but they're generally
-         * special cases and I can avoid them for now... besides you can probably deduce whether to use those ones in other ways.
-         */
-        size_t individualComponentSizesInBytes = 0u;
-
-        /**
-         * This describes whether the attribute is packed / compressed in some way.
-         */
-        AttributeDataPacking dataPacking = AttributeDataPacking::NONE;
-
-        VertexAttributeIR(std::string attributeName,
-                          const boost::optional<unsigned int> &attributeShaderLocation,
-                          unsigned int attributeByteOffset, AttributeComponentSignedness componentSignedness,
-                          AttributeComponentSpace componentSpace, AttributeComponentComposition componentComposition,
-                          size_t individualComponentSizesInBytes, AttributeDataPacking dataPacking) : attributeName(
-                std::move(
-                        attributeName)), attributeShaderLocation(attributeShaderLocation), attributeByteOffset(
-                attributeByteOffset), componentSignedness(componentSignedness), componentSpace(componentSpace),
-                                                                                                      componentComposition(
-                                                                                                              componentComposition),
-                                                                                                      individualComponentSizesInBytes(
-                                                                                                              individualComponentSizesInBytes),
-                                                                                                      dataPacking(
-                                                                                                              dataPacking) {}
+        VertexAttributeIR(const std::string &attributeName,
+                          unsigned int binding,
+                          unsigned int attributeShaderLocation,
+                          resource::FormatIR attributeFormat,
+                          unsigned int attributeByteOffset,
+                          const boost::optional<AttributeUsage> &usageLabel) : attributeName(attributeName),
+                                                                               binding(binding),
+                                                                               attributeShaderLocation(
+                                                                                       attributeShaderLocation),
+                                                                               attributeFormat(attributeFormat),
+                                                                               attributeByteOffset(attributeByteOffset),
+                                                                               usageLabel(usageLabel) {}
     };
 
 };

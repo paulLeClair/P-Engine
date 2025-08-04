@@ -32,11 +32,10 @@
 #include "../OSWindow/XLibWindow/XLibWindow.hpp"
 
 namespace pEngine::girEngine::backend::appContext::osInterface::vulkan {
-
+    // I think a lot of this stuff has to be transferred to the PresentationEngine now
     class VulkanOSInterface : public OSInterface {
     public:
         struct CreationInput : public OSInterface::CreateInfo {
-
             VkInstance instance{};
             VkDevice logicalDevice{};
             VkPhysicalDevice physicalDevice{};
@@ -75,11 +74,13 @@ namespace pEngine::girEngine::backend::appContext::osInterface::vulkan {
         }
 
 #ifdef _WIN32
+
         std::shared_ptr<osWindow::win32::Win32Window> getWin32Window() {
             return std::dynamic_pointer_cast<osWindow::win32::Win32Window>(window);
         }
 
         void createWin32WindowAndSurface(int initialWidth, int initialHeight);
+
 #endif
 
 #ifdef __linux__
@@ -97,6 +98,13 @@ namespace pEngine::girEngine::backend::appContext::osInterface::vulkan {
         }
 
         [[nodiscard]] const VkRect2D &getScissor() const;
+
+        VkFormat getSwapchainImageFormat() {
+            std::vector<VkSurfaceFormatKHR> physicalDeviceSurfaceFormats = getPhysicalDeviceSurfaceFormats();
+
+            // default behavior here: choose the first VkSurfaceFormatKHR that's available (should change this)
+            return physicalDeviceSurfaceFormats.front().format;
+        }
 
     private:
         WindowPlatform windowPlatform;
@@ -148,15 +156,6 @@ namespace pEngine::girEngine::backend::appContext::osInterface::vulkan {
             return physicalDeviceSurfaceFormats;
         }
 
-        // TODO - really re-evaluate this one; we can probably implement a simple user-specification thing
-        // where we convert b/w our platform-agnostic texel format enum into the vulkan one, and then we
-        // basically just look for it in the array of physical device surface formats that we acquire
-        VkFormat getSwapchainImageFormat() {
-            std::vector<VkSurfaceFormatKHR> physicalDeviceSurfaceFormats = getPhysicalDeviceSurfaceFormats();
-
-            // default behavior here: choose the first VkSurfaceFormatKHR that's available (should change this)
-            return physicalDeviceSurfaceFormats.front().format;
-        }
 
         // TODO - similar to the image format one, we have to re-evaluate how this works (make it user-specifiable)
         VkColorSpaceKHR getSwapchainImageColorSpace() {
@@ -188,27 +187,27 @@ namespace pEngine::girEngine::backend::appContext::osInterface::vulkan {
 
         void createSwapchain(const CreationInput &input) {
             vulkanSwapchain = std::make_shared<swapchain::vulkan::VulkanSwapchain>(
-                    swapchain::vulkan::VulkanSwapchain::CreationInput{
-                            input.instance,
-                            input.logicalDevice,
-                            input.physicalDevice,
-                            input.swapchainPresentMode,
-                            input.compositeAlphaFlag,
-                            input.numberOfSwapchainImages,
-                            {window->getWindowWidth(),
-                             window->getWindowHeight()}, // try making extent based off window size?
-                            input.swapchainImageFormat,
-                            input.swapchainImageColorSpace,
-                            input.swapchainImageUsages,
-                            surface,
-                            input.swapchainImagePreTransform,
-                            input.swapchainShouldClipObscuredTriangles,
-                            boost::none // TODO - support old swapchain usage lol
-                    });
+                swapchain::vulkan::VulkanSwapchain::CreationInput{
+                    input.instance,
+                    input.logicalDevice,
+                    input.physicalDevice,
+                    input.swapchainPresentMode,
+                    input.compositeAlphaFlag,
+                    input.numberOfSwapchainImages,
+                    {
+                        window->getWindowWidth(),
+                        window->getWindowHeight()
+                    }, // try making extent based off window size?
+                    input.swapchainImageFormat,
+                    input.swapchainImageColorSpace,
+                    input.swapchainImageUsages,
+                    surface,
+                    input.swapchainImagePreTransform,
+                    input.swapchainShouldClipObscuredTriangles,
+                    boost::none // TODO - support old swapchain usage lol
+                });
         }
 
         void build(const CreationInput &input);
-
     };
-
-}// namespace PG
+} // namespace PG

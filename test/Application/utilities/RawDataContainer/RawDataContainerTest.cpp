@@ -4,8 +4,8 @@
 
 #include <gtest/gtest.h>
 
-#include "../../../../src/utilities/RawDataContainer/RawDataContainer.hpp"
-#include "../../../../src/lib/glm/detail/type_mat4x4.hpp"
+#include "../../../../src/utilities/ByteArray/ByteArray.hpp"
+#include <glm/detail/type_mat4x4.hpp>
 
 using namespace pEngine::util;
 
@@ -37,27 +37,27 @@ protected:
 };
 
 TEST_F(RawDataContainerTest, testInvalidCreationInput) {
-    RawDataContainer::CreationInput invalidCreationInput = {
+    ByteArray::CreationInput invalidCreationInput = {
             "",
             pEngine::util::UniqueIdentifier(),
             nullptr,
             0
     };
 
-    ASSERT_ANY_THROW(auto rawDataContainer = std::make_shared<RawDataContainer>(invalidCreationInput));
+    ASSERT_ANY_THROW(auto rawDataContainer = std::make_shared<ByteArray>(invalidCreationInput));
 }
 
 
 TEST_F(RawDataContainerTest, createEmptyContainer) {
-    RawDataContainer::CreationInput creationInput = {
+    ByteArray::CreationInput creationInput = {
             "TestRawDataContainer1",
             pEngine::util::UniqueIdentifier(),
             nullptr,
             0
     };
 
-    std::shared_ptr<RawDataContainer> testContainer;
-    ASSERT_NO_THROW(testContainer = std::make_shared<RawDataContainer>(creationInput));
+    std::shared_ptr<ByteArray> testContainer;
+    ASSERT_NO_THROW(testContainer = std::make_shared<ByteArray>(creationInput));
 }
 
 TEST_F(RawDataContainerTest, testContainerWithSimpleDoubleData) {
@@ -72,15 +72,15 @@ TEST_F(RawDataContainerTest, testContainerWithSimpleDoubleData) {
             8.0
     };
 
-    RawDataContainer::CreationInput simpleStringTestCreationInput = {
+    ByteArray::CreationInput simpleStringTestCreationInput = {
             "simple string test data",
             pEngine::util::UniqueIdentifier(),
             reinterpret_cast<unsigned char *>(&someDoubles),
             static_cast<unsigned long>(someDoubles.size() * sizeof(double))
     };
 
-    std::shared_ptr<RawDataContainer> simpleStringTestContainer;
-    ASSERT_NO_THROW(simpleStringTestContainer = std::make_shared<RawDataContainer>(simpleStringTestCreationInput));
+    std::shared_ptr<ByteArray> simpleStringTestContainer;
+    ASSERT_NO_THROW(simpleStringTestContainer = std::make_shared<ByteArray>(simpleStringTestCreationInput));
 
     auto *testContainerDataPointer = simpleStringTestContainer->getRawDataPointer<std::vector<double>>();
     std::vector<double> testContainerData = *testContainerDataPointer;
@@ -90,15 +90,15 @@ TEST_F(RawDataContainerTest, testContainerWithSimpleDoubleData) {
 }
 
 TEST_F(RawDataContainerTest, testContainerWithSimpleStructData) {
-    RawDataContainer::CreationInput simpleStructTestCreationInput = {
+    ByteArray::CreationInput simpleStructTestCreationInput = {
             "simple struct data",
             pEngine::util::UniqueIdentifier(),
             reinterpret_cast<unsigned char *>(&simpleTestData),
             static_cast<unsigned long>(sizeof(simpleTestData))
     };
 
-    std::shared_ptr<RawDataContainer> simpleStructTestContainer;
-    ASSERT_NO_THROW(simpleStructTestContainer = std::make_shared<RawDataContainer>(simpleStructTestCreationInput));
+    std::shared_ptr<ByteArray> simpleStructTestContainer;
+    ASSERT_NO_THROW(simpleStructTestContainer = std::make_shared<ByteArray>(simpleStructTestCreationInput));
 
     auto *testContainerDataPointer = simpleStructTestContainer->getRawDataPointer<SimpleTestData>();
     SimpleTestData testContainerData = *testContainerDataPointer;
@@ -107,8 +107,8 @@ TEST_F(RawDataContainerTest, testContainerWithSimpleStructData) {
 
     std::vector<SimpleTestData> simpleTestDataVector(4);
 
-    std::shared_ptr<RawDataContainer> vectorOfSimpleDataStructContainer = std::make_shared<RawDataContainer>(
-            RawDataContainer::CreationInput{
+    std::shared_ptr<ByteArray> vectorOfSimpleDataStructContainer = std::make_shared<ByteArray>(
+            ByteArray::CreationInput{
                     "simple vector of simple test data :)",
                     pEngine::util::UniqueIdentifier(),
                     reinterpret_cast<unsigned char *>(&simpleTestDataVector),
@@ -123,15 +123,15 @@ TEST_F(RawDataContainerTest, testContainerWithSimpleStructData) {
 }
 
 TEST_F(RawDataContainerTest, testSettingEmptyContainerToSimpleData) {
-    RawDataContainer::CreationInput simpleStructTestCreationInput = {
+    ByteArray::CreationInput simpleStructTestCreationInput = {
             "empty simple string test data",
             pEngine::util::UniqueIdentifier(),
             nullptr,
             0
     };
 
-    std::shared_ptr<RawDataContainer> simpleStructTestContainer;
-    ASSERT_NO_THROW(simpleStructTestContainer = std::make_shared<RawDataContainer>(simpleStructTestCreationInput));
+    std::shared_ptr<ByteArray> simpleStructTestContainer;
+    ASSERT_NO_THROW(simpleStructTestContainer = std::make_shared<ByteArray>(simpleStructTestCreationInput));
     ASSERT_NO_THROW(
             simpleStructTestContainer->setRawData(
                     reinterpret_cast<unsigned char *>(&simpleTestData),

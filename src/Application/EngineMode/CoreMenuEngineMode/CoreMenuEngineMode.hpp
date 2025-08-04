@@ -5,25 +5,19 @@
 #pragma once
 
 #include <memory>
-#include <utility>
 #include <string>
 #include <vector>
 #include <functional>
 
 #include "../EngineMode.hpp"
-#include "../../../GraphicsEngine/Backend/ApplicationContext/ApplicationContext.hpp"
-#include "../../../GraphicsEngine/Backend/Renderer/Renderer.hpp"
-#include "../../../GraphicsEngine/Scene/RenderGraph/RenderPass/ImguiRenderPass/ImguiRenderPass.hpp"
 #include "../../../GraphicsEngine/Backend/VulkanBackend/VulkanBackend.hpp"
 
 using namespace pEngine::core;
 
-// BACK TO THIS SHITE AGAIN!
-// now that the backend can draw frames, we can probably try to get this core menu
-// mode running;
-
 namespace pEngine::app::mode {
     template<typename GirGeneratorType, typename BackendType>
+
+    // this is mostly deprecated ATOW; focus has switched to the AnimatedModelDemoMode
     class CoreMenuEngineMode : public EngineMode<GirGeneratorType, BackendType> {
     public:
         struct CreationInput : public EngineMode<GirGeneratorType, BackendType>::CreationInput {
@@ -32,17 +26,17 @@ namespace pEngine::app::mode {
         };
 
         explicit CoreMenuEngineMode(const CreationInput &creationInput)
-                : EngineMode<GirGeneratorType, BackendType>(creationInput),
-                  shouldBypassMainLoop(creationInput.shouldBypassMainLoop),
-                  dearImguiGuiCallbacks(creationInput.initialDearImguiGuiCallbacks) {
+            : EngineMode<GirGeneratorType, BackendType>(creationInput),
+              shouldBypassMainLoop(creationInput.shouldBypassMainLoop),
+              dearImguiGuiCallbacks(creationInput.initialDearImguiGuiCallbacks) {
             // store a handle to the scene
             scene = std::dynamic_pointer_cast<scene::Scene>(
-                    this->getEngineCore()->getGraphicsEngine().getScene()
+                this->getEngineCore()->getGraphicsEngine().getScene()
             );
 
             // store a handle to the backend (this will be written with the vulkan backend; could be changed if there were other backends lol)
             backend = std::dynamic_pointer_cast<backend::vulkan::VulkanBackend>(
-                    this->getEngineCore()->getGraphicsEngine().getBackend()
+                this->getEngineCore()->getGraphicsEngine().getBackend()
             );
         }
 
@@ -79,13 +73,13 @@ namespace pEngine::app::mode {
             SUCCESS
         };
 
-        std::vector<std::function<void()>> obtainDearImguiCoreMenuCallbacks() {
+        std::vector<std::function<void()> > obtainDearImguiCoreMenuCallbacks() {
             // I guess for the demo I'll start with a simple gui window that's customized to show off some shtuff
             static float f = 0.0f;
             static int counter = 0;
 
             static bool show_demo_window = false;
-            std::vector<float> &clear_color = backend->getRenderer()->acquireClearColorHandle();
+            std::vector<float> &clear_color = backend->getRenderer().acquireClearColorHandle();
 
             /**
              * For now, this will just be a big ugly monolithic callback, but a polished project
@@ -100,11 +94,11 @@ namespace pEngine::app::mode {
                 ImGui::Text("This is the pre-pre-alpha of the GirEngine game engine framework!");
                 ImGui::NewLine();
                 ImGui::Text(
-                        "Specifically, this is demoing the most basic GirEngine application, which consists of a single DearImgui render pass "
-                        "being drawn using FIFO presentation mode.");
+                    "Specifically, this is demoing the most basic GirEngine application, which consists of a single DearImgui render pass "
+                    "being drawn using FIFO presentation mode.");
                 ImGui::NewLine();
                 ImGui::Text(
-                        "I'm trying to design the engine in a similar way to a compiler, with a front-end, IR, and back-end.");
+                    "I'm trying to design the engine in a similar way to a compiler, with a front-end, IR, and back-end.");
 
                 ImGui::Text("Current features:");
 
@@ -207,7 +201,7 @@ namespace pEngine::app::mode {
                     ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
 
                     if (ImGui::Button(
-                            "Increment Counter")) {
+                        "Increment Counter")) {
                         counter++;
                     }
                     ImGui::SameLine();
@@ -257,38 +251,39 @@ namespace pEngine::app::mode {
 
             // create basic unused vertex shader (for now?)
             const std::shared_ptr<scene::ShaderModule> &vertexShaderModule = std::make_shared<scene::ShaderModule>(
-                    scene::ShaderModule::CreationInput{
-                            "coreMenuUnusedBasicVertexShader",
-                            util::UniqueIdentifier(),
-                            "testVertShader", // filename used for test vertex shader included ATOW
-                            "main",
-                            scene::ShaderModule::ShaderUsage::VERTEX_SHADER,
-                            scene::ShaderModule::ShaderLanguage::GLSL
-                    });
-            scene->registerShaderModule(vertexShaderModule);
+                scene::ShaderModule::CreationInput{
+                    "coreMenuUnusedBasicVertexShader",
+                    util::UniqueIdentifier(),
+                    "testVertShader", // filename used for test vertex shader included ATOW
+                    "main",
+                    scene::ShaderModule::ShaderUsage::VERTEX_SHADER,
+                    scene::ShaderModule::ShaderLanguage::GLSL
+                });
+            scene->registerShaderModule(*vertexShaderModule);
 
             // create basic unused fragment shader (for now?)
             const std::shared_ptr<scene::ShaderModule> &fragmentShaderModule = std::make_shared<scene::ShaderModule>(
-                    scene::ShaderModule::CreationInput{
-                            "coreMenuUnusedBasicFragmentShader",
-                            util::UniqueIdentifier(),
-                            "testFragShader", // filename used for test fragment shader included ATOW
-                            "main",
-                            scene::ShaderModule::ShaderUsage::FRAGMENT_SHADER,
-                            scene::ShaderModule::ShaderLanguage::GLSL
-                    });
-            scene->registerShaderModule(fragmentShaderModule);
+                scene::ShaderModule::CreationInput{
+                    "coreMenuUnusedBasicFragmentShader",
+                    util::UniqueIdentifier(),
+                    "testFragShader", // filename used for test fragment shader included ATOW
+                    "main",
+                    scene::ShaderModule::ShaderUsage::FRAGMENT_SHADER,
+                    scene::ShaderModule::ShaderLanguage::GLSL
+                });
+            scene->registerShaderModule(*fragmentShaderModule);
 
-            std::shared_ptr<scene::graph::renderPass::ImguiRenderPass> dearImguiRenderPass = std::make_shared<
-                    scene::graph::renderPass::ImguiRenderPass>(
-                    scene::graph::renderPass::ImguiRenderPass::CreationInput{
-                            "coreMenuRenderPass",
-                            util::UniqueIdentifier(),
-                            scene::graph::renderPass::RenderPass::Subtype::DEAR_IMGUI_RENDER_PASS,
-                            obtainGraphicsPipelineConfiguration(),
-                            obtainDearImguiCoreMenuCallbacks()
-                    });
-            scene->getSceneRenderGraph().addNewRenderPass(dearImguiRenderPass);
+            // TODO -> update ImguiRenderPass to use the new render pass core
+            //            std::shared_ptr<scene::graph::renderPass::ImguiRenderPass> dearImguiRenderPass = std::make_shared<
+            //                    scene::graph::renderPass::ImguiRenderPass>(
+            //                    scene::graph::renderPass::ImguiRenderPass::CreationInput{
+            //                            "coreMenuRenderPass",
+            //                            util::UniqueIdentifier(),
+            //                            scene::graph::renderPass::RenderPass::Subtype::DEAR_IMGUI_RENDER_PASS,
+            //                            obtainGraphicsPipelineConfiguration(),
+            //                            obtainDearImguiCoreMenuCallbacks()
+            //                    });
+            //            scene->getRenderGraph().addDynamicRenderPass(dearImguiRenderPass);
 
             return PrepareSceneResult::SUCCESS;
         }
@@ -318,6 +313,9 @@ namespace pEngine::app::mode {
             // TODO - probably add something in somewhere to ensure that the output of the backend bake makes sense
         }
 
+        /**
+         * This is going to contain the prototype main loop, I might factor a lot of this out for re-use across engine modes.
+         */
         void run() {
             if (shouldBypassMainLoop) {
                 return;
@@ -325,7 +323,7 @@ namespace pEngine::app::mode {
 
             // show window I guess?
             auto appContext = std::dynamic_pointer_cast<backend::appContext::vulkan::VulkanApplicationContext>(
-                    backend->getApplicationContext());
+                backend->getApplicationContext());
             auto showWindowResult = appContext->getOSInterface()->showWindow();
 
             if (showWindowResult != backend::appContext::osInterface::OSInterface::ShowWindowResult::SUCCESS) {
@@ -333,20 +331,21 @@ namespace pEngine::app::mode {
                 return;
             }
 
-            // TODO - write some kind of update->render loop!
             bool keepRendering = true;
             while (keepRendering) {
                 // TODO - any scene updating stuff would go here (nothing for core menu demo tho; this will come later)
 
 #ifdef _WIN32
                 // WIN32 requires you to get messages in this loop
+                // TODO -> factor out this win32 loop structure
+                // (so it is convenient and can be reused across modes)
                 MSG uMsg;
                 while (PeekMessage(
-                        &uMsg,
-                        0, //NOLINT
-                        0,
-                        0,
-                        PM_REMOVE
+                    &uMsg,
+                    0, //NOLINT
+                    0,
+                    0,
+                    PM_REMOVE
                 )) {
                     TranslateMessage(&uMsg);
                     DispatchMessage(&uMsg);
@@ -365,30 +364,5 @@ namespace pEngine::app::mode {
             // TODO - better logging (using an actual logging library)
             std::cout << "Core Menu Mode has completed." << std::endl;
         }
-
-
-        scene::graph::renderPass::pipeline::GraphicsPipelineConfiguration obtainGraphicsPipelineConfiguration() {
-            // I'm actually pretty sure we can just use the defaults... specify particular configurations if needed
-            // (on the other hand we might end up adding to this so it might change anyway - i'll leave it explicit 4 now)
-            return scene::graph::renderPass::pipeline::GraphicsPipelineConfiguration{
-                    // color blend
-                    {}, // use default
-                    // depth/stencil
-                    {}, // use default
-                    // dynamic state
-                    {}, // use default
-                    // multisample
-                    {}, // use default
-                    // primitive assembly
-                    {}, // use default
-                    // rasterization
-                    {}, // use default
-                    // tessellation
-                    {}, // use default
-                    // vertex input
-                    {} // use default
-            };
-        }
-
     };
 } // namespace PEngine

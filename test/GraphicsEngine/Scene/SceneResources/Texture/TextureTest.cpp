@@ -25,7 +25,7 @@ protected:
         image = std::make_shared<Image>(Image::CreationInput{
                 "test",
                 UniqueIdentifier(),
-                TexelFormat::R8G8B8A8_SRGB,
+                ResourceFormat::R8G8B8A8_SRGB,
                 Image::ImageExtent2D{0, 0},
                 Image::MipMapConfiguration{
                         false,

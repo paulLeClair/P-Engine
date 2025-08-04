@@ -7,6 +7,7 @@
 #include <vector>
 #include <memory>
 #include <algorithm>
+#include <ranges>
 
 #include "../../../../utilities/UniqueIdentifier/UniqueIdentifier.hpp"
 #include "../../../GraphicsIR/ShaderModuleIR/ShaderModuleIR.hpp"
@@ -23,7 +24,6 @@
 #define DEFAULT_MAX_DESCRIPTOR_SETS_PER_POOL 200 // arbitrary
 
 namespace pEngine::girEngine::backend::vulkan {
-
     /**
      * The idea with a Program is that it should basically group up all the shaders
      * in a graphics pipeline (so make sure that we refactor that to use this class)
@@ -46,83 +46,110 @@ namespace pEngine::girEngine::backend::vulkan {
             std::string name;
             util::UniqueIdentifier uid;
 
+            const VkDevice &device;
+
             unsigned numberOfWorkerThreads = 1u;
 
             // set of shader modules to reflect from
-            std::vector<std::shared_ptr<VulkanShaderModule>> shaderModulesToReflect = {};
+            const VulkanShaderModule *const vertexShaderModule;
+            const VulkanShaderModule *const fragmentShaderModule;
 
             // TODO - add in vulkan push constant attachments and compare them against what gets reflected
 
-            const std::vector<std::shared_ptr<gir::DrawAttachmentIR>> &drawAttachments = {};
+            const std::vector<gir::DrawAttachmentIR> &drawAttachments = {};
 
-            const VkDevice &device;
+            const std::vector<gir::vertex::VertexInputBindingIR> &vertexInputBindings = {};
         };
 
         explicit VulkanProgram(const CreationInput &creationInput)
-                : device(creationInput.device),
-                  name(creationInput.name),
-                  uid(creationInput.uid),
-                  shaderModuleReflections({}),
-                  pipelineLayout(nullptr),
-                  vertexInputBindings({}),
-                  vertexAttributes({}) {
-
+            : name(creationInput.name),
+              uid(creationInput.uid),
+              device(creationInput.device),
+              vertexInputBindings({}),
+              vertexAttributes({}) {
             // first obtain shader module reflection data for each shader module
-            for (auto &inputShaderModule: creationInput.shaderModulesToReflect) {
-                // note: we also obtain the input/output info from vertex shaders if present; can probably move that out
-                // and also add sanity checking to make sure a vertex shader is present or else tank the whole process
-                shaderModuleReflections.push_back(reflectShaderInfo(*inputShaderModule, creationInput.drawAttachments));
-            }
+            vertexShaderData = reflectShaderInfo(*creationInput.vertexShaderModule, creationInput.drawAttachments,
+                                                 creationInput.vertexInputBindings);
+            fragmentShaderData = reflectShaderInfo(*creationInput.fragmentShaderModule, creationInput.drawAttachments,
+                                                   creationInput.vertexInputBindings);
+
 
             // idea from here: use the shader module reflection information to build descriptor set allocators and pipeline layout
-            for (auto &shaderModuleReflection: shaderModuleReflections) {
-                for (auto &descriptorSetLayout: shaderModuleReflection.descriptorSetLayoutInfos) {
-                    descriptorSetAllocators.push_back(
-                            std::make_unique<descriptor::VulkanDescriptorSetAllocator>(
-                                    descriptor::VulkanDescriptorSetAllocator::CreationInput{
-                                            descriptorSetLayout.setNumber,
-                                            creationInput.device,
-                                            descriptorSetLayout.layoutCreateInfo,
-                                            creationInput.numberOfWorkerThreads,
-                                            DEFAULT_INITIAL_DESCRIPTOR_POOL_SIZE,
-                                            DEFAULT_MAX_DESCRIPTOR_SETS_PER_POOL
-                                    }));
+            auto maxLayoutSize = static_cast<uint32_t>(vertexShaderData.descriptorSetLayoutInfos.size()) >
+                                 static_cast<uint32_t>(fragmentShaderData.descriptorSetLayoutInfos.size())
+                                     ? static_cast<uint32_t>(vertexShaderData.descriptorSetLayoutInfos.size())
+                                     : static_cast<uint32_t>(fragmentShaderData.descriptorSetLayoutInfos.size());
+            for (uint32_t layoutIndex = 0;
+                 layoutIndex < maxLayoutSize;
+                 layoutIndex++) {
+                // obtain all bindings across all stages
+                std::vector<VkDescriptorSetLayoutBinding> layoutBindings = {};
+
+                if (layoutIndex < vertexShaderData.descriptorSetLayoutInfos.size()) {
+                    auto &descriptorSetLayout = vertexShaderData.descriptorSetLayoutInfos[layoutIndex];
+                    for (auto &binding: descriptorSetLayout.bindings) {
+                        layoutBindings.push_back(binding);
+                    }
                 }
+
+                if (layoutIndex < fragmentShaderData.descriptorSetLayoutInfos.size()) {
+                    auto &descriptorSetLayout = fragmentShaderData.descriptorSetLayoutInfos[layoutIndex];
+                    for (auto &binding: descriptorSetLayout.bindings) {
+                        layoutBindings.push_back(binding);
+                    }
+                }
+
+                VkDescriptorSetLayoutCreateInfo layoutCreateInfo = {
+                    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                    .pNext = nullptr,
+                    .flags = 0,
+                    .bindingCount = static_cast<uint32_t>(layoutBindings.size()),
+                    .pBindings = layoutBindings.data(),
+                };
+                descriptorSetAllocators.push_back(
+                    std::make_unique<descriptor::VulkanDescriptorSetAllocator>(
+                        descriptor::VulkanDescriptorSetAllocator::CreationInput{
+                            layoutIndex,
+                            creationInput.device,
+                            // NOTE -> this object points to a variable that goes out of scope; be careful
+                            layoutCreateInfo,
+                            creationInput.numberOfWorkerThreads,
+                            DEFAULT_INITIAL_DESCRIPTOR_POOL_SIZE,
+                            DEFAULT_MAX_DESCRIPTOR_SETS_PER_POOL
+                        }));
+                descriptorSetLayoutsToAllocatorIndices[descriptorSetAllocators.back()->getDescriptorSetLayout()] =
+                        layoutIndex;
             }
 
-            // okay, so it doesn't look like we're building a pipeline layout yet; they seem to mainly
-            // just amalgamate the descriptor set layouts and push constant ranges;
-
-            // I'm fairly certain we have to basically amalgamate all of them into one group by binding index...?
-            // actually the descriptor set layouts themselves will already hold the information about individual
-            // binding indices for each descriptor, so we should be able to just shunt them all into one big list
             std::vector<VkDescriptorSetLayout> aggregatedLayouts = {};
-            aggregatedLayouts.reserve(descriptorSetAllocators.size());
             for (const auto &descriptorSetAllocator: descriptorSetAllocators) {
                 aggregatedLayouts.push_back(descriptorSetAllocator->getDescriptorSetLayout());
             }
 
             std::vector<VkPushConstantRange> aggregatedPushConstantRanges = {};
-            for (const auto &reflectionData: shaderModuleReflections) {
-                for (const auto &pushConstantRange: reflectionData.pushConstantRanges) {
-                    aggregatedPushConstantRanges.push_back(pushConstantRange);
-                }
+
+            for (const auto &pushConstantRange: vertexShaderData.pushConstantRanges) {
+                aggregatedPushConstantRanges.push_back(pushConstantRange);
+            }
+
+            for (const auto &pushConstantRange: fragmentShaderData.pushConstantRanges) {
+                aggregatedPushConstantRanges.push_back(pushConstantRange);
             }
 
             VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {
-                    VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-                    nullptr,
-                    0,
-                    static_cast<uint32_t>(aggregatedLayouts.size()),
-                    aggregatedLayouts.data(),
-                    static_cast<uint32_t>(aggregatedPushConstantRanges.size()),
-                    aggregatedPushConstantRanges.data()
+                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+                nullptr,
+                0,
+                static_cast<uint32_t>(aggregatedLayouts.size()),
+                aggregatedLayouts.data(),
+                static_cast<uint32_t>(aggregatedPushConstantRanges.size()),
+                aggregatedPushConstantRanges.data()
             };
-            if (auto result = vkCreatePipelineLayout(device,
-                                                     &pipelineLayoutCreateInfo,
-                                                     nullptr,
-                                                     &pipelineLayout);
-                    result != VK_SUCCESS) {
+            if (const auto result = vkCreatePipelineLayout(device,
+                                                           &pipelineLayoutCreateInfo,
+                                                           nullptr,
+                                                           &pipelineLayout);
+                result != VK_SUCCESS) {
                 // TODO - log, probably don't throw
                 throw std::runtime_error("Error in VulkanProgram() -> unable to create pipeline layout!");
             }
@@ -132,8 +159,12 @@ namespace pEngine::girEngine::backend::vulkan {
             vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
         }
 
-        [[nodiscard]] const std::vector<program::ShaderModuleReflectionData> &getReflectionDataList() const {
-            return shaderModuleReflections;
+        [[nodiscard]] const program::ShaderModuleReflectionData &getVertexShaderModuleReflectionData() {
+            return vertexShaderData;
+        }
+
+        [[nodiscard]] const program::ShaderModuleReflectionData &getFragmentShaderModuleReflectionData() {
+            return fragmentShaderData;
         }
 
         // TODO - getter for DS allocators
@@ -151,34 +182,53 @@ namespace pEngine::girEngine::backend::vulkan {
             return vertexAttributes;
         }
 
+        // might need to make this return a pair (with flag that indicates whether the returned set is fresh or reused)
+        std::pair<VkDescriptorSet, bool> requestDescriptorSet(const VkDescriptorSetLayout &layout,
+                                                              descriptor::ResourceDescriptorBindings &bindings,
+                                                              uint32_t threadIndex = 0) const {
+            if (!descriptorSetLayoutsToAllocatorIndices.contains(layout)) {
+                // TODO - log that this happened!
+                return {VK_NULL_HANDLE, false};
+            }
+
+            auto &allocator = descriptorSetAllocators[descriptorSetLayoutsToAllocatorIndices.at(layout)];
+            return allocator->requestDescriptorSet(threadIndex, bindings);
+        }
+
+        std::vector<VkDescriptorSetLayout> getDescriptorSetLayouts() {
+            auto keys = std::views::keys(descriptorSetLayoutsToAllocatorIndices);
+            return std::vector<VkDescriptorSetLayout>{keys.begin(), keys.end()};
+        }
+
     private:
         std::string name;
         util::UniqueIdentifier uid;
 
         VkDevice device;
 
-        // list of each module's reflected shader information
-        std::vector<program::ShaderModuleReflectionData> shaderModuleReflections = {};
+        // each module's reflected shader information
 
-        // New thought: moving these vertex-shader-specific fields out so that we basically only look for the vertex
-        // shader and take the information there; we need to be able to hand it off up-front
+        program::ShaderModuleReflectionData vertexShaderData;
+        program::ShaderModuleReflectionData fragmentShaderData;
+        // TODO -> other shader module types
 
-        std::vector<VkVertexInputBindingDescription> vertexInputBindings;
+        std::vector<VkVertexInputBindingDescription> vertexInputBindings = {};
 
         std::vector<VkVertexInputAttributeDescription> vertexAttributes;
 
         // descriptor set allocators
-        std::vector<std::unique_ptr<descriptor::VulkanDescriptorSetAllocator>> descriptorSetAllocators = {};
+        // we may need to be wrapping our VkDescriptorSetLayout so that we can store more fine-grained info
+        // about the components of said layout (
+        std::unordered_map<VkDescriptorSetLayout, uint32_t> descriptorSetLayoutsToAllocatorIndices = {};
+        std::vector<std::unique_ptr<descriptor::VulkanDescriptorSetAllocator> > descriptorSetAllocators = {};
 
         // at least one pipeline layout (not sure if we need more than one but it seems like it'd be 1 per pipeline)
         VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 
-        // TODO - refactor all the janky reflection code I yanked over here from the VulkanShaderModule class I wrote way back when
-        // on the other hand, it's a lil odd but I think having C-style procedural logic implemented with static is kewl for now
-
         program::ShaderModuleReflectionData
         reflectShaderInfo(const VulkanShaderModule &shaderModule,
-                          const std::vector<std::shared_ptr<gir::DrawAttachmentIR>> &drawAttachments) {
+                          const std::vector<gir::DrawAttachmentIR> &drawAttachments,
+                          const std::vector<gir::vertex::VertexInputBindingIR> &vertexInputBindings) {
             const std::vector<uint32_t> &spirvCode = shaderModule.getSpirVByteCode();
             SpvReflectShaderModule reflectShaderModule = {};
             SpvReflectResult createShaderModuleResult =
@@ -195,18 +245,18 @@ namespace pEngine::girEngine::backend::vulkan {
             gir::ShaderModuleIR::ShaderUsage shaderUsage = shaderModule.getUsage();
             if (!reflectedShaderUsageMatchesShaderModule(reflectShaderModule.shader_stage, shaderUsage)) {
                 throw std::runtime_error(
-                        "Reflected shader module usage does not match user-specified shader module usage!");
+                    "Reflected shader module usage does not match user-specified shader module usage!");
             }
+            shaderModuleReflectionData.shaderModuleUsage = shaderUsage;
 
             reflectDescriptorSetInformation(reflectShaderModule, shaderModuleReflectionData);
 
-            reflectInputOutputVariables(reflectShaderModule, shaderModuleReflectionData, shaderUsage, drawAttachments);
+            reflectInputOutputVariables(reflectShaderModule, shaderModuleReflectionData, shaderUsage, drawAttachments,
+                                        vertexInputBindings);
 
             reflectPushConstantInformation(reflectShaderModule, shaderModuleReflectionData, shaderUsage);
 
             // TODO - reflect tessellation info as well
-
-
 
             return shaderModuleReflectionData;
         }
@@ -278,10 +328,11 @@ namespace pEngine::girEngine::backend::vulkan {
          * @param shaderUsage
          */
         void reflectInputOutputVariables(
-                SpvReflectShaderModule &reflectShaderModule,
-                program::ShaderModuleReflectionData &shaderReflectionData,
-                const gir::ShaderModuleIR::ShaderUsage &shaderUsage,
-                const std::vector<std::shared_ptr<gir::DrawAttachmentIR>> &drawAttachments) {
+            SpvReflectShaderModule &reflectShaderModule,
+            program::ShaderModuleReflectionData &shaderReflectionData,
+            const gir::ShaderModuleIR::ShaderUsage &shaderUsage,
+            const std::vector<gir::DrawAttachmentIR> &drawAttachments,
+            const std::vector<gir::vertex::VertexInputBindingIR> &vertexInputBindings) {
             // enumerate the input variables
             uint32_t inputCount = 0;
             SpvReflectResult enumerateInputVariablesResult =
@@ -314,17 +365,17 @@ namespace pEngine::girEngine::backend::vulkan {
             if (shaderUsage == gir::ShaderModuleIR::ShaderUsage::VERTEX_SHADER) {
                 // one very very important thing: **INPUTS CAN INCLUDE THINGS OTHER THAN VERTEX ATTRIBUTES (obviously)**
                 // this means we'll have to prefilter the list and acquire new lists of each type of reflected variable
-                processVertexAttributes(drawAttachments, inputs);
+                processVertexAttributes(inputs, vertexInputBindings);
+
+                // TODO - handle other inputs (uniform blocks, etc)
 
                 // TODO - any other vertex-shader specific processing that we should do
-
             }
         }
 
-        void processVertexAttributes(const std::vector<std::shared_ptr<gir::DrawAttachmentIR>> &drawAttachments,
-                                     const std::vector<SpvReflectInterfaceVariable *> &inputs) {
+        void processVertexAttributes(const std::vector<SpvReflectInterfaceVariable *> &inputs,
+                                     const std::vector<gir::vertex::VertexInputBindingIR> &vertexInputBindings) {
             std::vector<SpvReflectInterfaceVariable *> vertexAttributeInterfaceVariableReflections = {};
-            // TODO - handle other inputs (uniform blocks, etc)
             for (auto &input: inputs) {
                 if (input->storage_class == SpvStorageClassInput) {
                     // I think vertex attributes fall under this category of storage class?
@@ -332,71 +383,68 @@ namespace pEngine::girEngine::backend::vulkan {
                     vertexAttributeInterfaceVariableReflections.push_back(input);
                 }
             }
+            obtainVertexAttributes(vertexAttributeInterfaceVariableReflections, vertexInputBindings);
+        }
 
-            // build up global list of vertex input attribs...?
-            // I think right now the only purpose this loop is serving is to basically read in the reflected locations;
-            // it's possible a good portion of the existing logic only makes sense for the simplifying assumptions in
-            // the example I'm going off for this shite.
-            // maybe it'll be worth it to just do all of this in-place kinda (take each attribute, match it up against a binding,
-            // and then kinda advance through all the bindings and match attributes up as you go until you reach the end)
-            // that seems nice and pretty but it'll require a bit of engineering and testing that I think is probably worth postponing for
-            // a later update...
-            vertexAttributes.resize(vertexAttributeInterfaceVariableReflections.size());
-            for (size_t inputVar = 0; inputVar < vertexAttributeInterfaceVariableReflections.size(); inputVar++) {
-                const auto &reflectedVar = *vertexAttributeInterfaceVariableReflections[inputVar];
-                auto &desc = vertexAttributes[inputVar];
+        void obtainVertexAttributes(
+            const std::vector<SpvReflectInterfaceVariable *> &vertexAttributeInterfaceVariables,
+            const std::vector<gir::vertex::VertexInputBindingIR> &vertexInputBindingDescriptions) {
+            // first we obtain the reflected info
+            vertexAttributes.resize(vertexAttributeInterfaceVariables.size());
+            std::map<VkVertexInputAttributeDescription *, std::string> attributeNames = {};
+            for (size_t inputVarIndex = 0; inputVarIndex < vertexAttributeInterfaceVariables.size(); inputVarIndex++) {
+                const auto &reflectedVar = *vertexAttributeInterfaceVariables[inputVarIndex];
 
-                desc.location = reflectedVar.location;
-                desc.binding = 0; // note we'll have to set this for each attribute as we advance thru the bindings
-                desc.format = static_cast<VkFormat>( reflectedVar.format );
-                desc.offset = 0; // these will also have to be set, but they'll be computed dynamically (which was already being done)
+                vertexAttributes[inputVarIndex].location = reflectedVar.location;
+                vertexAttributes[inputVarIndex].binding = 0; // this will have to be obtained from user specification
+                // TODO - set this for each attribute as we advance thru the bindings (once we support more than one binding per program)
+                vertexAttributes[inputVarIndex].format = static_cast<VkFormat>(reflectedVar.format);
+                vertexAttributes[inputVarIndex].offset = 0;
+
+                attributeNames[&vertexAttributes[inputVarIndex]] = reflectedVar.name;
             }
 
-            // match them up to the bindings
-            unsigned bindingIndex = 0;
-            unsigned globalAttributeListIndex = 0;
-            for (const auto &drawAttachment: drawAttachments) {
-                vertexInputBindings.push_back({});
-                VkVertexInputBindingDescription vertexInputBindingDescription = vertexInputBindings.back();
+            // sort our singular set of input attributes before we distribute them into concrete bindings
+            // based on the user-specified info
+            std::ranges::sort(vertexAttributes,
+                              [&](const VkVertexInputAttributeDescription &first,
+                                  const VkVertexInputAttributeDescription &second) {
+                                  // we want to sort in ascending order, so we set this condition
+                                  return first.location < second.location;
+                              });
 
-                vertexInputBindingDescription.binding = bindingIndex;
-                vertexInputBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; // TODO - make this configurable
-                vertexInputBindingDescription.stride = 0;
+            for (uint32_t bindingIndex = 0; bindingIndex < vertexInputBindingDescriptions.size(); bindingIndex++) {
+                // for each binding, we want to compute its particular stride and set the offsets
+                // for the attributes within it
 
-                // obtain *this attachment's* input attributes first;
-                // since we're expecting the user to set things up to match 1-1 b/w their shaders and their data specification,
-                // the logic can be to just grab the next `n` of them where `n` is the drawAttachmentVertexAttributeCount of the draw attachment's vertex attribute list
-                const auto drawAttachmentVertexAttributeCount = drawAttachment->getVertexAttributes().size();
-                std::vector<VkVertexInputAttributeDescription> vertexInputAttributeDescriptions(
-                        drawAttachmentVertexAttributeCount);
-                for (unsigned currentVertexAttributeIndex = globalAttributeListIndex;
-                     currentVertexAttributeIndex < globalAttributeListIndex + drawAttachmentVertexAttributeCount;
-                     currentVertexAttributeIndex++) {
-                    vertexInputAttributeDescriptions[currentVertexAttributeIndex]
-                            = vertexAttributes[currentVertexAttributeIndex];
-                }
-                globalAttributeListIndex += drawAttachmentVertexAttributeCount;
+                // first we have to gather up the attributes for this particular binding from what we reflected;
+                // this requires some sort of "key" that we can compare to determine whether the user-spec attribute
+                // matches with a given shader attribute... unfortunately we don't have vertex attribute names for free
+                VkVertexInputBindingDescription bindingDescription = {
+                    bindingIndex,
+                    0,
+                    VK_VERTEX_INPUT_RATE_VERTEX
+                };
+                auto bindingAttributeDescriptions = vertexInputBindingDescriptions[bindingIndex].attributes;
 
-                // TODO - deduce layouts and what not
-                // for now, I'm gonna leave layouts unhandled because they won't actually need to work until we are drawing triangles
+                std::vector<VkVertexInputAttributeDescription> bindingAttributes = {};
+                // here we want to extract only the attributes that match names with the user's attribute descriptions for this binding
+                std::ranges::copy_if(vertexAttributes, std::back_inserter(bindingAttributes),
+                                     [&](VkVertexInputAttributeDescription &attribute) {
+                                         return std::ranges::any_of(bindingAttributeDescriptions,
+                                                                    [&](const gir::vertex::VertexAttributeIR &
+                                                                attribDescription) {
+                                                                        return attributeNames[&attribute] ==
+                                                                               attribDescription.attributeName;
+                                                                    });
+                                     });
 
-                // sort *this attachment's* input attributes (we'll need to make a smaller list of only the attributes for this list)
-                std::sort(
-                        std::begin(vertexInputAttributeDescriptions),
-                        std::end(vertexInputAttributeDescriptions),
-                        [&](const VkVertexInputAttributeDescription &first,
-                            const VkVertexInputAttributeDescription &second) {
-                            // we want to sort in ascending order, so we set this condition
-                            return first.location < second.location;
-                        });
-
-                for (auto &attribute: vertexInputAttributeDescriptions) {
-                    attribute.offset = vertexInputBindingDescription.stride;
-                    vertexInputBindingDescription.stride +=
-                            getVulkanFormatSizeInBytes(attribute.format);
+                for (auto &attribute: vertexAttributes) {
+                    attribute.offset = bindingDescription.stride;
+                    bindingDescription.stride += getVulkanFormatSizeInBytes(attribute.format);
                 }
 
-                bindingIndex++;
+                vertexInputBindings.push_back(bindingDescription);
             }
         }
 
@@ -404,42 +452,44 @@ namespace pEngine::girEngine::backend::vulkan {
                                                     program::ShaderModuleReflectionData &shaderReflectionData) {
             auto reflectedDescriptorSets = enumerateDescriptorSets(reflectShaderModule);
 
+            shaderReflectionData.descriptorSetLayoutInfos.resize(reflectedDescriptorSets.size());
+            uint32_t index = 0;
             for (const auto &reflectedDescriptorSet: reflectedDescriptorSets) {
                 // we reflect descriptor sets one by one:
-                const SpvReflectDescriptorSet &reflectionSet = *reflectedDescriptorSet;
-                program::ShaderModuleReflectionData::DescriptorSetLayoutInfo info;
 
+                program::ShaderModuleReflectionData::DescriptorSetLayoutInfo info;
                 obtainDescriptorSetLayoutBindingInfos(reflectShaderModule, reflectedDescriptorSet, info);
 
-                info.setNumber = reflectionSet.set;
+                info.setNumber = reflectedDescriptorSet->set;
                 info.layoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
                 info.layoutCreateInfo.pNext = nullptr;
                 info.layoutCreateInfo.flags = 0;
-                info.layoutCreateInfo.bindingCount = static_cast<uint32_t>( info.bindings.size());
+                info.layoutCreateInfo.bindingCount = static_cast<uint32_t>(info.bindings.size());
                 info.layoutCreateInfo.pBindings = info.bindings.data();
 
-                shaderReflectionData.descriptorSetLayoutInfos.push_back(info);
+                shaderReflectionData.descriptorSetLayoutInfos[index] = info;
+                index++;
             }
         }
 
         static void obtainDescriptorSetLayoutBindingInfos(
-                const SpvReflectShaderModule &reflectShaderModule,
-                SpvReflectDescriptorSet *const &reflectedDescriptorSet,
-                program::ShaderModuleReflectionData::DescriptorSetLayoutInfo &info) {
-            info.bindings.reserve(reflectedDescriptorSet->binding_count);
+            const SpvReflectShaderModule &reflectShaderModule,
+            SpvReflectDescriptorSet *const &reflectedDescriptorSet,
+            program::ShaderModuleReflectionData::DescriptorSetLayoutInfo &info) {
+            info.bindings.resize(reflectedDescriptorSet->binding_count);
             for (auto j = 0u; j < info.bindings.size(); j++) {
                 const auto &reflectedBinding = *reflectedDescriptorSet->bindings[j];
                 auto &infoBinding = info.bindings[j];
 
                 infoBinding.binding = reflectedBinding.binding;
-                infoBinding.descriptorType = static_cast<VkDescriptorType>( reflectedBinding.descriptor_type );
+                infoBinding.descriptorType = static_cast<VkDescriptorType>(reflectedBinding.descriptor_type);
 
                 infoBinding.descriptorCount = 1;
                 for (uint32_t bindingDim = 0; bindingDim < reflectedBinding.array.dims_count; bindingDim++) {
                     infoBinding.descriptorCount *= reflectedBinding.array.dims[bindingDim];
                 }
 
-                infoBinding.stageFlags = static_cast<VkShaderStageFlagBits>( reflectShaderModule.shader_stage );
+                infoBinding.stageFlags = static_cast<VkShaderStageFlagBits>(reflectShaderModule.shader_stage);
             }
         }
 
@@ -447,7 +497,7 @@ namespace pEngine::girEngine::backend::vulkan {
         enumerateDescriptorSets(SpvReflectShaderModule &reflectShaderModule) {
             uint32_t count = 0;
             SpvReflectResult enumerateDescriptorSetsResult = spvReflectEnumerateDescriptorSets(&reflectShaderModule,
-                                                                                               &count, nullptr);
+                &count, nullptr);
             if (enumerateDescriptorSetsResult != SPV_REFLECT_RESULT_SUCCESS) {
                 // TODO - something!
             }
@@ -463,7 +513,8 @@ namespace pEngine::girEngine::backend::vulkan {
         }
 
         static bool reflectedShaderUsageMatchesShaderModule(SpvReflectShaderStageFlagBits bits,
-                                                            gir::ShaderModuleIR::ShaderUsage shaderUsageToCompareAgainst) {
+                                                            gir::ShaderModuleIR::ShaderUsage
+                                                            shaderUsageToCompareAgainst) {
             gir::ShaderModuleIR::ShaderUsage reflectedShaderUsage;
             switch (bits) {
                 case SPV_REFLECT_SHADER_STAGE_VERTEX_BIT:
@@ -488,7 +539,5 @@ namespace pEngine::girEngine::backend::vulkan {
 
             return reflectedShaderUsage == shaderUsageToCompareAgainst;
         }
-
     };
-
 } // vulkan

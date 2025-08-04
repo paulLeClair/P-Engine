@@ -8,12 +8,13 @@
 
 #include <memory>
 #include <utility>
+#include <vulkan/vulkan.h>
 
 namespace pEngine::girEngine::backend::vulkan::descriptor::set {
     class VulkanDescriptorSet {
     public:
         struct CreationInput {
-            UniqueIdentifier uid;
+            util::UniqueIdentifier uid;
             std::string label;
 
             VkDevice device;
@@ -32,11 +33,11 @@ namespace pEngine::girEngine::backend::vulkan::descriptor::set {
             hasBeenAllocated = true;
         }
 
-        VulkanDescriptorSet() : uid(UniqueIdentifier()) {
+        VulkanDescriptorSet() : uid(util::UniqueIdentifier()) {
             // the default constructor should basically *not* allocate the set, so it's just a free-hanging handle
         }
 
-        VulkanDescriptorSet(const UniqueIdentifier uid, std::string label) : uid(uid), label(std::move(label)) {
+        VulkanDescriptorSet(const util::UniqueIdentifier uid, std::string label) : uid(uid), label(std::move(label)) {
         }
 
         [[nodiscard]] VkDescriptorSet &getVkDescriptorSetHandle() {
@@ -56,11 +57,11 @@ namespace pEngine::girEngine::backend::vulkan::descriptor::set {
             }
 
             const VkDescriptorSetAllocateInfo allocInfo = {
-                    VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-                    nullptr,
-                    pool,
-                    1,
-                    &layout
+                VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                nullptr,
+                pool,
+                1,
+                &layout
             };
 
             const auto result = vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet);
@@ -75,7 +76,7 @@ namespace pEngine::girEngine::backend::vulkan::descriptor::set {
          * TODO - change function signature to not use shared pointer - instead pass 3 vectors in
          */
         void updateSet(const VkDevice &device,
-                       const ResourceDescriptorBindings &newBindings) {
+                       const descriptor::ResourceDescriptorBindings &newBindings) {
             // idea: build up struct to call vkUpdateDescriptorSets() with info gleaned from the newBindings
             std::vector<VkWriteDescriptorSet> descriptorSetWrites = {};
             std::vector<VkCopyDescriptorSet> descriptorSetCopies = {};
@@ -83,58 +84,55 @@ namespace pEngine::girEngine::backend::vulkan::descriptor::set {
             descriptorSetWrites.reserve(newBindings.writeBindings.size());
             for (const auto &writeBinding: newBindings.writeBindings) {
                 descriptorSetWrites.push_back({
-                                                      VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                                      nullptr,
-                                                      descriptorSet,
-                                                      writeBinding.bindingIndex,
-                                                      writeBinding.descriptorArrayIndex,
-                                                      writeBinding.descriptorCount,
-                                                      writeBinding.descriptorType,
-                                                      &writeBinding.boundImage.get_value_or({}),
-                                                      &writeBinding.boundBuffer.get_value_or({}),
-                                                      &writeBinding.boundTexelBufferView.get_value_or({})
-                                              });
-
+                    VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    nullptr,
+                    descriptorSet,
+                    writeBinding.bindingIndex,
+                    writeBinding.descriptorArrayIndex,
+                    writeBinding.descriptorCount,
+                    writeBinding.descriptorType,
+                    &writeBinding.boundImage.get_value_or({}),
+                    &writeBinding.boundBuffer.get_value_or({}),
+                    &writeBinding.boundTexelBufferView.get_value_or({})
+                });
             }
             descriptorSetCopies.reserve(
-                    newBindings.copySourceBindings.size() + newBindings.copyDestinationBindings.size());
+                newBindings.copySourceBindings.size() + newBindings.copyDestinationBindings.size());
             for (const auto &copySourceBinding: newBindings.copySourceBindings) {
                 descriptorSetCopies.push_back({
-                                                      VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET,
-                                                      nullptr,
-                                                      descriptorSet,
-                                                      copySourceBinding.sourceBindingIndex,
-                                                      copySourceBinding.sourceArrayElement,
-                                                      copySourceBinding.destinationDescriptorSet,
-                                                      copySourceBinding.destinationBindingIndex,
-                                                      copySourceBinding.destinationArrayElement,
-                                                      copySourceBinding.descriptorCount
-                                              });
-
+                    VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET,
+                    nullptr,
+                    descriptorSet,
+                    copySourceBinding.sourceBindingIndex,
+                    copySourceBinding.sourceArrayElement,
+                    copySourceBinding.destinationDescriptorSet,
+                    copySourceBinding.destinationBindingIndex,
+                    copySourceBinding.destinationArrayElement,
+                    copySourceBinding.descriptorCount
+                });
             }
             for (auto &destinationCopyBinding: newBindings.copyDestinationBindings) {
                 descriptorSetCopies.push_back({
-                                                      VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET,
-                                                      nullptr,
-                                                      destinationCopyBinding.sourceDescriptorSet,
-                                                      destinationCopyBinding.sourceBindingIndex,
-                                                      destinationCopyBinding.sourceArrayElement,
-                                                      descriptorSet,
-                                                      destinationCopyBinding.destinationBindingIndex,
-                                                      destinationCopyBinding.destinationArrayElement,
-                                                      destinationCopyBinding.descriptorCount
-                                              });
-
+                    VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET,
+                    nullptr,
+                    destinationCopyBinding.sourceDescriptorSet,
+                    destinationCopyBinding.sourceBindingIndex,
+                    destinationCopyBinding.sourceArrayElement,
+                    descriptorSet,
+                    destinationCopyBinding.destinationBindingIndex,
+                    destinationCopyBinding.destinationArrayElement,
+                    destinationCopyBinding.descriptorCount
+                });
             }
             // TODO - support case where we specify the copy dest and source at the same time
 
             // use the api call to actually update the descriptors!
             vkUpdateDescriptorSets(
-                    device,
-                    descriptorSetWrites.size(),
-                    descriptorSetWrites.data(),
-                    descriptorSetCopies.size(),
-                    descriptorSetCopies.data()
+                device,
+                descriptorSetWrites.size(),
+                descriptorSetWrites.data(),
+                descriptorSetCopies.size(),
+                descriptorSetCopies.data()
             );
         }
 

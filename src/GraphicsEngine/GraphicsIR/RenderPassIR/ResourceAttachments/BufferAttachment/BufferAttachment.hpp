@@ -11,7 +11,7 @@ namespace pEngine::girEngine::gir::renderPass {
      * any other info that isn't contained in the buffer itself can be added here
      */
     struct BufferAttachment {
-        std::shared_ptr<gir::BufferIR> attachedBuffer = {};
+        gir::BufferIR attachedBuffer = {};
     };
 
 } // gir

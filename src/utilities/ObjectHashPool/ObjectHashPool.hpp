@@ -16,7 +16,6 @@
 #include "../IntrusiveHashMap/IntrusiveHashMap.hpp"
 
 namespace pEngine::util::objectPool {
-
     template<typename ObjectType>
     class ObjectHashPoolEntry : public IntrusiveHashMapEntry<ObjectType> {
     public:
@@ -63,9 +62,9 @@ namespace pEngine::util::objectPool {
         };
 
         explicit ObjectHashPool(const CreationInput &creationInput)
-                : name(creationInput.name),
-                  uniqueIdentifier(creationInput.uniqueIdentifier),
-                  allocationMap() {
+            : name(creationInput.name),
+              uniqueIdentifier(creationInput.uniqueIdentifier),
+              allocationMap() {
         }
 
         // TODO - add a function to basically free all the objects and delete all allocations (ie reset the object pool)
@@ -93,17 +92,13 @@ namespace pEngine::util::objectPool {
         }
 
         /**
-         * NEW DEVELOPMENT:
-         *  I think it is actually valuable to communicate whether the returned object was created new
-         *  or recycled from vacant; so we we'll slightly modify how this part works
-         *
-         * @return a pair with the requested object and a boolean flag which is set to true if the requested object was found
+         * @return a pair with the requested object and an enum flag to describe whether the object is fresh or not
          */
         template<typename... ObjectAllocationParameters>
         std::pair<ObjectType &, ReturnedObjectType>
         requestObject(Hash objectHash, ObjectAllocationParameters &&... objectAllocationParams) {
             // query the map of current allocations for the requested hash
-            IntrusiveHashMapPODWrapper<typename IntrusiveList<ObjectAllocation>::Iterator> *queriedValueItr
+            IntrusiveHashMapPieceOfDataWrapper<typename IntrusiveList<ObjectAllocation>::Iterator> *queriedValueItr
                     = allocationMap.find(objectHash);
 
             if (queriedValueItr != nullptr) {
@@ -117,15 +112,15 @@ namespace pEngine::util::objectPool {
                 // move the existing iterator to the front of the current object pool ring
                 if (currentObjectPoolRingIndex != queriedValue->getRingIndex()) {
                     objectPoolRings[currentObjectPoolRingIndex].moveToFront(
-                            objectPoolRings[queriedValue->getRingIndex()],
-                            queriedValueItr->get()
+                        objectPoolRings[queriedValue->getRingIndex()],
+                        queriedValueItr->get()
                     );
                     queriedValue->setRingIndex(currentObjectPoolRingIndex);
                 }
 
                 return {
-                        *(queriedValue->getObjectPointer()),
-                        ReturnedObjectType::REQUESTED_OBJECT
+                    *(queriedValue->getObjectPointer()),
+                    ReturnedObjectType::REQUESTED_OBJECT
                 };
             }
             // else the object does not exist in the hash map;
@@ -133,8 +128,8 @@ namespace pEngine::util::objectPool {
             // or reusing a previously-freed entry (which is still classified
             // as a fresh allocation here)
             return obtainFreshObject<ObjectAllocationParameters...>(
-                    objectHash,
-                    std::forward<ObjectAllocationParameters>(objectAllocationParams)...
+                objectHash,
+                std::forward<ObjectAllocationParameters>(objectAllocationParams)...
             );
         }
 
@@ -147,9 +142,7 @@ namespace pEngine::util::objectPool {
         size_t maxSize = 0u;
 
         /**
-         * This will be the new wrapper class for an object allocation? Hopefully it provides some
-         * simple-but-janky memory management for this hash pool class and we can finally
-         * get the thing working lol.
+         * This will be the new wrapper class for an object allocation.
          */
         class ObjectAllocation : public ObjectHashPoolEntry<ObjectAllocation> {
         public:
@@ -174,7 +167,7 @@ namespace pEngine::util::objectPool {
                 }
 
                 allocatedObject = std::make_unique<ObjectType>(
-                        std::forward<ObjectConstructorArgs>(objectConstructorArgs)...);
+                    std::forward<ObjectConstructorArgs>(objectConstructorArgs)...);
                 return allocatedObject == nullptr; // BRO - the fucking unique pointer destructor got called???
             }
 
@@ -182,8 +175,6 @@ namespace pEngine::util::objectPool {
                 allocatedObject.reset();
             }
 
-            // not sure how to make a getter that returns an object reference since the pointer can be null;
-            // in the meantime I'll just have it return the pointer itself
             const ObjectType *getObjectPointer() const {
                 return allocatedObject.get();
             }
@@ -200,18 +191,25 @@ namespace pEngine::util::objectPool {
                 return *allocatedObject;
             }
 
-            void swapWith(ObjectAllocation &other) {
+            void swapObjectsWith(ObjectAllocation &other) {
                 allocatedObject.swap(other.allocatedObject);
             }
 
         private:
+            // TODO -> potentially evaluate other methods of maintaining the object itself;
+            // heap allocation is probably okay for now but maybe we should add support for hooking in custom allocators
             std::unique_ptr<ObjectType> allocatedObject = nullptr;
         };
 
         /**
-         * Each ring holds the set of objects that were accessed in previous update cycles, apart from the current
-         * index in which case it contains the set of objects that were accessed in the current update cycle (which
-         * includes all objects accessed between the previous update() call and the next update() call that comes in)
+         * Each ring holds the set of allocated objects that were accessed in previous update cycles, apart from the
+         * ring pointed to by the current index.
+         *
+         * For the current ring index, which case it contains the set of objects that were accessed in
+         * the current update cycle (which includes all objects accessed between the previous update() call and the
+         * next update() call that comes in).
+         *
+         * Note: this actually contains our data
          */
         IntrusiveList<ObjectAllocation> objectPoolRings[MaxUpdateCount];
 
@@ -227,11 +225,14 @@ namespace pEngine::util::objectPool {
         size_t currentObjectPoolRingIndex = 0;
 
         /**
-         * This map stores iterators that each point to unique allocations within the map (which are contained
+         * This map stores iterators that each point to unique allocations within the map, which are contained
          * in an intrusive list ring inside @objectPoolRings
+         *
+         * Note: we're storing *iterators* in this map, so the hash map owns the iterators but not the allocated objects
+         * themselves.
          */
-        IntrusiveHashMap<IntrusiveHashMapPODWrapper<typename IntrusiveList<ObjectAllocation>::Iterator> >
-                allocationMap;
+        IntrusiveHashMap<IntrusiveHashMapPieceOfDataWrapper<typename IntrusiveList<ObjectAllocation>::Iterator> >
+        allocationMap;
 
         /**
          * This vector stores iterators to the intrusive list that are not currently holding a valid object
@@ -242,31 +243,33 @@ namespace pEngine::util::objectPool {
         std::pair<ObjectType &, ReturnedObjectType>
         obtainFreshObject(Hash hash, P &&... objectAllocationParameters) {
             typename IntrusiveList<ObjectAllocation>::Iterator nodeItr = typename IntrusiveList<
-                    ObjectAllocation>::Iterator();
+                ObjectAllocation>::Iterator();
 
             bool objectFreshlyAllocated = true;
             if (vacantObjects.empty()) {
-                // if we don't have any vacants, allocate a new object and push it to the list
+                // if we don't have any vacants, allocate a new object and push it to the list; we consider this to
+                // be a "fresh" allocation in the sense that we had to add a new object allocation to our pool
                 backingAllocations.push_back(
-                        ObjectAllocation()
+                    ObjectAllocation()
                 );
 
                 objectPoolRings[currentObjectPoolRingIndex].insertFront(
-                        typename IntrusiveList<ObjectAllocation>::Iterator(
-                                static_cast<IntrusiveListNode<ObjectAllocation> *>(&backingAllocations.back())
-                        )
+                    typename IntrusiveList<ObjectAllocation>::Iterator(
+                        static_cast<IntrusiveListNode<ObjectAllocation> *>(&backingAllocations.back())
+                    )
                 );
                 nodeItr = typename IntrusiveList<ObjectAllocation>::Iterator(
-                        objectPoolRings[currentObjectPoolRingIndex].front()
+                    objectPoolRings[currentObjectPoolRingIndex].front()
                 );
             } else {
+                // if we do have some vacant elements, we can avoid adding a new object allocation and just re-use one
                 objectFreshlyAllocated = false;
                 // else we have vacant nodes, so we just pop one
                 nodeItr = vacantObjects.back();
                 vacantObjects.pop_back();
 
                 // NOTE: we aren't erasing the vacant object, so it has to be guaranteed to be removed from the intrusive lists upon becoming vacant
-                // therefore the intrusive list rings will only contain the allocated object iterators (not empties)
+                // therefore the intrusive list rings will only contain the allocated object iterators (not empties).
                 // if this line of reasoning turns out to be flawed I'll reverse course tho
                 objectPoolRings[currentObjectPoolRingIndex].insertFront(nodeItr);
             }
@@ -278,24 +281,25 @@ namespace pEngine::util::objectPool {
             nodeItr.get()->allocateNewObject(std::forward<P>(objectAllocationParameters)...);
 
             auto result = allocationMap.insertReplace(
-                    hash,
-                    IntrusiveHashMapPODWrapper<typename IntrusiveList<ObjectAllocation>::Iterator>( // could something be happening when creating the pod wrapper that's friggin up the allocation?
-                            nodeItr
-                    )
+                hash,
+                IntrusiveHashMapPieceOfDataWrapper<typename IntrusiveList<ObjectAllocation>::Iterator>(
+                    // could something be happening when creating the pod wrapper that's friggin up the allocation?
+                    nodeItr
+                )
             );
             // TODO - sanity check the result
 
-            // hmm yeah at this point the node itself says "object not allocated" so something is wiping the allocation
             return {
-                    *(nodeItr.get()->getObjectPointer()),
-                    objectFreshlyAllocated
+                *(nodeItr.get()->getObjectPointer()),
+                objectFreshlyAllocated
                     ? ReturnedObjectType::FRESH_ALLOCATION
                     : ReturnedObjectType::RECYCLED
             };
         }
 
         /**
-         * \brief Maybe unused - not sure though
+         * Currently unused, but this should just overwrite an existing allocation with no regard for the object
+         * being deleted.
          * \tparam P
          * \param hash
          * \param objectAllocationParameters
@@ -303,7 +307,7 @@ namespace pEngine::util::objectPool {
          */
         template<typename... P>
         ObjectType &
-        reallocateExistingObject(util::Hash hash, P &&... objectAllocationParameters) {
+        reallocateExistingObject(Hash hash, P &&... objectAllocationParameters) {
             // we'll just take from the last ring if possible and then keep going until we find
             // a ring that isn't empty and take one from there
             size_t nextRingIndex = (currentObjectPoolRingIndex + 1) % MaxUpdateCount;
@@ -328,8 +332,8 @@ namespace pEngine::util::objectPool {
                     // add newly-reallocated object back to allocation map and front of current ring
                     objectPoolRings[currentObjectPoolRingIndex].insertFront(backItr);
                     auto insertReplaceResultPair = allocationMap.insertReplace(
-                            hash,
-                            IntrusiveHashMapPODWrapper<typename IntrusiveList<ObjectAllocation>::Iterator>(backItr)
+                        hash,
+                        IntrusiveHashMapPieceOfDataWrapper<typename IntrusiveList<ObjectAllocation>::Iterator>(backItr)
                     );
 
                     // return reference to newly-allocated object
@@ -340,7 +344,7 @@ namespace pEngine::util::objectPool {
             }
             // TODO - log / error handling!
             throw std::runtime_error(
-                    "Error in ObjectHashPool::reallocateExistingObject() -> unable to obtain object to overwrite");
+                "Error in ObjectHashPool::reallocateExistingObject() -> unable to obtain object to overwrite");
         }
     };
 } // util

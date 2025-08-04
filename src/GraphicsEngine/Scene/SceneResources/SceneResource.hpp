@@ -14,8 +14,9 @@ namespace pEngine::girEngine::gir {
 
 namespace pEngine::girEngine::scene {
 
-    class Scene;
-
+    /**
+     * TODO -> evaluate ripping this out; inheritance in this case seems 1000% pointless
+     */
     class Resource {
     public:
         struct CreationInput {

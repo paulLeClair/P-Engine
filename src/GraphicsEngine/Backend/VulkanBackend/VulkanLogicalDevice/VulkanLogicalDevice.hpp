@@ -22,19 +22,23 @@ namespace pEngine::girEngine::backend::appContext::vulkan {
         enum class SupportedDeviceExtension {
             UNKNOWN,
             SWAPCHAIN_EXTENSION,
-            SYNC_2
+            SYNC_2,
+            DYNAMIC_RENDERING,
+            NONSEMANTIC_SHADER_INFO,
         };
 
         struct CreationInput {
             // all info required to create a VkDevice, in high-level format
             std::string name;
-            VkPhysicalDevice physicalDevice;
+            VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 
-            std::vector<SupportedDeviceExtension> enabledDeviceExtensions;
-            std::vector<SupportedDeviceLayer> enabledDeviceLayers;
+            std::vector<SupportedDeviceExtension> enabledDeviceExtensions = {};
+            std::vector<SupportedDeviceLayer> enabledDeviceLayers = {};
         };
 
         explicit VulkanLogicalDevice(const CreationInput &creationInput);
+
+        VulkanLogicalDevice() = default;
 
         ~VulkanLogicalDevice() {
             vkDestroyDevice(logicalDevice, nullptr);
@@ -57,13 +61,21 @@ namespace pEngine::girEngine::backend::appContext::vulkan {
 
         [[nodiscard]] const uint32_t &getComputeQueueFamilyIndex() const;
 
+        uint32_t getMinimumUniformBufferAlignment() const {
+            VkPhysicalDeviceProperties properties = {};
+            vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+
+            return properties.limits.minUniformBufferOffsetAlignment;
+        }
+
     private:
-        constexpr static const float ARBITRARY_QUEUE_PRIORITY = 0.5;
+        constexpr static float ARBITRARY_QUEUE_PRIORITY = 0.5;
 
         static const std::unordered_map<SupportedDeviceLayer, std::string> DEVICE_LAYER_NAME_CONVERSION_MAP;
 
         static const std::unordered_map<SupportedDeviceExtension, std::string> DEVICE_EXTENSION_NAME_CONVERSION_MAP;
 
+        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
         VkDevice logicalDevice = VK_NULL_HANDLE;
 
         uint32_t graphicsQueueFamilyIndex = 0;

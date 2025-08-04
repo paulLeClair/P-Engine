@@ -27,6 +27,7 @@ namespace pEngine::girEngine::scene::graph::renderPass {
          * In this state, the image is being used as a color attachment (render target)
         */
         COLOR_ATTACHMENT,
+        SWAPCHAIN_COLOR_ATTACHMENT,
         DEPTH_STENCIL_ATTACHMENT,
         DEPTH_STENCIL_READ_ONLY_ATTACHMENT,
         DEPTH_READ_ONLY_ATTACHMENT,

@@ -24,6 +24,8 @@ For now, the engine is very Windows-centric, and focuses on Vulkan for its backe
 
 ## Animated Model Demo Interim Release
 
+https://github.com/user-attachments/assets/89930e6d-8fe3-40f2-95ed-3b7ee0a75562
+
 This interim release is meant to publish a bunch of stuff that's been integrated into the engine, bringing it from something that could only render DearImGui to the point where it can now use [Asset Importer Library]() to load a model along with its skeletal animation(s), and render the model. We also have a minimalistic GUI that allows you to interact with the model, with a partially-implemented animation editor where you can view and mess around with your keyframes.
 
 The purpose of this release is not specifically the demo itself, but to show how the game engine framework can be used to implement some particular application. Each release will probably involve a number of updates to engine's frontend and backend along with an increasingly more-involved demo application, since the purpose of the engine is to make it easier for a developer to build a graphical application as they see fit.

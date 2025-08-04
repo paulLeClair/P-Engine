@@ -41,15 +41,21 @@ namespace pEngine::girEngine::backend::vulkan {
 
         ~VulkanBuffer();
 
-        [[nodiscard]] const VkBuffer &getBuffer() const;
+        [[nodiscard]] VkBuffer &getBuffer();
 
-        [[nodiscard]] VmaAllocation getBufferAllocation() const;
+        [[nodiscard]] VmaAllocation &getBufferAllocation();
 
         bool mapVulkanBufferMemoryToPointer(void **dataAccessPointer) const {
+            // TODO - I think we need to be invalidating the cache here!
+            // to do this, we'd use: vmaInvalidateAllocation()
+
             return vmaMapMemory(vmaAllocator, bufferAllocation, dataAccessPointer) == VK_SUCCESS;
         }
 
         void unmapVulkanBufferMemory() const {
+            // TODO - I think we need to be flushing the cache here!
+            // to do this we'd use: vmaFlushAllocation()
+
             vmaUnmapMemory(vmaAllocator, bufferAllocation);
         }
 

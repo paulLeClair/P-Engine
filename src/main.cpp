@@ -13,101 +13,99 @@
 #include "EngineCore/EngineCore.hpp"
 #include "GraphicsEngine/Backend/VulkanBackend/VulkanBackend.hpp"
 #include "Application/EngineMode/CoreMenuEngineMode/CoreMenuEngineMode.hpp"
-
-//#define DISABLE_VALIDATION_LAYER
+#include "Application/EngineMode/AnimatedModelDemoMode/AnimatedModelDemoMode.hpp"
 
 using namespace pEngine;
 using namespace pEngine::app;
 using namespace pEngine::core;
 
-void runEngine() {
-    auto scene = std::make_shared<scene::Scene>(scene::Scene::CreationInput{
-            "Core Menu Demo scene",
-            "Core Menu Demo Render Graph"
+void runApplication(const std::string &modelFilePath) {
+    const auto scene = std::make_shared<Scene>(Scene::CreationInput{
+        "Animated Model Demo scene",
+        "Animated Model Demo Render Graph"
     });
 
-    auto backend = std::make_shared<backend::vulkan::VulkanBackend>(backend::vulkan::VulkanBackend::CreationInput{
-            "Core Menu Demo",
-            "GirEngine",
-            nullptr, // ignore threadpool for now
-            {
-                    backend::appContext::vulkan::VulkanInstance::SupportedInstanceExtension::SURFACE_EXTENSION,
+    const auto backendConfig = backend::vulkan::VulkanBackend::CreationInput{
+        "Animated Model Viewer Demo",
+        "GirEngine",
+        nullptr, // ignore threadpool for now
+        {
+            backend::appContext::vulkan::VulkanInstance::SupportedInstanceExtension::SURFACE_EXTENSION,
 #ifdef _WIN32
-                    backend::appContext::vulkan::VulkanInstance::SupportedInstanceExtension::WINDOWS_SURFACE_EXTENSION
+            backend::appContext::vulkan::VulkanInstance::SupportedInstanceExtension::WINDOWS_SURFACE_EXTENSION
 #endif
 #ifdef __linux__
                     backend::appContext::vulkan::VulkanInstance::SupportedInstanceExtension::XLIB_SURFACE_EXTENSION
 #endif
-            },
-            {
+        },
+        {
 #ifndef DISABLE_VALIDATION_LAYER
-                    backend::appContext::vulkan::VulkanInstance::SupportedLayers::VALIDATION_LAYER
+            // re-enable validation layers while i just mess around with it (pre nsight capture)
+            backend::appContext::vulkan::VulkanInstance::SupportedLayers::VALIDATION_LAYER
 #endif
-            },
-            {
-                    backend::appContext::vulkan::VulkanLogicalDevice::SupportedDeviceExtension::SWAPCHAIN_EXTENSION,
-                    backend::appContext::vulkan::VulkanLogicalDevice::SupportedDeviceExtension::SYNC_2
-            },
-            {},
-            "Core Menu Demo - physical device",
-            "Core Menu Demo - logical device",
-            VK_MAKE_VERSION(0, 1, 1),
-            VK_MAKE_VERSION(0, 1, 1),
-            VK_MAKE_API_VERSION(0, 1, 3,
-                                275), // TODO - find a way to not have to specify the exact version number (unless its unavoidable),
-            // SWAPCHAIN CONFIGURATION
-            VK_PRESENT_MODE_FIFO_KHR,
-            3, // triple buffering
-            VK_FORMAT_B8G8R8A8_SRGB, // arbitrary SRGB format - not sure if it'll work
-            VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, // SRGB color space to go with srgb format
-            VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-            VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-            VK_IMAGE_USAGE_TRANSFER_DST_BIT, // arbitrary usages (not sure if we need anything but color?)
-            VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR, // no pre-transform
-            true, // enable clipping,
-            800, // placeholder initial window size lol
-            600
-    });
+        },
+        {
+            backend::appContext::vulkan::VulkanLogicalDevice::SupportedDeviceExtension::SWAPCHAIN_EXTENSION,
+            backend::appContext::vulkan::VulkanLogicalDevice::SupportedDeviceExtension::SYNC_2,
+            backend::appContext::vulkan::VulkanLogicalDevice::SupportedDeviceExtension::DYNAMIC_RENDERING,
+            backend::appContext::vulkan::VulkanLogicalDevice::SupportedDeviceExtension::NONSEMANTIC_SHADER_INFO,
+        },
+        {},
+        "Animated Model Demo - physical device",
+        "Animated Model - logical device",
+        VK_MAKE_VERSION(0, 1, 1),
+        VK_MAKE_VERSION(0, 1, 1),
+        VK_MAKE_API_VERSION(0, 1, 3,
+                            275),
+        // TODO - find a way to not have to specify the exact version number (unless its unavoidable),
+        // SWAPCHAIN CONFIGURATION
+        VK_PRESENT_MODE_MAILBOX_KHR,
+        2,
+        VK_FORMAT_B8G8R8A8_SRGB, // arbitrary SRGB format
+        VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, // SRGB color space to go with srgb format
+        VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
 
-    auto engineCore = std::make_shared<EngineCore<scene::Scene, backend::vulkan::VulkanBackend>>(
-            EngineCore<scene::Scene, backend::vulkan::VulkanBackend>::CreationInput{
-                    "Engine Core for Core Menu Demo",
-                    util::UniqueIdentifier(),
-                    1, // single-threading for now
-                    scene,
-                    backend
-            }
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+        VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR, // no pre-transform
+        true, // enable clipping,
+        1900,
+        1080
+    };
+    const auto backend = std::make_shared<backend::vulkan::VulkanBackend>(backendConfig);
+
+    const auto engineCore = std::make_shared<EngineCore<Scene, backend::vulkan::VulkanBackend> >(
+        EngineCore<Scene, backend::vulkan::VulkanBackend>::CreationInput{
+            "Engine Core for Animated Model Demo",
+            1, // single-threading for now
+            scene,
+            backend
+        }
     );
 
     // at this point we should be able to create the engine mode itself
-    auto coreMenuMode = std::make_shared<mode::CoreMenuEngineMode<scene::Scene, backend::vulkan::VulkanBackend>>(
-            mode::CoreMenuEngineMode<scene::Scene, backend::vulkan::VulkanBackend>::CreationInput{
-                    "Core Menu Demo - Engine Mode",
-                    util::UniqueIdentifier(),
-                    engineCore,
-                    nullptr,
-                    {}, // no callbacks for now
-                    false // run the main loop
-            }
+    const auto demoMode = std::make_shared<mode::AnimatedModelDemoMode<Scene, backend::vulkan::VulkanBackend> >(
+        mode::AnimatedModelDemoMode<Scene, backend::vulkan::VulkanBackend>::CreationInput{
+            "Animated Models Demo - Engine Mode",
+            engineCore,
+            nullptr,
+            std::filesystem::path(
+                modelFilePath
+            )
+        }
     );
 
-    // temporary try-catch to begin the mode
-    try {
-        coreMenuMode->begin();
-    }
-    catch (std::exception &e) {
-        std::cout << "Pee Engine has died! Reason: " << e.what() << std::endl;
-    }
+    demoMode->begin();
 }
 
 #ifdef _WIN32
 
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow) {
+    std::cout << "GirEngine, Activate!" << std::endl;
 
-    std::cout << "Pee Engine, Activate!" << std::endl;
-
-    runEngine();
+    const std::string modelFilePath = lpCmdLine;
+    runApplication(modelFilePath);
 
     return 0;
 }

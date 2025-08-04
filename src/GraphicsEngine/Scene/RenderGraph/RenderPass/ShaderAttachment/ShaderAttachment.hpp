@@ -13,7 +13,7 @@ namespace pEngine::girEngine::scene::graph::renderPass {
      *
      */
     struct ShaderAttachment {
-        std::shared_ptr<ShaderModule> shaderModule = nullptr;
+        ShaderModule *shaderModule = nullptr;
     };
 
 } // scene

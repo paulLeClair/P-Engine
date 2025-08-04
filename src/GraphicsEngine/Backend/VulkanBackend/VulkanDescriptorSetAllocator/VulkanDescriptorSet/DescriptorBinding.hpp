@@ -8,10 +8,7 @@
 
 #include "../../../../../utilities/UniqueIdentifier/UniqueIdentifier.hpp"
 
-namespace pEngine::girEngine::backend::vulkan::descriptor::set {
-    /**
-     * \brief This is the particular type of binding, whether it's a copy or write binding basically.
-     */
+namespace pEngine::girEngine::backend::vulkan::descriptor {
     enum class BindingType {
         UNKNOWN,
         WRITE,
@@ -19,28 +16,19 @@ namespace pEngine::girEngine::backend::vulkan::descriptor::set {
         COPY_DESTINATION
     };
 
-    /**
-     * \brief The virtual (and empty lol) base class for DescriptorBindings, which are used
-     * as part of binding descriptors to a particular descriptor set.
-     *
-     * TODO - consider whether to give this a template argument that allows it to maintain a
-     * handle to a particular resource as opposed to a unique identifier.
-     */
     struct DescriptorBinding {
+        DescriptorBinding() = default;
+
         virtual ~DescriptorBinding() = default;
 
         virtual BindingType getBindingType() {
             return BindingType::UNKNOWN;
         }
 
-        util::UniqueIdentifier boundResourceUid;
-        // TODO - replace this with a template argument reference to some object
-        // on second thought, only write bindings need an actual resource bound in, so we can make just the write
-        // binding a template class and then just have this class define the getBindingType() method as its main
-        // purpose
+        UniqueIdentifier boundResourceUid;
 
-        explicit DescriptorBinding(const util::UniqueIdentifier &resource_id)
-                : boundResourceUid(resource_id) {
+        explicit DescriptorBinding(const UniqueIdentifier &resource_id)
+            : boundResourceUid(resource_id) {
         }
 
         friend bool operator==(const DescriptorBinding &lhs, const DescriptorBinding &rhs) {
@@ -52,23 +40,30 @@ namespace pEngine::girEngine::backend::vulkan::descriptor::set {
         }
     };
 
-    /**
-    * \brief In this case, the specified resource is written into a binding as represented here;
-    * a particular resource (VkImage, VkBuffer, or VkTexelBufferView) will be bound to the descriptor.
-    *
-     *
-     * TODO - consider whether we break this up so that you can only bind a single handle of each resource type
-     * We can then add support for arrays of resources later, and support them currently by just requiring you to
-     * specify a binding for each array resource (which kinda defeats the purpose of arrays but alas, we're still
-     * in the R&D stages)
-    */
     struct WriteBinding final : DescriptorBinding {
+        WriteBinding() = default;
+
         BindingType getBindingType() override {
             return BindingType::WRITE;
         }
 
-        // we don't need a destination set, cause I think we'll be getting that implicitly from the
-        // descriptor set (wrapper) whose "update()" we're calling
+        WriteBinding(const UniqueIdentifier &resourceId,
+                     const uint32_t bindingIndex,
+                     const uint32_t descriptorArrayIndex,
+                     const uint32_t descriptorCount,
+                     const VkDescriptorType descriptorType,
+                     const boost::optional<VkDescriptorImageInfo> &boundImage = boost::none,
+                     const boost::optional<VkDescriptorBufferInfo> &boundBuffer = boost::none,
+                     const boost::optional<VkBufferView> &boundTexelBufferView = boost::none)
+            : DescriptorBinding(resourceId),
+              bindingIndex(bindingIndex),
+              descriptorArrayIndex(descriptorArrayIndex),
+              descriptorCount(descriptorCount),
+              descriptorType(descriptorType),
+              boundImage(boundImage),
+              boundBuffer(boundBuffer),
+              boundTexelBufferView(boundTexelBufferView) {
+        }
 
         /**
          * \brief This is the binding slot within the descriptor set (so it must be between 0 and the size of the set);
@@ -86,32 +81,24 @@ namespace pEngine::girEngine::backend::vulkan::descriptor::set {
          * \brief If you have an array of elements and want to update them all at once, you can specify a number
          * of descriptors; starting from the supplied array index, it will iterate through and copy the
          * resources' contents into the array according to the count. \n\n
-         *
-         * If this is used, the resources copied will be taken from one of the vectors below
          */
         uint32_t descriptorCount = 1;
 
         /**
          * \brief This is the type of Vulkan descriptor you're binding; eg uniform buffer, sampled image, what have you.
          * See the Vulkan spec for VkDescriptorType for more information \n\n
-         *
-         * This value is used to determine which of the bound descriptor arrays are read from.
          */
-        VkDescriptorType descriptorType;
+        VkDescriptorType descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
 
         /**
          * \brief This contains information about any images that are being bound as part of the write binding; can be empty or
          * can contain multiple images (which should match up with descriptorCount). \n\n
-         *
-         * Note - they will be copied into a descriptor array in the order you provide them
          */
         boost::optional<VkDescriptorImageInfo> boundImage = boost::none;
 
         /**
          * \brief This contains information about any buffers that are being bound as part of the write binding; can be empty or
          * can contain multiple buffers (which should match up with descriptorCount). \n\n
-         *
-         * Note - they will be copied into a descriptor array in the order you provide them
          */
         boost::optional<VkDescriptorBufferInfo> boundBuffer = boost::none;
 
@@ -122,23 +109,6 @@ namespace pEngine::girEngine::backend::vulkan::descriptor::set {
          * Note - they will be copied into a descriptor array in the order you provide them
          */
         boost::optional<VkBufferView> boundTexelBufferView = boost::none;
-
-        WriteBinding(const UniqueIdentifier &resourceId, const uint32_t bindingIndex,
-                     const uint32_t descriptorArrayIndex,
-                     const uint32_t descriptorCount, const VkDescriptorType descriptorType,
-                     const boost::optional<VkDescriptorImageInfo> &boundImage,
-                     const boost::optional<VkDescriptorBufferInfo> &boundBuffer,
-                     const boost::optional<VkBufferView> &boundTexelBufferView) : DescriptorBinding(resourceId),
-                                                                                  bindingIndex(bindingIndex),
-                                                                                  descriptorArrayIndex(
-                                                                                          descriptorArrayIndex),
-                                                                                  descriptorCount(descriptorCount),
-                                                                                  descriptorType(descriptorType),
-                                                                                  boundImage(boundImage),
-                                                                                  boundBuffer(boundBuffer),
-                                                                                  boundTexelBufferView(
-                                                                                          boundTexelBufferView) {
-        }
     };
 
 
@@ -176,12 +146,12 @@ namespace pEngine::girEngine::backend::vulkan::descriptor::set {
                               const uint32_t sourceBindingIndex,
                               const uint32_t sourceArrayElement, const uint32_t destinationBindingIndex,
                               const uint32_t destinationArrayElement)
-                : DescriptorBinding(uid),
-                  descriptorCount(descriptorCount),
-                  sourceBindingIndex(sourceBindingIndex),
-                  sourceArrayElement(sourceArrayElement),
-                  destinationBindingIndex(destinationBindingIndex),
-                  destinationArrayElement(destinationArrayElement) {
+            : DescriptorBinding(uid),
+              descriptorCount(descriptorCount),
+              sourceBindingIndex(sourceBindingIndex),
+              sourceArrayElement(sourceArrayElement),
+              destinationBindingIndex(destinationBindingIndex),
+              destinationArrayElement(destinationArrayElement) {
         }
     };
 
@@ -206,9 +176,9 @@ namespace pEngine::girEngine::backend::vulkan::descriptor::set {
                           const uint32_t sourceBindingIndex,
                           const uint32_t sourceArrayElement, const uint32_t destinationBindingIndex,
                           const uint32_t destinationArrayElement, VkDescriptorSet destinationDescriptorSet)
-                : CopyDescriptorBinding(uid, descriptorCount, sourceBindingIndex, sourceArrayElement,
-                                        destinationBindingIndex, destinationArrayElement),
-                  destinationDescriptorSet(destinationDescriptorSet) {
+            : CopyDescriptorBinding(uid, descriptorCount, sourceBindingIndex, sourceArrayElement,
+                                    destinationBindingIndex, destinationArrayElement),
+              destinationDescriptorSet(destinationDescriptorSet) {
         }
     };
 
@@ -232,13 +202,11 @@ namespace pEngine::girEngine::backend::vulkan::descriptor::set {
                                const uint32_t sourceBindingIndex,
                                const uint32_t sourceArrayElement, const uint32_t destinationBindingIndex,
                                const uint32_t destinationArrayElement, VkDescriptorSet sourceDescriptorSet)
-                : CopyDescriptorBinding(uid, descriptorCount, sourceBindingIndex, sourceArrayElement,
-                                        destinationBindingIndex, destinationArrayElement),
-                  sourceDescriptorSet(sourceDescriptorSet) {
+            : CopyDescriptorBinding(uid, descriptorCount, sourceBindingIndex, sourceArrayElement,
+                                    destinationBindingIndex, destinationArrayElement),
+              sourceDescriptorSet(sourceDescriptorSet) {
         }
     };
-
-    // TODO - add another instance for the case where you just want to specify a general copy between 2 vulkan::backend descriptor set objects
 }
 
 

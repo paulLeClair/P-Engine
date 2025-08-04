@@ -20,6 +20,10 @@ namespace pEngine::girEngine::gir::renderPass::dearImgui {
 
         }
 
+        DearImguiRenderPassIR() : RenderPassIR({}), dearImguiGuiCallbacks() {
+
+        }
+
         [[nodiscard]] const std::vector<std::function<void()>> &getDearImguiGuiCallbacks() const {
             return dearImguiGuiCallbacks;
         }

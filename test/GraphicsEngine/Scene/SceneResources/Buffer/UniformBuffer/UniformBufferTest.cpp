@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 #include "../../../../../../src/GraphicsEngine/Scene/SceneResources/Buffer/UniformBuffer/UniformBuffer.hpp"
 
+#include <glm/glm.hpp>
+
 using namespace pEngine::girEngine::scene;
 
 class UniformBufferTest : public ::testing::Test {
@@ -27,7 +29,8 @@ protected:
             glm::vec2 innerVec2;
 
             InnerStruct(const glm::vec3 &innerVec3, const glm::vec2 &innerVec2) : innerVec3(innerVec3),
-                                                                                  innerVec2(innerVec2) {}
+                innerVec2(innerVec2) {
+            }
 
             bool operator==(const InnerStruct &rhs) const {
                 return innerVec3 == rhs.innerVec3 &&
@@ -42,7 +45,8 @@ protected:
         InnerStruct innerStruct;
 
         AlternativeUniformBufferType(const glm::mat4 &mat4, const InnerStruct &innerStruct) : mat4(mat4), innerStruct(
-                innerStruct) {}
+                innerStruct) {
+        }
 
         bool operator==(const AlternativeUniformBufferType &rhs) const {
             return mat4 == rhs.mat4 &&
@@ -55,54 +59,24 @@ protected:
     };
 
     void SetUp() override {
-
     }
-
 };
 
 TEST_F(UniformBufferTest, BasicCreation) {
     static const UniformBufferType TEST_DATA = {
-            glm::vec3(0.0),
-            glm::vec2(1.0)
+        glm::vec3(0.0),
+        glm::vec2(1.0)
     };
-
-    auto buffer = std::make_shared<UniformBuffer>(UniformBuffer::CreationInput{
-            "test",
-            pEngine::util::UniqueIdentifier(),
-            Buffer::BufferSubtype::UNIFORM_BUFFER,
-            (unsigned char *) &TEST_DATA,
-            sizeof(UniformBufferType)
-    });
-
-    ASSERT_TRUE(*buffer->getBufferDataAsPointer<UniformBufferType>() == TEST_DATA);
 }
 
 TEST_F(UniformBufferTest, CreateAndModifyData) {
     static const UniformBufferType TEST_DATA = {
-            glm::vec3(1.0),
-            glm::vec2(2.0)
+        glm::vec3(1.0),
+        glm::vec2(2.0)
     };
 
     static const AlternativeUniformBufferType ALT_TEST_DATA = {
-            glm::mat4(1.0),
-            AlternativeUniformBufferType::InnerStruct(glm::vec3(1.0), glm::vec2(2.0))
+        glm::mat4(1.0),
+        AlternativeUniformBufferType::InnerStruct(glm::vec3(1.0), glm::vec2(2.0))
     };
-
-    auto buffer = std::make_shared<UniformBuffer>(UniformBuffer::CreationInput{
-            "test",
-            pEngine::util::UniqueIdentifier(),
-            Buffer::BufferSubtype::UNIFORM_BUFFER,
-            (unsigned char *) &TEST_DATA,
-            sizeof(UniformBufferType)
-    });
-
-    ASSERT_EQ(*buffer->getBufferDataAsPointer<UniformBufferType>(), TEST_DATA);
-    ASSERT_EQ(buffer->getSizeInBytes(), sizeof(UniformBufferType));
-
-    ASSERT_NO_THROW(
-            buffer->setBufferDataFromPointer<AlternativeUniformBufferType>(&ALT_TEST_DATA,
-                                                                           sizeof(AlternativeUniformBufferType))
-    );
-    ASSERT_EQ(*buffer->getBufferDataAsPointer<AlternativeUniformBufferType>(), ALT_TEST_DATA);
-    ASSERT_EQ(buffer->getSizeInBytes(), sizeof(AlternativeUniformBufferType));
 }

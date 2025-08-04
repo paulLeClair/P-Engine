@@ -13,11 +13,16 @@ namespace pEngine::girEngine::gir {
         RENDER_GRAPH,
         RENDER_PASS,
         GRAPHICS_PIPELINE,
+        MODEL,
+        ANIMATION,
+        KEYFRAME,
         BUFFER,
         IMAGE,
         SHADER_CONSTANT,
         TEXTURE,
-        SHADER_MODULE
+        SHADER_MODULE,
+        CAMERA,
+        VERTEX_INPUT_BINDING
     };
 
     /**
@@ -34,8 +39,7 @@ namespace pEngine::girEngine::gir {
      * when we get to the backend stuff, especially since it wouldn't be that hard to adapt things
      * from the current idea of just batching all gir into one big list for processing.
      */
-    class GraphicsIntermediateRepresentation {
-    public:
+    struct GraphicsIntermediateRepresentation {
         struct CreationInput {
             std::string name;
             util::UniqueIdentifier uid;
@@ -48,25 +52,14 @@ namespace pEngine::girEngine::gir {
                   subtype(creationInput.subtype) {
         }
 
+        GraphicsIntermediateRepresentation() = default;
+
         GraphicsIntermediateRepresentation(const GraphicsIntermediateRepresentation &other) = default;
 
         virtual ~GraphicsIntermediateRepresentation() = default;
 
-        [[maybe_unused]] [[nodiscard]] GIRSubtype getSubtype() const {
-            return subtype;
-        }
-
-        [[nodiscard]] const std::string &getName() const {
-            return name;
-        }
-
-        [[nodiscard]] const util::UniqueIdentifier &getUid() const {
-            return uid;
-        }
-
-    private:
         std::string name;
         util::UniqueIdentifier uid;
-        GIRSubtype subtype;
+        GIRSubtype subtype = GIRSubtype::UNKNOWN;
     };
 }

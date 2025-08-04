@@ -7,36 +7,59 @@
 #include <vector>
 
 namespace pEngine::girEngine::backend::vulkan {
+    struct VulkanRenderPass {
+        virtual ~VulkanRenderPass() = default;
 
-    // TODO - reconsider the vulkan render pass design... I think I'll definitely have to flesh this out
-    class VulkanRenderPass {
-    public:
-        ~VulkanRenderPass() = default;
+        enum class RenderResult {
+            SUCCESS,
+            FAILURE
+        };
 
-        [[maybe_unused]] [[nodiscard]] virtual bool isDynamicRenderPass() const {
-            return false;
+        // ACTUALLY wait i don't think returning submits will work (they contain pointers to structs that go out of scope)
+        // new alternative: probably just pull the submit stuff completely out of this function, put it into the
+        // renderer itself, since it needs to have the submit info anyway
+        virtual RenderResult
+        recordRenderingCommands(VkCommandBuffer &commandBuffer,
+                                uint32_t frameInFlightIndex,
+                                std::vector<VkCommandBuffer> &copyCommandBuffers,
+                                VkCommandPool &commandPool
+        ) {
+            // TODO -> determine if we need any arguments here
+            return RenderResult::FAILURE;
         }
-
-        [[maybe_unused]] [[nodiscard]] virtual bool isDearImguiRenderPass() const {
-            return false;
-        }
-
-        // ONE THING -> now that I'm trying to get the very first VulkanRenderPass thing
-        // to actually record & submit commands (the DearImgui one, whose logic was ripped from the examples pretty much
-        // (it might be worth going through and seeing if they've updated it; this was brought over for an older vulkan version)
 
         /**
-         * I was originally thinking I was going to have a virtual function here for drawing frames;
-         * I think it might be easier (at least for now; refactoring in the future is a possibility)
-         * that we just leave this as-is, and have the vulkan render pass subclasses themselves provide any relevant
-         * interface methods.
-         *
-         * I just need to make sure that we have all info available in the
+         * This should contain the relevant info for one particular attribute in one particular binding
          */
+        struct VertexBindingAttribute {
+            uint32_t attributeLocation = 0;
 
-    protected:
+            VkFormat attributeFormat = VK_FORMAT_UNDEFINED;
 
+            uint32_t attributeOffset = 0;
+        };
 
+        /**
+         * This represents one particular vertex input binding, which includes some set of attributes
+         */
+        struct VertexInputBinding {
+            uint32_t bindingIndex = 0; // I don't think we need more than 255 bindings per pass (can change later)
+            std::vector<VertexBindingAttribute> attributes = {};
+        };
+
+        /**
+         * I'll just try to give the current subclasses a public vector of bindings that they'll use for
+         * drawing.
+         */
+        std::vector<VertexInputBinding> vertexInputBindings = {};
+        std::vector<VkCommandBuffer> allocatedCommandBuffers;
+
+        explicit VulkanRenderPass(const std::vector<VertexInputBinding> &vertexInputBindings)
+            : vertexInputBindings(vertexInputBindings) {
+        }
+
+        VulkanRenderPass() = default;
+
+        // TODO -> consider adding in descriptor set stuff here if possible; not sure what form that would have to take really
     };
-
-}// namespace PGraphics
+} // namespace PGraphics

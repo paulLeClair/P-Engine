@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "../../../utilities/UniqueIdentifier/UniqueIdentifier.hpp"
+
 #include "AttachmentState/AttachmentState.hpp"
 #include "MultisampleResolveOperation/MultisampleResolveOperation.hpp"
 #include "AttachmentLoadOperation/AttachmentLoadOperation.hpp"
@@ -13,20 +15,27 @@
 // taken right from scene::renderPass for now; specialize this in the future if needed
 
 namespace pEngine::girEngine::gir::renderPass {
-
     /**
      * Since I think the idea of having render passes maintain the attachment information
      * on their own is more easily done if we have it match up on the GIR side of things,
      * I'll give this a shot. This basically matches up with the scene render pass attachment info,
      * since it all is being tailored towards vulkan for the time being.
+     *
+     * NOTE -> we're using raw pointers to pre-baked IR images that should exist elsewhere;
+     * it would be ideal to have a clean simple design that avoids this danger somehow so that's TODO
      */
     struct ImageAttachment {
-
         /**
          * This is the particular image being attached to the RenderPassIR object
          * that this attachment belongs to.
+         *
+         * Using a pointer isn't working because the objects they point to will usually go out of scope,
+         * and I don't feel like refactoring it around that. So instead we'll just store the UID
+         * since that's what we're comparing against anyway.
          */
-        std::shared_ptr<ImageIR> attachedImage = nullptr;
+        util::UniqueIdentifier attachedImage = {};
+
+        resource::FormatIR imageFormat = resource::FormatIR::UNDEFINED;
 
         /**
         * The state that the image will be in *during* rendering;
@@ -63,5 +72,4 @@ namespace pEngine::girEngine::gir::renderPass {
         */
         ClearValue clearValue = {};
     };
-
 } // gir

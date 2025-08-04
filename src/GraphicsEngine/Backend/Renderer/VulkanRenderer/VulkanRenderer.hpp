@@ -9,47 +9,28 @@
 #endif
 
 #include <memory>
-#include <utility>
 #include <vector>
 
-#include "../../../../lib/vk_mem_alloc/vk_mem_alloc.h"
-#include "../../../Scene/SceneResources/SceneResource.hpp"
 #include "../../ApplicationContext/VulkanApplicationContext/VulkanApplicationContext.hpp"
-#include "../../VulkanBackend/VulkanBuffer/VulkanBuffer.hpp"
-#include "../../VulkanBackend/VulkanImage/VulkanImage.hpp"
 #include "../../VulkanBackend/VulkanRenderPass/VulkanDynamicRenderPass/VulkanDynamicRenderPass.hpp"
-#include "../../VulkanBackend/VulkanShaderModule/VulkanShaderModule.hpp"
-#include "../../ApplicationContext/OSInterface/VulkanOSInterface/VulkanOSInterface.hpp"
+#include "../../VulkanBackend/VulkanRenderPass/DearImguiVulkanRenderPass/DearImguiVulkanRenderPass.hpp"
 #include "../Renderer.hpp"
-#include "../Frame/VulkanFrame/VulkanFrame.hpp"
-#include "../PresentationEngine/VulkanPresentationEngine/VulkanPresentationEngine.hpp"
+#include "../VulkanGuiThread/VulkanGuiThread.hpp"
 
 // ugly macro for now
 #define DEFAULT_SWAPCHAIN_TIMEOUT_IN_MS 5
 
 namespace pEngine::girEngine::backend::vulkan {
-    class VulkanBackend;
-}
+    struct Frame;
 
-namespace pEngine::girEngine::backend::render::vulkan {
-
-    /**
-     * Responsibilities of this class:
-     * -> TLDR: maintain all the objects/subclasses needed for drawing a particular frame (ie rendering to a
-     * render target), not including the windowing system stuff most likely
-     * ->
-     */
-    class VulkanRenderer : public backend::render::Renderer {
+    class VulkanRenderer final : public Renderer {
     public:
         struct CreationInput {
+            // TODO -> factor out the individual items that are used so we don't pass a shared pointer in for no reason
             std::shared_ptr<appContext::vulkan::VulkanApplicationContext> applicationContext;
 
-            // TODO - wire in the baked backend objects; I think some kind of class that aggregates all the arrays
-            // and organizes them is warranted here; it should make it easier to make efficient scene-updating code
-            // that is externally triggered I hope (which of course is a much later issue)
-
-            // in any event, even tho better ways must exist for doing this, I'll just pass in
-            // the handle directly (since we're hardcoding 1 imgui render pass for the time being)
+            VmaAllocator allocator;
+            VulkanPresentationEngine &presentationEngine;
 
             // TODO - consider relocating the presentation engine so we dont have to configure the swapchain here
             VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
@@ -57,86 +38,21 @@ namespace pEngine::girEngine::backend::render::vulkan {
 
             std::vector<float> clearColor = {0.0, 0.0, 0.0, 0.0};
 
+            boolean guiThreadEnabled = true;
+            std::vector<std::function<void()> > guiThreadCallbacks = {};
+
+            uint32_t numberOfFramesInFlight = 2;
         };
 
-        explicit VulkanRenderer(const CreationInput &createInfo)
-                : applicationContext(createInfo.applicationContext),
-                  dearImguiVulkanRenderPass(nullptr),
-                  imageAcquiredSemaphore(VK_NULL_HANDLE),
-                  renderCompleteSemaphore(VK_NULL_HANDLE),
-                  frameFence(VK_NULL_HANDLE),
-                  commandPool(VK_NULL_HANDLE),
-                  clearColor(createInfo.clearColor) {
-            initializeSynchronization();
+        explicit VulkanRenderer(const CreationInput &createInfo);
 
-            presentationEngine = std::make_shared<present::vulkan::VulkanPresentationEngine>(
-                    present::vulkan::VulkanPresentationEngine::CreationInput{
-                            applicationContext->getLogicalDevice()->getVkDevice(),
-                            applicationContext->getLogicalDevice()->getGraphicsQueue(), // hardcoding graphics&present in 1 queue
-                            applicationContext->getOSInterface()->getSwapchain(),
-                            DEFAULT_SWAPCHAIN_TIMEOUT_IN_MS,
-                            imageAcquiredSemaphore,
-                            renderCompleteSemaphore
-                    }
-            );
 
-            // create the renderer's own command pool
-            VkCommandPoolCreateInfo commandPoolCreateInfo{
-                    VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                    nullptr,
-                    0,
-                    applicationContext->getGraphicsQueueFamilyIndex()
-            };
-            auto result = vkCreateCommandPool(applicationContext->getLogicalDevice()->getVkDevice(),
-                                              &commandPoolCreateInfo, nullptr, &commandPool);
-            if (result != VK_SUCCESS) {
-                // TODO - log!
+        ~VulkanRenderer() override;
+
+        void newImguiFrame() const {
+            if (guiThreadIsEnabled && guiThread) {
+                guiThread->beginNewImguiFrame();
             }
-
-        }
-
-        void initializeSynchronization() {// create semaphores
-            VkSemaphoreCreateInfo semaphoreCreateInfo{
-                    VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-                    nullptr,
-                    0
-            };
-            auto result = vkCreateSemaphore(
-                    applicationContext->getLogicalDevice()->getVkDevice(),
-                    &semaphoreCreateInfo,
-                    nullptr,
-                    &renderCompleteSemaphore
-            );
-            if (result != VK_SUCCESS) {
-                // TODO - log!
-            }
-            result = vkCreateSemaphore(
-                    applicationContext->getLogicalDevice()->getVkDevice(),
-                    &semaphoreCreateInfo,
-                    nullptr,
-                    &imageAcquiredSemaphore
-            );
-            if (result != VK_SUCCESS) {
-                // TODO - log!
-            }
-
-            VkFenceCreateInfo createInfo{
-                    VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-                    nullptr,
-                    0 // create in unsignaled state
-            };
-            result = vkCreateFence(applicationContext->getLogicalDevice()->getVkDevice(), &createInfo, nullptr,
-                                   &frameFence);
-            if (result != VK_SUCCESS) {
-                // TODO - log!
-            }
-        }
-
-        ~VulkanRenderer() override {
-            vkDestroySemaphore(applicationContext->getLogicalDevice()->getVkDevice(), imageAcquiredSemaphore, nullptr);
-            vkDestroySemaphore(applicationContext->getLogicalDevice()->getVkDevice(), renderCompleteSemaphore, nullptr);
-            vkDestroyFence(applicationContext->getLogicalDevice()->getVkDevice(), frameFence, nullptr);
-            vkDestroyCommandPool(applicationContext->getLogicalDevice()->getVkDevice(), commandPool, nullptr);
         }
 
         enum class RenderFrameResult {
@@ -144,10 +60,24 @@ namespace pEngine::girEngine::backend::render::vulkan {
             FAILURE
         };
 
-        // temporary measure: just set the pointer externally when it's ready
-        void setDearImguiVulkanRenderPassPointer(std::shared_ptr<backend::vulkan::DearImguiVulkanRenderPass> &pass) {
-            dearImguiVulkanRenderPass = pass;
+        /**
+         * Hardcoding this to true for now
+         */
+        const bool guiThreadIsEnabled = true;
+
+        /**
+         * Current frame count
+         */
+        long frameCount = 0;
+
+        void setGuiCallbacks(std::vector<std::function<void()> > &&callbacks) const {
+            if (!guiThreadIsEnabled) {
+                // TODO -> log!
+                return;
+            }
+            guiThread->setCallbacks(std::move(callbacks));
         }
+
 
         RenderFrameResult renderFrame();
 
@@ -155,29 +85,58 @@ namespace pEngine::girEngine::backend::render::vulkan {
             return clearColor;
         }
 
+        uint32_t getCurrentFrameIndex() const {
+            return currentFrameIndex;
+        }
+
+        void initializeRenderData(const std::vector<std::shared_ptr<VulkanRenderPass> > &passes,
+                                  const VulkanResourceRepository *repository);
+
+        [[nodiscard]] VulkanPresentationEngine &getPresentationEngine() const {
+            if (!presentationEngine) {
+                // TODO -> log!
+                throw std::runtime_error(
+                    "Error in VulkanRenderer::getPresentationEngine() -> VulkanPresentationEngine handle is null");
+            }
+            return *presentationEngine;
+        }
+
+        [[nodiscard]] std::shared_ptr<appContext::vulkan::VulkanApplicationContext> getApplicationContext() const {
+            return applicationContext;
+        }
+
+        [[nodiscard]] VkFence getPreviousFrameFence() const;
+
+        [[nodiscard]] VkFence getCurrentFrameFence() const;
+
+        void recordRenderGraphGuiPipelineBarrierCommandBuffer(VkCommandBuffer &buffer);
+
+        /**
+         * The set of wait semaphores that signify *all* previous rendering has completed for a given submission.
+         * @return All semaphores that must be waited on in order to proceed after all submissions have completed in the correct order
+         */
+        std::vector<VkSemaphore> constructAndSubmitRenderCommands();
+
+        void allocateAndRecordFrameInitCommandBuffer(VkCommandBuffer &frameInitCommandBuffer) const;
+
+        std::vector<std::unique_ptr<Frame> > frames;
+
     private:
         std::shared_ptr<appContext::vulkan::VulkanApplicationContext> applicationContext;
 
-        // for the first pass I'll try to just have the renderer create the presentation engine itself
-        std::shared_ptr<present::vulkan::VulkanPresentationEngine> presentationEngine;
+        // for the animated model demo I'll try to just have the renderer create the presentation engine itself
+        VulkanPresentationEngine *const presentationEngine;
 
-        // TODO - figure out how best to integrate the rest of the backend baked objects; we'll need to get the passes & resources;
-        // this will also factor into the update code at some point
+        std::vector<std::shared_ptr<VulkanRenderPass> > renderPasses = {};
+        std::vector<VkSemaphore> perPassCopySemaphores = {};
 
-        // TODO -> completely rework the interface between the backend's baked objects and the renderer;
-        // for now, I'm going to keep it EXTRA simple and just have a hardwired single dearimgui render pass that will
-        // be externally set by the backend after baking
-        std::shared_ptr<::pEngine::girEngine::backend::vulkan::DearImguiVulkanRenderPass> dearImguiVulkanRenderPass = nullptr;
+        VmaAllocator allocator;
 
-        // this semaphore should be used to signal when the renderer has acquired an image from the swapchain
-        VkSemaphore imageAcquiredSemaphore;
-
-        // this semaphore should be used to signal when the renderer is currently drawing to a particular swapchain image
-        VkSemaphore renderCompleteSemaphore;
-
-        // i think we need to add in another bit of synchronization: a fence.
-        // in the future I can consider other synchronization methods
-        VkFence frameFence; // TODO - make it so we have multiple frame fences (1 per swapchain image)
+        // these semaphores should be used to signal when the renderer has acquired an image from the swapchain;
+        // they are separated out to be 1-1 with the number of frames so that we can share them without knowing
+        // a priori which frame index is next
+        std::vector<VkSemaphore> imageAcquiredSemaphores;
+        uint32_t currentImageAcquiredSemaphore = 0;
 
         // for simplicity, I'll have the renderer maintain its own pool for submitting certain "overhead" commands
         // that aren't part of the user's render passes
@@ -186,77 +145,381 @@ namespace pEngine::girEngine::backend::render::vulkan {
         // this just controls what the clear color will be before a frame is drawn
         std::vector<float> clearColor;
 
-        static void prepareAcquiredSwapchainImageInitialTransitionBarrier(VkImage &acquiredSwapchainImage,
-                                                                          VkImageMemoryBarrier2 &acquiredSwapchainImageBarrier) {
+        std::unique_ptr<gui::VulkanGuiThread> guiThread = nullptr;
+
+        uint32_t previousFrameIndex = 0;
+        uint32_t currentFrameIndex = 0;
+
+        void recordInitialImageTransitionCommands(VkCommandBuffer initialImageTransitionCommandBuffer) const;
+
+        void recordEndOfFrameSwapchainImageTransition(VkCommandBuffer &endOfFrameCommandBuffer,
+                                                      const VkImageMemoryBarrier2 &finalSwapchainImageTransitionBarrier)
+        const;
+
+        void freePreviouslyUsedCommandBuffers(VkCommandPool commandPool) const;
+
+        static
+        void prepareAcquiredSwapchainImageInitialTransitionBarrier(const VkImage &acquiredSwapchainImage,
+                                                                   VkImageMemoryBarrier2 &
+                                                                   acquiredSwapchainImageBarrier) {
             acquiredSwapchainImageBarrier = {
-                    VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-                    nullptr,
-                    VK_PIPELINE_STAGE_2_NONE, // srcStageMask
-                    0, // srcAccessMask
-                    VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, // dstStageMask -> don't clear until we acquire the image
-                    VK_ACCESS_2_TRANSFER_WRITE_BIT, // dstAccessMask -> after we acquire it, allow clear access
-                    VK_IMAGE_LAYOUT_UNDEFINED, // we don't care about whatever was in here before
-                    VK_IMAGE_LAYOUT_GENERAL, // since we're clearing before any drawing happens, we want general layout
-                    VK_QUEUE_FAMILY_IGNORED, // according to vulkan example, this transition does not require ownership transfer b/w queues
-                    VK_QUEUE_FAMILY_IGNORED, // (which makes sense because we're discarding the contents of the image)
-                    acquiredSwapchainImage,
-                    {
-                            VK_IMAGE_ASPECT_COLOR_BIT,
-                            0,
-                            VK_REMAINING_MIP_LEVELS,
-                            0,
-                            VK_REMAINING_ARRAY_LAYERS
-                    }
+                VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                nullptr,
+                VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, // srcStageMask
+                0, // srcAccessMask
+                VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, // dstStageMask -> don't clear until we acquire the image
+                VK_ACCESS_2_TRANSFER_WRITE_BIT, // dstAccessMask -> after we acquire it, allow clear access
+                VK_IMAGE_LAYOUT_UNDEFINED, // we don't care about whatever was in here before
+                VK_IMAGE_LAYOUT_GENERAL, // since we're clearing before any drawing happens, we want general layout
+                VK_QUEUE_FAMILY_IGNORED,
+                VK_QUEUE_FAMILY_IGNORED,
+                acquiredSwapchainImage,
+                {
+                    VK_IMAGE_ASPECT_COLOR_BIT,
+                    0,
+                    VK_REMAINING_MIP_LEVELS,
+                    0,
+                    VK_REMAINING_ARRAY_LAYERS
+                }
             };
         }
 
         void
-        prepareAcquiredSwapchainImageFinalTransitionBarrier(VkImage &swapchainImage, VkImageMemoryBarrier2 &barrier) {
+        prepareAcquiredSwapchainImageFinalTransitionBarrier(const VkImage &swapchainImage,
+                                                            VkImageMemoryBarrier2 &barrier) const {
             barrier = {
-                    VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-                    nullptr,
-                    VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                    VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                    VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, // dstStageMask
-                    0, // dstAccessFlags,
-                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, // TODO - make sure layouts line up; need to track this when we have render passes able to transition images themselves
-                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                    applicationContext->getGraphicsQueueFamilyIndex(),
-                    applicationContext->getGraphicsQueueFamilyIndex(), // TODO - present queues if needed
-                    swapchainImage,
-                    {
-                            VK_IMAGE_ASPECT_COLOR_BIT,
-                            0,
-                            VK_REMAINING_MIP_LEVELS,
-                            0,
-                            VK_REMAINING_ARRAY_LAYERS
-                    }
+                VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                nullptr,
+                // we want all color attachment output to finish
+                VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                // we want to make all color attachment writes available
+                VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+                0,
+                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                applicationContext->getGraphicsQueueFamilyIndex(),
+                applicationContext->getGraphicsQueueFamilyIndex(),
+                swapchainImage,
+                {
+                    VK_IMAGE_ASPECT_COLOR_BIT,
+                    0,
+                    VK_REMAINING_MIP_LEVELS,
+                    0,
+                    VK_REMAINING_ARRAY_LAYERS
+                }
             };
         }
 
         static void
-        recordCommandBufferWithImageMemoryBarrier(VkCommandBuffer &transitionBuffer,
+        recordCommandBufferWithImageMemoryBarrier(const VkCommandBuffer &transitionBuffer,
                                                   VkImageMemoryBarrier2 imageTransitionBarrier) {
-
-            VkDependencyInfo dependencyInfo{
-                    VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-                    nullptr,
-                    0,
-                    0,
-                    nullptr,
-                    0,
-                    nullptr,
-                    1,
-                    &imageTransitionBarrier
+            const VkDependencyInfo dependencyInfo{
+                VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+                nullptr,
+                0,
+                0,
+                nullptr,
+                0,
+                nullptr,
+                1,
+                &imageTransitionBarrier
             };
 
             vkCmdPipelineBarrier2(transitionBuffer, &dependencyInfo);
         }
 
 
-        void recordCommandBufferWithClearCommand(VkCommandBuffer &buffer, VkImage swapchainImage);
+        void recordCommandBufferWithClearCommand(const VkCommandBuffer &buffer, VkImage swapchainImage) const;
 
         void
-        recordTransitionSwapchainImageLayoutToColorAttachmentOptimal(VkCommandBuffer &buffer, VkImage &swapchainImage);
+        recordFrameInitBarriers(const VkCommandBuffer &buffer,
+                                const VkImage &swapchainImage) const;
+
+
+        void copyRenderPassStaticResourcesToGPU(const VulkanResourceRepository *resourceRepository) const {
+            if (renderPasses.empty()) {
+                //TODO -> log!
+                return;
+            }
+
+            std::unordered_map<UniqueIdentifier, uint32_t> stagingBufferOffsets = {};
+            uint32_t stagingBufferSize = 0;
+            VkBuffer stagingBuffer = VK_NULL_HANDLE;
+            VmaAllocation stagingBufferAllocation = VK_NULL_HANDLE;
+
+            // NEW: we'll just have the renderer make its own temporary staging buffer here since we're waiting on a fence anyway
+            for (const auto &renderPass: renderPasses) {
+                for (auto vulkan_dynamic_render_pass = std::dynamic_pointer_cast<VulkanDynamicRenderPass>(renderPass);
+                     auto &model: vulkan_dynamic_render_pass->models) {
+                    for (auto &uniformBufferBinding: model->getSuballocatedUniformBuffers()) {
+                        if (std::ranges::any_of(vulkan_dynamic_render_pass->dynamicUniformBuffers,
+                                                [&](const auto &dynamicUniformBufferBinding) {
+                                                    return uniformBufferBinding.suballocation.resourceId ==
+                                                           dynamicUniformBufferBinding.resourceId;
+                                                })) {
+                            continue;
+                        }
+
+                        stagingBufferOffsets.insert_or_assign(uniformBufferBinding.suballocation.resourceId,
+                                                              stagingBufferSize);
+                        stagingBufferSize += uniformBufferBinding.suballocation.size;
+                    }
+
+                    for (const auto &vertexBufferSuballocation:
+                         model->getVertexBufferSuballocations() | std::views::keys) {
+                        stagingBufferOffsets.insert_or_assign(vertexBufferSuballocation.suballocation.resourceId,
+                                                              stagingBufferSize);
+                        stagingBufferSize += vertexBufferSuballocation.suballocation.size;
+                    }
+
+                    for (const auto &indexBufferSuballocation:
+                         model->getIndexBufferSuballocations() | std::views::keys) {
+                        stagingBufferOffsets.insert_or_assign(indexBufferSuballocation.suballocation.resourceId,
+                                                              stagingBufferSize);
+                        stagingBufferSize += indexBufferSuballocation.suballocation.size;
+                    }
+                }
+            }
+
+            uint32_t graphics_queue_family_index = applicationContext->getGraphicsQueueFamilyIndex();
+            const VkBufferCreateInfo stagingBufferCreateInfo = {
+                .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = 0,
+                .size = stagingBufferSize,
+                .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT, // TODO -> determine whether this is enough; I think it is
+                .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+                .queueFamilyIndexCount = 1,
+                .pQueueFamilyIndices = &graphics_queue_family_index
+                // TODO -> support compute/pure transfer queues
+            };
+
+            // these should hopefully work for a staging buffer (comes directly from VMA docs)
+            VmaAllocationCreateInfo stagingBufferAllocationCreateInfo = {
+                .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+                .usage = VMA_MEMORY_USAGE_AUTO,
+            };
+
+            VmaAllocationInfo stagingBufferAllocationInfo = {
+                // this can be left blank
+            };
+
+            const auto stagingBufferCreationResult
+                    = vmaCreateBuffer(allocator,
+                                      &stagingBufferCreateInfo,
+                                      &stagingBufferAllocationCreateInfo,
+                                      &stagingBuffer,
+                                      &stagingBufferAllocation,
+                                      &stagingBufferAllocationInfo);
+            if (stagingBufferCreationResult != VK_SUCCESS) {
+                // TODO -> proper logging tools!
+                throw std::runtime_error(
+                    "Error in VulkanDynamicRenderPass() -> failed to create staging buffer");
+            }
+
+            VkCommandBuffer staticGeometryCommandBuffer = VK_NULL_HANDLE;
+            VkCommandBufferAllocateInfo commandBufferAllocateInfo{
+                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+                .pNext = nullptr,
+                .commandPool = commandPool,
+                .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                .commandBufferCount = 1
+            };
+            auto result = vkAllocateCommandBuffers(applicationContext->getLogicalDevice()->getVkDevice(),
+                                                   &commandBufferAllocateInfo,
+                                                   &staticGeometryCommandBuffer);
+            if (result != VK_SUCCESS) {
+                // TODO -> log!
+                return;
+            }
+
+            auto beginInfo = VkCommandBufferBeginInfo{
+                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                .pNext = nullptr,
+                .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+                .pInheritanceInfo = nullptr
+            };
+            result = vkBeginCommandBuffer(staticGeometryCommandBuffer, &beginInfo);
+            if (result != VK_SUCCESS) {
+                // TODO -> log!
+                return;
+            }
+
+            for (const auto &pass: renderPasses) {
+                // TODO -> filter based on render pass type
+                std::shared_ptr<VulkanDynamicRenderPass> dynamicPass = std::dynamic_pointer_cast<
+                    VulkanDynamicRenderPass>(pass);
+
+                for (const auto &model: dynamicPass->models) {
+                    std::vector<VkBufferCopy2> uniformBufferCopies = {};
+                    for (const auto &buffer: model->getSuballocatedUniformBuffers()) {
+                        // we want to only copy this over if it's not a dynamic resource
+                        // TODO -> consider tracking dynamic resources in a set as opposed to a vector
+                        if (std::ranges::any_of(dynamicPass->dynamicUniformBuffers, [&](const auto &dynamicBuffer) {
+                            return dynamicBuffer.resourceId == buffer.suballocation.resourceId;
+                        })) {
+                            continue;
+                        }
+
+                        VkDeviceSize uniformBufferStagingBufferOffset = stagingBufferOffsets[buffer.suballocation.
+                            resourceId];
+                        result = vmaCopyMemoryToAllocation(allocator, buffer.suballocation.currentData->data(),
+                                                           stagingBufferAllocation,
+                                                           uniformBufferStagingBufferOffset, buffer.suballocation.size);
+                        if (result != VK_SUCCESS) {
+                            // TODO -> log!
+                            return;
+                        }
+
+                        uniformBufferCopies.emplace_back(
+                            VK_STRUCTURE_TYPE_BUFFER_COPY_2,
+                            nullptr,
+                            stagingBufferOffsets.at(buffer.suballocation.resourceId),
+                            buffer.suballocation.globalBufferOffset,
+                            buffer.suballocation.size
+                        );
+                    }
+
+                    // here we'll copy the vertex and index buffer data into our staging buffer and then GPU
+                    std::vector<VkBufferCopy2> vertexBufferCopies = {};
+                    for (const auto &buffer: model->getVertexBufferSuballocations() | std::views::keys) {
+                        VkDeviceSize vertexBufferStagingBufferOffset = stagingBufferOffsets.at(
+                            buffer.suballocation.resourceId);
+
+                        result = vmaCopyMemoryToAllocation(allocator,
+                                                           buffer.suballocation.currentData->data(),
+                                                           stagingBufferAllocation,
+                                                           vertexBufferStagingBufferOffset,
+                                                           buffer.suballocation.size);
+                        if (result != VK_SUCCESS) {
+                            // TODO -> log!
+                            return;
+                        }
+
+                        vertexBufferCopies.push_back(VkBufferCopy2{
+                            .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
+                            .pNext = nullptr,
+
+                            .srcOffset = vertexBufferStagingBufferOffset,
+                            .dstOffset = buffer.suballocation.globalBufferOffset,
+                            .size = buffer.suballocation.size,
+                        });
+                    }
+
+                    std::vector<VkBufferCopy2> indexBufferCopies = {};
+                    for (const auto &buffer: model->getIndexBufferSuballocations() | std::views::keys) {
+                        VkDeviceSize indexBufferStagingBufferOffset = stagingBufferOffsets.at(
+                            buffer.suballocation.resourceId);
+                        result = vmaCopyMemoryToAllocation(allocator,
+                                                           buffer.suballocation.currentData->data(),
+                                                           stagingBufferAllocation,
+                                                           indexBufferStagingBufferOffset,
+                                                           buffer.suballocation.size);
+
+                        if (result != VK_SUCCESS) {
+                            // TODO -> log!
+                            return;
+                        }
+
+                        indexBufferCopies.push_back(VkBufferCopy2{
+                            .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
+                            .pNext = nullptr,
+                            .srcOffset = indexBufferStagingBufferOffset,
+                            .dstOffset = buffer.suballocation.globalBufferOffset,
+                            .size = buffer.suballocation.size,
+                        });
+                    }
+
+                    if (uniformBufferCopies.size() > 0) {
+                        VkCopyBufferInfo2 uniformBufferCopyInfo = {
+                            .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
+                            .pNext = nullptr,
+                            .srcBuffer = stagingBuffer,
+                            .dstBuffer = resourceRepository
+                                             ? resourceRepository->uniformBufferSuballocator.getBufferHandle()
+                                             : VK_NULL_HANDLE,
+                            .regionCount = static_cast<uint32_t>(uniformBufferCopies.size()),
+                            .pRegions = uniformBufferCopies.data(),
+
+                        };
+                        vkCmdCopyBuffer2(staticGeometryCommandBuffer, &uniformBufferCopyInfo);
+                    }
+
+                    VkCopyBufferInfo2 vertexBufferCopyInfo{
+                        .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
+                        .srcBuffer = stagingBuffer,
+                        .dstBuffer = model->getVertexBufferSuballocator().getBufferHandle(),
+                        .regionCount = static_cast<uint32_t>(vertexBufferCopies.size()),
+                        .pRegions = vertexBufferCopies.data(),
+                    };
+                    vkCmdCopyBuffer2(staticGeometryCommandBuffer, &vertexBufferCopyInfo);
+
+                    VkCopyBufferInfo2 indexBufferCopyInfo{
+                        .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
+                        .srcBuffer = stagingBuffer,
+                        .dstBuffer = model->getIndexBufferSuballocator().getBufferHandle(),
+                        .regionCount = static_cast<uint32_t>(indexBufferCopies.size()),
+                        .pRegions = indexBufferCopies.data(),
+                    };
+                    vkCmdCopyBuffer2(staticGeometryCommandBuffer, &indexBufferCopyInfo);
+                }
+            }
+
+            // after the commands are enqueued in our buffer we submit that bad boy
+            result = vkEndCommandBuffer(staticGeometryCommandBuffer);
+            if (result != VK_SUCCESS) {
+                // TODO -> log!
+                return;
+            }
+
+            VkCommandBufferSubmitInfo commandBufferSubmitInfo = {
+                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+                .pNext = nullptr,
+                .commandBuffer = staticGeometryCommandBuffer,
+                .deviceMask = 0,
+            };
+
+            VkSubmitInfo2 staticGeometrySubmitInfo = {
+                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+                .pNext = nullptr,
+                .waitSemaphoreInfoCount = 0,
+                .pWaitSemaphoreInfos = nullptr,
+                .commandBufferInfoCount = 1,
+                .pCommandBufferInfos = &commandBufferSubmitInfo,
+                .signalSemaphoreInfoCount = 0,
+                .pSignalSemaphoreInfos = nullptr,
+            };
+
+            VkFence staticGeometrySubmitFence = VK_NULL_HANDLE;
+            VkFenceCreateInfo staticGeometrySubmitFenceInfo = {
+                .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = 0,
+            };
+            result = vkCreateFence(applicationContext->getLogicalDevice()->getVkDevice(),
+                                   &staticGeometrySubmitFenceInfo, nullptr, &staticGeometrySubmitFence);
+            if (result != VK_SUCCESS) {
+                // TODO -> log!
+                return;
+            }
+
+            result = vkQueueSubmit2(applicationContext->getGraphicsQueue(), 1, &staticGeometrySubmitInfo,
+                                    staticGeometrySubmitFence);
+            if (result != VK_SUCCESS) {
+                // TODO-> log!
+                return;
+            }
+
+            result = vkWaitForFences(applicationContext->getLogicalDevice()->getVkDevice(), 1,
+                                     &staticGeometrySubmitFence, VK_TRUE, UINT64_MAX);
+            if (result != VK_SUCCESS) {
+                //TODO -> log!
+            }
+
+            // once submission has completed we can free the command buffer here
+            vkFreeCommandBuffers(applicationContext->getLogicalDevice()->getVkDevice(), commandPool, 1,
+                                 &staticGeometryCommandBuffer);
+        }
     };
 }

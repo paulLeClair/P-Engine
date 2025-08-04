@@ -6,7 +6,6 @@
 
 #include <filesystem>
 #include <fstream>
-#include <algorithm>
 
 namespace pEngine::girEngine::backend::vulkan {
     VulkanShaderModule::VulkanShaderModule(const CreationInput &info)
@@ -26,7 +25,8 @@ namespace pEngine::girEngine::backend::vulkan {
                 spirVByteCode.data()
         };
 
-        if (vkCreateShaderModule(parentLogicalDevice, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+        auto result = vkCreateShaderModule(parentLogicalDevice, &createInfo, nullptr, &shaderModule);
+        if (result != VK_SUCCESS) {
             throw std::runtime_error("Unable to create shader module " + info.shaderModuleSpirVName);
         }
     }

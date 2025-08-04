@@ -27,49 +27,39 @@ namespace pEngine::util {
      * @tparam ValueType
      */
     template<typename ValueType>
-    struct IntrusiveHashMapEntry : public IntrusiveListNode<ValueType> {
+    struct IntrusiveHashMapEntry : IntrusiveListNode<ValueType> {
         IntrusiveHashMapEntry() = default;
 
-        explicit IntrusiveHashMapEntry(const util::Hash hash_)
+        explicit IntrusiveHashMapEntry(const Hash hash_)
             : hash(hash_) {
         }
 
-        void setHash(const util::Hash newHash) {
+        void setHash(const Hash newHash) {
             hash = newHash;
         }
 
-        [[nodiscard]] util::Hash getHash() const {
+        [[nodiscard]] Hash getHash() const {
             // NOLINT
             return hash;
         }
 
     private:
-        util::Hash hash = 0;
+        Hash hash = 0;
     };
 
     /**
      * This is meant to be used as a base class for any ValueType that you want to
      * store in the IntrusiveHashMap (recall that we're handling hashes separately unlike STL design)
-     *
-     * OKAY - JAN13 -> I think the problem is that we're trying to use raw intrusive list iterators
-     * in the object pool's allocationMap; but the Iterator is not a subclass of IntrusiveHashMapEntry<>!
-     *
-     * This is why Themaister's implementation uses this POD wrapper thing; I'm not entirely sure of how you're supposed
-     * to use his implementation but I can definitely adapt it (which should hopefully fix some issues with the
-     * object pool and if we're lucky will help me get past this/these goddamn bug(s) I've been stuck on
-     *
      * @tparam ValueType
      */
     template<typename ValueType>
-    struct IntrusiveHashMapPODWrapper : public IntrusiveHashMapEntry<IntrusiveHashMapPODWrapper<ValueType> > {
-        // Themaister-style constructor with std::forward<T>() -> forwards the value as either an lvalue
-        // or rvalue depending on T (still a little foggy on the specifics)
+    struct IntrusiveHashMapPieceOfDataWrapper : IntrusiveHashMapEntry<IntrusiveHashMapPieceOfDataWrapper<ValueType> > {
         template<typename T>
-        explicit IntrusiveHashMapPODWrapper(T &&value) : entryValue(std::forward<T>(value)) {
+        explicit IntrusiveHashMapPieceOfDataWrapper(T &&value) : entryValue(std::forward<T>(value)) {
             //NOLINT
         }
 
-        IntrusiveHashMapPODWrapper() = default;
+        IntrusiveHashMapPieceOfDataWrapper() = default;
 
         ValueType &get() {
             return entryValue;
@@ -83,18 +73,17 @@ namespace pEngine::util {
     };
 
     /**
-     * OWNING intrusive hash map
+     * OWNING intrusive hash map; a given map object will maintain ownership of allocated elements internally.
      * @tparam ValueType
      */
     template<typename ValueType>
     class IntrusiveHashMap {
     public:
-        explicit IntrusiveHashMap() {
-        }
+        explicit IntrusiveHashMap() = default;
 
-        IntrusiveHashMap(const IntrusiveHashMap<ValueType> &other) = delete;
+        IntrusiveHashMap(const IntrusiveHashMap &other) = delete;
 
-        void operator=(const IntrusiveHashMap<ValueType> &other) = delete;
+        void operator=(const IntrusiveHashMap &other) = delete;
 
         /**
          * Returns a pointer to a ValueType that is stored inside the IntrusiveHashMap.
@@ -279,28 +268,32 @@ namespace pEngine::util {
         unsigned loadCount = 0;
 
         /**
-         * \brief This vector contains the hash map values
+         * \brief This vector acts as the backing array for the hash map values; it is stable
+         * in the sense that when the size is expanded, pointers are not
+         * invalidated unlike a std::vector
          */
         boost::container::stable_vector<ValueType> mapValues = {};
 
         IntrusiveList<ValueType> valueList = {};
-
-        // TODO - add in a "load count" which I think basically counts the maximum number of collisions you've had so far;
-        // this allows you to optimize how many times you increment a masked index when a hash collision occurs
 
         void increaseCapacity() {
             // make copy of mapValues before resize
             std::vector<ValueType> originalMapValues(mapValues.size());
             std::copy(mapValues.begin(), mapValues.end(), originalMapValues.begin());
 
-            // ensure hash values are set in the original copy list (maybe I should factor this out into its own function)
+            // ensure hash values are properly set using the member function in
+            // our copy of the original map values list
+            // (maybe I should factor this out into its own function)
             if (!mapValues.empty()) {
                 size_t mapIndex = 0;
                 for (auto itr = originalMapValues.begin(); itr != originalMapValues.end(); ++itr) {
+                    // we want to skip a map value if it has no hash, which means it hasn't been allocated
                     if (!reinterpret_cast<IntrusiveHashMapEntry<ValueType> &>(mapValues[mapIndex]).getHash()) {
                         continue;
                     }
 
+                    // else we manually set the hash using our currently-unmodified mapValues list
+                    // (just to make sure the hash isn't 0 for any previously-allocated entries)
                     reinterpret_cast<IntrusiveHashMapEntry<ValueType> &>(*itr).setHash(
                         reinterpret_cast<IntrusiveHashMapEntry<ValueType> &>(mapValues[mapIndex]).getHash());
 
@@ -337,7 +330,7 @@ namespace pEngine::util {
             }
         }
 
-        static util::Hash getHashFromValue(ValueType &value) {
+        static inline util::Hash getHashFromValue(ValueType &value) {
             return reinterpret_cast<IntrusiveHashMapEntry<ValueType> &>(value).getHash();
         }
 

@@ -12,42 +12,73 @@
 #include "../../../../../utilities/UniqueIdentifier/UniqueIdentifier.hpp"
 
 #include <vector>
+#include <boost/optional.hpp>
 
 namespace pEngine::girEngine::backend::vulkan {
-    class VulkanBufferSuballocation {
-    public:
-        struct CreationInput {
-            util::UniqueIdentifier subsetUid;
-            size_t subsetSize;
-
-            std::vector<unsigned char> subsetDataByteArray;
-
-            size_t globalBufferOffset;
-        };
-
-        explicit VulkanBufferSuballocation(const CreationInput &creationInput);
+    struct VulkanBufferSuballocation {
+        VulkanBufferSuballocation() = default;
 
         ~VulkanBufferSuballocation() = default;
 
-        [[nodiscard]] size_t getGlobalBufferOffset() const;
+        util::UniqueIdentifier resourceId = {};
+        size_t size = 0;
 
-        void setGlobalBufferOffset(size_t offset);
+        size_t globalBufferOffset = 0;
 
-        [[nodiscard]] const util::UniqueIdentifier &getUniqueIdentifier() const;
+        /**
+         * For a given buffer, this is either the geometry binding index (for vertex data) or it will be the
+         * descriptor set binding index.
+         */
+        uint32_t bindingIndex = 0;
 
-        [[nodiscard]] size_t getSize() const;
+        boost::optional<std::vector<unsigned char> > currentData = boost::none;
 
-        [[nodiscard]] unsigned char *getData() const;
+        VulkanBufferSuballocation(const util::UniqueIdentifier &resource_id, size_t size, size_t global_buffer_offset,
+                                  uint32_t binding_index,
+                                  const boost::optional<std::vector<unsigned char> > &current_data)
+            : resourceId(resource_id),
+              size(size),
+              globalBufferOffset(global_buffer_offset),
+              bindingIndex(binding_index),
+              currentData(current_data) {
+        }
 
-        // TODO - maybe "rephrase" this signature to be a lil less C-like
-        void setData(const unsigned char *newData, size_t newDataSize);
+        VulkanBufferSuballocation(const VulkanBufferSuballocation &other)
+            : resourceId(other.resourceId),
+              size(other.size),
+              globalBufferOffset(other.globalBufferOffset),
+              bindingIndex(other.bindingIndex),
+              currentData(other.currentData) {
+        }
 
-    private:
-        util::UniqueIdentifier uniqueIdentifier;
-        size_t size;
+        VulkanBufferSuballocation(VulkanBufferSuballocation &&other) noexcept
+            : resourceId(other.resourceId),
+              size(other.size),
+              globalBufferOffset(other.globalBufferOffset),
+              bindingIndex(other.bindingIndex),
+              currentData(std::move(other.currentData)) {
+        }
 
-        size_t globalBufferOffset;
+        VulkanBufferSuballocation &operator=(const VulkanBufferSuballocation &other) {
+            if (this == &other)
+                return *this;
+            resourceId = other.resourceId;
+            size = other.size;
+            globalBufferOffset = other.globalBufferOffset;
+            bindingIndex = other.bindingIndex;
+            currentData = other.currentData.has_value() ? other.currentData : boost::none; // it dies here
+            return *this;
+        }
 
-        std::vector<unsigned char> data = {};
+        VulkanBufferSuballocation &operator=(VulkanBufferSuballocation &&other) noexcept {
+            if (this == &other)
+                return *this;
+            resourceId = other.resourceId;
+            size = other.size;
+            globalBufferOffset = other.globalBufferOffset;
+            bindingIndex = other.bindingIndex;
+            currentData = std::move(other.currentData);
+            return *this;
+        }
     };
 } // namespace PGraphics

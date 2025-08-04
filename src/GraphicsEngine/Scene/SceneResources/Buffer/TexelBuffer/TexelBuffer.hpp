@@ -5,7 +5,7 @@
 #pragma once
 
 #include "../Buffer.hpp"
-#include "../../formats/TexelFormat/TexelFormat.hpp"
+#include "../../formats/ResourceFormat/ResourceFormat.hpp"
 #include "../../Texture/Sampler/SamplerSettings.hpp"
 
 /**
@@ -32,7 +32,7 @@ namespace pEngine::girEngine::scene {
         struct CreationInput : public Buffer::CreationInput {
             SamplerSettings samplerSettings;
 
-            TexelFormat texelFormat;
+            ResourceFormat texelFormat;
         };
 
         explicit TexelBuffer(const CreationInput &creationInput)
@@ -45,24 +45,13 @@ namespace pEngine::girEngine::scene {
             return samplerSettings;
         }
 
-        [[nodiscard]] TexelFormat getTexelFormat() const {
+        [[nodiscard]] ResourceFormat getTexelFormat() const {
             return texelFormat;
-        }
-
-        std::shared_ptr<gir::GraphicsIntermediateRepresentation> bakeToGIR() override {
-            return std::make_shared<gir::BufferIR>(gir::BufferIR::CreationInput{
-                getName(),
-                getUid(),
-                gir::GIRSubtype::BUFFER,
-                {gir::BufferIR::BufferUsage::TEXEL_BUFFER},
-                getRawDataContainer().getRawDataByteArray(),
-                getRawDataContainer().getRawDataSizeInBytes()
-            });
         }
 
     private:
         SamplerSettings samplerSettings;
 
-        TexelFormat texelFormat;
+        ResourceFormat texelFormat;
     };
 }

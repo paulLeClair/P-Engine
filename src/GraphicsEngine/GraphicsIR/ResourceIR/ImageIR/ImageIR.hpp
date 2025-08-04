@@ -1,9 +1,10 @@
 #pragma once
 
-#include <memory>
-#include <unordered_set>
 #include "../../GraphicsIntermediateRepresentation.hpp"
-#include "../../../../utilities/RawDataContainer/RawDataContainer.hpp"
+#include "../../../../utilities/ByteArray/ByteArray.hpp"
+#include "../FormatIR/FormatIR.hpp"
+#include <vulkan/vulkan.h>
+#include <boost/optional.hpp>
 
 namespace pEngine::girEngine::gir {
     /**
@@ -20,87 +21,67 @@ namespace pEngine::girEngine::gir {
             INPUT_ATTACHMENT,
             DEPTH_ATTACHMENT,
             STENCIL_ATTACHMENT,
-            DEPTH_STENCIL_ATTACHMENT
-        };
-
-        enum class ImageFormat {
-            UNDEFINED,
-            // TODO - add a bunch of image formats! might want to break this up or move it if it's too much
+            DEPTH_STENCIL_ATTACHMENT,
+            SWAPCHAIN_IMAGE
         };
 
         struct CreationInput : GraphicsIntermediateRepresentation::CreationInput {
             const ImageUsage imageUsage = ImageUsage::UNDEFINED;
 
-            const unsigned char *dataPointer = nullptr;
-            const size_t numberOfBytesToCopy = 0;
+            const resource::FormatIR format = resource::FormatIR::UNDEFINED;
+
+            const uint8_t *dataPointer = nullptr;
+            const uint32_t numberOfBytesToCopy = 0;
+
+            const uint32_t width = 0u;
+            const uint32_t height = 0u;
 
             const bool disableTransferSource = false;
             const bool disableTransferDestination = false;
 
-            const size_t width = 0u;
-            const size_t height = 0u;
+            boost::optional<uint32_t> swapchainImageIndex = boost::none;
+
         };
 
         explicit ImageIR(const CreationInput &creationInput)
-            : GraphicsIntermediateRepresentation(creationInput),
-              imageUsage(creationInput.imageUsage),
-              imageData(std::make_unique<util::RawDataContainer>(
-                  util::RawDataContainer::CreationInput{
-                      creationInput.name,
-                      creationInput.uid,
-                      const_cast<unsigned char *>(creationInput.dataPointer),
-                      creationInput.numberOfBytesToCopy
-                  })),
-              disableTransferSource(creationInput.disableTransferSource),
-              disableTransferDestination(creationInput.disableTransferDestination),
-              width(creationInput.width),
-              height(creationInput.height) {
+                : GraphicsIntermediateRepresentation(creationInput),
+                  imageUsage(creationInput.imageUsage),
+                  imageData(util::ByteArray(
+                          util::ByteArray::CreationInput{
+                                  creationInput.name,
+                                  creationInput.uid,
+                                  const_cast<unsigned char *>(creationInput.dataPointer),
+                                  creationInput.numberOfBytesToCopy
+                          })),
+                  disableTransferSource(creationInput.disableTransferSource),
+                  disableTransferDestination(creationInput.disableTransferDestination),
+                  width(creationInput.width),
+                  height(creationInput.height),
+                  imageFormat(creationInput.format),
+                  swapchainImageIndex(creationInput.swapchainImageIndex) {
+        }
+
+        ImageIR() : GraphicsIntermediateRepresentation() {
+
         }
 
         ~ImageIR() override = default;
 
-        [[nodiscard]] ImageUsage getImageUsage() const {
-            return imageUsage;
-        }
+        ImageUsage imageUsage = ImageUsage::UNDEFINED;
+        util::ByteArray imageData = {};
 
-        [[nodiscard]] const util::RawDataContainer &getImageData() const {
-            return *imageData;
-        }
-
-        [[nodiscard]] ImageFormat getFormat() const {
-            return imageFormat;
-        }
-
-        [[nodiscard]] bool isTransferSourceDisabled() const {
-            return disableTransferSource;
-        }
-
-        [[nodiscard]] bool isTransferDestinationDisabled() const {
-            return disableTransferDestination;
-        }
-
-        [[nodiscard]] uint32_t getWidth() const {
-            return width;
-        }
-
-        [[nodiscard]] uint32_t getHeight() const {
-            return height;
-        }
-
-    private:
-        ImageUsage imageUsage;
-        std::unique_ptr<util::RawDataContainer> imageData;
-
-        // image format - TODO
-        ImageFormat imageFormat = ImageFormat::UNDEFINED;
+        // image format
+        resource::FormatIR imageFormat = resource::FormatIR::UNDEFINED;
 
         const bool disableTransferSource = false;
         const bool disableTransferDestination = false;
 
         // TODO - re-evaluate the way we represent image dimensions
-        const uint32_t width;
-        const uint32_t height;
+        const uint32_t width = 0;
+        const uint32_t height = 0;
 
         // TODO - add the rest of the image information
+//        boost::optional<VkImage> swapchainImageHandle = boost::none;
+        boost::optional<uint32_t> swapchainImageIndex = boost::none;
     };
 }

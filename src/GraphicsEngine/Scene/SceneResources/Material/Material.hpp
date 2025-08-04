@@ -9,8 +9,6 @@
 
 #include "../Buffer/Buffer.hpp"
 #include "../Texture/Texture.hpp"
-#include "../Renderable/Renderable.hpp"
-#include "../ShaderConstant/ShaderConstant.hpp"
 
 /**
  * Still not 100% clear on everything that's needed for a good simple material system, but since most materials
@@ -26,49 +24,36 @@
  */
 
 namespace pEngine::girEngine::scene {
-
     class Material : public scene::Resource {
     public:
         struct CreationInput : public scene::Resource::CreationInput {
-
-            std::vector<std::shared_ptr<scene::Buffer>> initialBuffers;
-            std::vector<std::shared_ptr<scene::Image>> initialImages;
-            std::vector<std::shared_ptr<scene::ShaderConstant>> initialShaderConstants;
-            std::vector<std::shared_ptr<scene::Texture>> initialTextures;
-
-            std::vector<std::shared_ptr<scene::Renderable>> initialRenderables = {};
+            std::vector<std::shared_ptr<scene::Buffer> > initialBuffers;
+            std::vector<std::shared_ptr<scene::Image> > initialImages;
+            std::vector<std::shared_ptr<scene::Texture> > initialTextures;
         };
 
         explicit Material(const CreationInput &creationInput)
-                : Resource(creationInput),
-                  textures(creationInput.initialTextures),
-                  buffers(creationInput.initialBuffers),
-                  images(creationInput.initialImages),
-                  shaderConstants(creationInput.initialShaderConstants),
-                  renderables(creationInput.initialRenderables) {
+            : Resource(creationInput),
+              textures(creationInput.initialTextures),
+              buffers(creationInput.initialBuffers),
+              images(creationInput.initialImages) {
+        }
 
+        Material(): Resource({}) {
         }
 
         ~Material() override = default;
 
-        [[nodiscard]] const std::vector<std::shared_ptr<scene::Texture>> &getTextures() const {
+        [[nodiscard]] const std::vector<std::shared_ptr<scene::Texture> > &getTextures() const {
             return textures;
         }
 
-        [[nodiscard]] const std::vector<std::shared_ptr<scene::Buffer>> &getBuffers() const {
+        [[nodiscard]] const std::vector<std::shared_ptr<scene::Buffer> > &getBuffers() const {
             return buffers;
         }
 
-        [[nodiscard]] const std::vector<std::shared_ptr<scene::Image>> &getImages() const {
+        [[nodiscard]] const std::vector<std::shared_ptr<scene::Image> > &getImages() const {
             return images;
-        }
-
-        [[nodiscard]] const std::vector<std::shared_ptr<scene::ShaderConstant>> &getShaderConstants() const {
-            return shaderConstants;
-        }
-
-        [[nodiscard]] const std::vector<std::shared_ptr<scene::Renderable>> &getRenderables() const {
-            return renderables;
         }
 
         UpdateResult update() override {
@@ -76,23 +61,12 @@ namespace pEngine::girEngine::scene {
         }
 
         std::shared_ptr<gir::GraphicsIntermediateRepresentation> bakeToGIR() override {
-            // I'm not entirely sure what to do for these composite resources; maybe I should make
-            // it so that there are CompositeResources as well as just Resources, and then break off the bake()
-            // override method so that these composite ones that don't get directly baked will be handled properly lol
             return nullptr;
         }
 
     private:
-        std::vector<std::shared_ptr<scene::Texture>> textures;
-        std::vector<std::shared_ptr<scene::Buffer>> buffers;
-        std::vector<std::shared_ptr<scene::Image>> images;
-        std::vector<std::shared_ptr<scene::ShaderConstant>> shaderConstants;
-
-        // TODO - evaluate whether Materials could be able to have their own renderables? kinda makes sense
-        // but i'm not sure if that's really ever used in any material rendering techniques; maybe tho
-        std::vector<std::shared_ptr<Renderable>> renderables = {};
-
-
+        std::vector<std::shared_ptr<scene::Texture> > textures;
+        std::vector<std::shared_ptr<scene::Buffer> > buffers;
+        std::vector<std::shared_ptr<scene::Image> > images;
     };
-
 }

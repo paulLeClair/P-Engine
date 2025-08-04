@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-#include "../../../../src/lib/glm/vec3.hpp"
+#include <glm/vec3.hpp>
 #include "../../../../src/utilities/UniqueIdentifier/UniqueIdentifier.hpp"
 #include "../../../../src/utilities/ObjectHashPool/ObjectHashPool.hpp"
 
@@ -28,9 +28,9 @@ protected:
         }
 
         AllocatedObjectType(const float &a, const float &b, const float &c)
-            : aVector(glm::vec3(a)),
-              bVector(glm::vec3(b)),
-              cVector(glm::vec3(c)) {
+                : aVector(glm::vec3(a)),
+                  bVector(glm::vec3(b)),
+                  cVector(glm::vec3(c)) {
         }
 
         AllocatedObjectType &operator=(const AllocatedObjectType &other) = default;
@@ -50,12 +50,12 @@ protected:
 
 TEST_F(ObjectHashPoolTest, TestObjectAllocationAndRecycling) {
     hashPool = std::make_shared<util::objectPool::ObjectHashPool<AllocatedObjectType,
-        TEST_UPDATES_BEFORE_FREE> >(
-        util::objectPool::ObjectHashPool<AllocatedObjectType, TEST_UPDATES_BEFORE_FREE>
-        ::CreationInput{
-            "testHashPool",
-            util::UniqueIdentifier()
-        });
+            TEST_UPDATES_BEFORE_FREE> >(
+            util::objectPool::ObjectHashPool<AllocatedObjectType, TEST_UPDATES_BEFORE_FREE>
+            ::CreationInput{
+                    "testHashPool",
+                    util::UniqueIdentifier()
+            });
 
     std::string testObjectName = "my_new_object_string";
     size_t objectHash = std::hash<std::string>()(testObjectName);
@@ -127,10 +127,10 @@ TEST_F(ObjectHashPoolTest, StressTest) {
 
     // for now a simple test that just makes 1000 entries and updates a few times might be okay?
     hashPool = std::make_shared<util::objectPool::ObjectHashPool<AllocatedObjectType> >(
-        util::objectPool::ObjectHashPool<AllocatedObjectType>::CreationInput{
-            "testPool",
-            util::UniqueIdentifier(),
-        });
+            util::objectPool::ObjectHashPool<AllocatedObjectType>::CreationInput{
+                    "testPool",
+                    util::UniqueIdentifier(),
+            });
 
 
     // request 1000 objects from the start
@@ -147,8 +147,8 @@ TEST_F(ObjectHashPoolTest, StressTest) {
     auto afterRequestLoopTimeStamp = std::chrono::high_resolution_clock::now();
     auto timeElapsed = afterRequestLoopTimeStamp - beforeRequestLoopTimeStamp;
     std::cout << std::to_string(TEST_ITERATION_COUNT) + " fresh allocations with no updating - time elapsed: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(timeElapsed).count()
-            << "ms" << std::endl;
+              << std::chrono::duration_cast<std::chrono::milliseconds>(timeElapsed).count()
+              << "ms" << std::endl;
 
     // recycle 1000 objects without updating
     beforeRequestLoopTimeStamp = std::chrono::high_resolution_clock::now();
@@ -158,8 +158,8 @@ TEST_F(ObjectHashPoolTest, StressTest) {
     afterRequestLoopTimeStamp = std::chrono::high_resolution_clock::now();
     timeElapsed = afterRequestLoopTimeStamp - beforeRequestLoopTimeStamp;
     std::cout << std::to_string(TEST_ITERATION_COUNT) + " recycled requests with no updating - time elapsed: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(timeElapsed).count()
-            << "ms" << std::endl;
+              << std::chrono::duration_cast<std::chrono::milliseconds>(timeElapsed).count()
+              << "ms" << std::endl;
 
     // modify keys
     for (int i = 0; i < keys.size(); i++) {
@@ -176,9 +176,9 @@ TEST_F(ObjectHashPoolTest, StressTest) {
     afterRequestLoopTimeStamp = std::chrono::high_resolution_clock::now();
     timeElapsed = afterRequestLoopTimeStamp - beforeRequestLoopTimeStamp;
     std::cout << std::to_string(TEST_ITERATION_COUNT) +
-            " fresh allocations with updates after every request - time elapsed: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(timeElapsed).count()
-            << "ms" << std::endl;
+                 " fresh allocations with updates after every request - time elapsed: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(timeElapsed).count()
+              << "ms" << std::endl;
 
     // recycle 1000 objects while updating after every loop
     beforeRequestLoopTimeStamp = std::chrono::high_resolution_clock::now();
@@ -190,9 +190,9 @@ TEST_F(ObjectHashPoolTest, StressTest) {
     afterRequestLoopTimeStamp = std::chrono::high_resolution_clock::now();
     timeElapsed = afterRequestLoopTimeStamp - beforeRequestLoopTimeStamp;
     std::cout << std::to_string(TEST_ITERATION_COUNT) +
-            " recycled allocations with updates after every request - time elapsed: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(timeElapsed).count()
-            << "ms" << std::endl;
+                 " recycled allocations with updates after every request - time elapsed: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(timeElapsed).count()
+              << "ms" << std::endl;
 
     // recycle 1000 objects while updating after every loop and accessing previous keys
     beforeRequestLoopTimeStamp = std::chrono::high_resolution_clock::now();
@@ -212,7 +212,7 @@ TEST_F(ObjectHashPoolTest, StressTest) {
     timeElapsed = afterRequestLoopTimeStamp - beforeRequestLoopTimeStamp;
     std::cout
             << std::to_string(TEST_ITERATION_COUNT) +
-            " recycled allocations with updates after every request and multiple accesses of previous keys - time elapsed: "
+               " recycled allocations with updates after every request and multiple accesses of previous keys - time elapsed: "
             << std::chrono::duration_cast<std::chrono::milliseconds>(timeElapsed).count()
             << "ms" << std::endl;
 
@@ -240,8 +240,8 @@ TEST_F(ObjectHashPoolTest, StressTest) {
     timeElapsed = afterRequestLoopTimeStamp - beforeRequestLoopTimeStamp;
     std::cout
             << std::to_string(TEST_ITERATION_COUNT) + " recycled allocations with updates after every " +
-            std::to_string(UPDATE_LIMIT) +
-            " requests and multiple accesses of previous keys - time elapsed: "
+               std::to_string(UPDATE_LIMIT) +
+               " requests and multiple accesses of previous keys - time elapsed: "
             << std::chrono::duration_cast<std::chrono::milliseconds>(timeElapsed).count()
             << "ms" << std::endl;
 }

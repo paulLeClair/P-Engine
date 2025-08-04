@@ -105,8 +105,8 @@ TEST_F(VulkanBufferSuballocatorTest, BasicTests) {
                     allocator,
                     TEST_FLAGS,
                     {testBufferGir},
+                    {testDevice->getGraphicsQueueFamilyIndex()},
                     0.3,
-                    {testDevice->getGraphicsQueueFamilyIndex()}
             }
     );
 

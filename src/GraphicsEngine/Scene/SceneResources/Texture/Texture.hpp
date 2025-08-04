@@ -24,7 +24,7 @@ namespace pEngine::girEngine::scene {
         struct CreationInput : public Resource::CreationInput {
             SamplerSettings sampler;
 
-            std::shared_ptr<Image> sampledImage;
+            Image sampledImage;
         };
 
         explicit Texture(const CreationInput &creationInput) : Resource(creationInput),
@@ -62,7 +62,7 @@ namespace pEngine::girEngine::scene {
             return samplerSettings.pcfCompareOperation;
         }
 
-        [[nodiscard]] const std::shared_ptr<Image> &getSampledImage() const {
+        [[nodiscard]] const Image &getSampledImage() const {
             return sampledImage;
         }
 
@@ -72,15 +72,16 @@ namespace pEngine::girEngine::scene {
 
         std::shared_ptr<gir::GraphicsIntermediateRepresentation> bakeToGIR() override {
             // TODO - add transfer dest/source to usages if requested
-
-            return std::make_shared<gir::ImageIR>(gir::ImageIR::CreationInput{
-                getName(),
-                getUid(),
-                gir::GIRSubtype::IMAGE,
-                gir::ImageIR::ImageUsage::SAMPLED_TEXTURE,
-                sampledImage->getImageData()->getRawDataByteArray(),
-                sampledImage->getImageData()->getRawDataSizeInBytes()
-            });
+//
+//            return std::make_shared<gir::ImageIR>(gir::ImageIR::CreationInput{
+//                    getName(),
+//                    getUid(),
+//                    gir::GIRSubtype::IMAGE,
+//                    gir::ImageIR::ImageUsage::SAMPLED_TEXTURE,
+//                    sampledImage.getImageData().getRawDataByteArray(),
+//                    static_cast<uint32_t>(sampledImage.getImageData().getRawDataSizeInBytes())
+//            });
+            return nullptr; // leaving this TODO until textures are supported
         }
 
         UpdateResult update() override {
@@ -91,6 +92,6 @@ namespace pEngine::girEngine::scene {
     private:
         SamplerSettings samplerSettings;
 
-        std::shared_ptr<Image> sampledImage;
+        Image sampledImage;
     };
 }

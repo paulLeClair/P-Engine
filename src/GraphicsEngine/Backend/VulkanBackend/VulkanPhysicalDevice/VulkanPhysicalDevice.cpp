@@ -7,9 +7,8 @@
 #include <vector>
 
 namespace pEngine::girEngine::backend::appContext::vulkan {
-
     bool VulkanPhysicalDevice::isValidVulkanPhysicalDeviceCreateInfo(
-            const VulkanPhysicalDevice::CreationInput &info) {
+        const VulkanPhysicalDevice::CreationInput &info) {
         return !(info.name.empty() || info.instance == nullptr);
     }
 
@@ -28,63 +27,26 @@ namespace pEngine::girEngine::backend::appContext::vulkan {
     }
 
     VkPhysicalDevice VulkanPhysicalDevice::choosePhysicalDevice(
-            const std::vector<VkPhysicalDevice> &availablePhysicalDevices,
-            const VulkanPhysicalDevice::CreationInput &info) {
+        const std::vector<VkPhysicalDevice> &availablePhysicalDevices) {
         // TODO - support other ways of selecting the physical device
 
-        VkPhysicalDevice bestDeviceChoice = nullptr;
-        VkPhysicalDeviceProperties bestDeviceChoiceProperties = {};
-        VkPhysicalDeviceProperties deviceProperties = {};
-        for (const auto &physicalDevice: availablePhysicalDevices) {
-            vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
+        if (availablePhysicalDevices.empty()) {
+            throw std::runtime_error("Error in VulkanPhysicalDevice::choosePhysicalDevice -> No available GPUs found");
+        }
 
-            if (deviceProperties.apiVersion < info.desiredApiVersion) {
-                continue;
-            }
-
-            // TODO - make the type of device specifiable
-            if (deviceProperties.deviceType != info.desiredPhysicalDeviceType) {
-                continue;
-            }
-
-            if (isNewBestPhysicalDeviceChoice(deviceProperties.limits, bestDeviceChoiceProperties.limits)) {
-                bestDeviceChoice = physicalDevice;
-                bestDeviceChoiceProperties = deviceProperties;
-                continue;
+        if (availablePhysicalDevices.size() > 1) {
+            for (const auto &physicalDevice: availablePhysicalDevices) {
+                // TODO -> implement adequate handling of physical devices
             }
         }
 
-        return bestDeviceChoice;
+        return availablePhysicalDevices[0];
     }
 
     bool VulkanPhysicalDevice::isNewBestPhysicalDeviceChoice(VkPhysicalDeviceLimits deviceToCheck,
                                                              VkPhysicalDeviceLimits currentBestDevice) {
         // TODO - figure out a good way to compare these two limits to figure out which device is better...
-        if (deviceToCheck.maxBoundDescriptorSets < currentBestDevice.maxBoundDescriptorSets) {
-            return false;
-        }
-
-        if (deviceToCheck.maxColorAttachments < currentBestDevice.maxColorAttachments) {
-            return false;
-        }
-
-        if (deviceToCheck.maxDrawIndexedIndexValue < currentBestDevice.maxDrawIndexedIndexValue) {
-            return false;
-        }
-
-        if (deviceToCheck.maxFramebufferHeight < currentBestDevice.maxFramebufferHeight ||
-            deviceToCheck.maxFramebufferWidth < currentBestDevice.maxFramebufferWidth) {
-            return false;
-        }
-
-        if (deviceToCheck.maxUniformBufferRange < currentBestDevice.maxUniformBufferRange) {
-            return false;
-        }
-
         /* TODO - make this check physical device queues, or break that off into a separate evaluation function */
-
         return true;
     }
-
-
-}// namespace PGraphics
+} // namespace PGraphics

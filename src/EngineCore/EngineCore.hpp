@@ -14,7 +14,6 @@
 using namespace pEngine::girEngine;
 
 namespace pEngine::core {
-
     template<typename GirGeneratorType, typename BackendType>
     class EngineCore {
         /**
@@ -27,19 +26,10 @@ namespace pEngine::core {
                       "GirGeneratorType is not a subclass of gir::generator::GirGenerator.");
         static_assert(std::is_base_of<backend::GraphicsBackend, BackendType>::value,
                       "BackendType is not a subclass of backend::GraphicsBackend");
+
     public:
         struct CreationInput {
-            CreationInput(std::string name, const UniqueIdentifier &uid,
-                          unsigned int numberOfThreadPoolWorkerThreads,
-                          const std::shared_ptr<GirGeneratorType> &coreScene,
-                          const std::shared_ptr<BackendType> &coreBackend) : name(std::move(name)), uid(uid),
-                                                                             numberOfThreadPoolWorkerThreads(
-                                                                                     numberOfThreadPoolWorkerThreads),
-                                                                             coreScene(coreScene),
-                                                                             coreBackend(coreBackend) {}
-
             std::string name;
-            util::UniqueIdentifier uid;
 
             /**
              * This is the number of worker threads that will be given to the thread pool;
@@ -53,21 +43,22 @@ namespace pEngine::core {
         };
 
         explicit EngineCore(const CreationInput &creationInput)
-                : name(creationInput.name),
-                  uid(creationInput.uid) {
+            : name(creationInput.name),
+              uid(util::UniqueIdentifier()) {
             // use specified number of worker threads if a value was given
             if (creationInput.numberOfThreadPoolWorkerThreads) {
                 threadPool = std::make_unique<BS::thread_pool>(creationInput.numberOfThreadPoolWorkerThreads);
             }
             threadPool = std::make_unique<BS::thread_pool>();
 
-            typename pEngine::girEngine::GraphicsEngine<GirGeneratorType, BackendType>::CreationInput graphicsEngineCreationInput(
-                    "label",
-                    creationInput.coreScene,
-                    creationInput.coreBackend
-            );
-            graphicsEngine = std::make_unique<pEngine::girEngine::GraphicsEngine<GirGeneratorType, BackendType>>(
-                    graphicsEngineCreationInput);
+            typename pEngine::girEngine::GraphicsEngine<GirGeneratorType, BackendType>::CreationInput
+                    graphicsEngineCreationInput(
+                        "label",
+                        creationInput.coreScene,
+                        creationInput.coreBackend
+                    );
+            graphicsEngine = std::make_unique<pEngine::girEngine::GraphicsEngine<GirGeneratorType, BackendType> >(
+                graphicsEngineCreationInput);
         }
 
         ~EngineCore() = default;
@@ -93,8 +84,6 @@ namespace pEngine::core {
         /**
          * Handle to this engine core's graphics engine instance
          */
-        std::unique_ptr<girEngine::GraphicsEngine<GirGeneratorType, BackendType>> graphicsEngine;
-
+        std::unique_ptr<girEngine::GraphicsEngine<GirGeneratorType, BackendType> > graphicsEngine;
     };
-
-}// namespace PEngine
+} // namespace PEngine

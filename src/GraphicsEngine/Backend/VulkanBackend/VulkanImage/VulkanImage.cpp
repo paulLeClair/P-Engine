@@ -5,7 +5,6 @@
 #include "VulkanImage.hpp"
 
 namespace pEngine::girEngine::backend::vulkan {
-
     [[maybe_unused]] VkImage VulkanImage::getImage() const {
         return image;
     }
@@ -14,4 +13,7 @@ namespace pEngine::girEngine::backend::vulkan {
         return imageAllocation;
     }
 
-}// namespace PGraphics
+    const VkImageView &VulkanImage::getImageView() const {
+        return view;
+    }
+} // namespace PGraphics

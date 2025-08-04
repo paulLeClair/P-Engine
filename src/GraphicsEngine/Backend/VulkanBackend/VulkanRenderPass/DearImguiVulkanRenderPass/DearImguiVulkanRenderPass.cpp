@@ -4,44 +4,44 @@
 
 #include "DearImguiVulkanRenderPass.hpp"
 
+#ifdef _WIN32
+#include "../../../lib/dear_imgui/imgui_impl_win32.h"
+#endif
 
 #include <stdexcept>
 
 namespace pEngine::girEngine::backend::vulkan {
-
     const std::vector<VkDescriptorPoolSize> DearImguiVulkanRenderPass::DESCRIPTOR_POOL_SIZES = {
-            {VK_DESCRIPTOR_TYPE_SAMPLER,                100},
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100},
-            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          100},
-            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          100},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   100},
-            {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   100},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         100},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         100},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 100},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 100},
-            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       100}
+        {VK_DESCRIPTOR_TYPE_SAMPLER, 100},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100},
+        {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 100},
+        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 100},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 100},
+        {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 100},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 100},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 100},
+        {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 100}
     };
 
     DearImguiVulkanRenderPass::DearImguiVulkanRenderPass(
-            const DearImguiVulkanRenderPass::CreationInput &creationInput) : context(ImGui::GetCurrentContext()),
-                                                                             instance(creationInput.instance),
-                                                                             physicalDevice(
-                                                                                     creationInput.physicalDevice),
-                                                                             logicalDevice(
-                                                                                     creationInput.logicalDevice),
-                                                                             guiRenderPass(creationInput.guiRenderPass),
-                                                                             graphicsAndPresentQueue(
-                                                                                     creationInput.graphicsAndPresentQueue),
-                                                                             graphicsAndPresentQueueFamilyIndex(
-                                                                                     creationInput.graphicsAndPresentQueueFamilyIndex),
-                                                                             guiRenderableCallbacks(
-                                                                                     creationInput.initialGuiRenderableCallbacks),
-                                                                             swapchainImageSize(
-                                                                                     creationInput.swapchainImageSize),
-                                                                             numberOfSwapchainImages(
-                                                                                     creationInput.numberOfSwapchainImages) {
-
+        const CreationInput &creationInput) : instance(creationInput.instance),
+                                              physicalDevice(
+                                                  creationInput.physicalDevice),
+                                              logicalDevice(
+                                                  creationInput.logicalDevice),
+                                              swapchainImageSize(
+                                                  creationInput.swapchainImageSize),
+                                              numberOfSwapchainImages(
+                                                  creationInput.numberOfSwapchainImages),
+                                              graphicsAndPresentQueue(
+                                                  creationInput.graphicsAndPresentQueue),
+                                              graphicsAndPresentQueueFamilyIndex(
+                                                  creationInput.graphicsAndPresentQueueFamilyIndex),
+                                              context(ImGui::GetCurrentContext()),
+                                              guiRenderableCallbacks(
+                                                  creationInput.initialGuiRenderableCallbacks) {
         ImGui::SetCurrentContext(context);
 
         initializeVulkanDescriptorPool(creationInput.numberOfSwapchainImages);
@@ -50,9 +50,33 @@ namespace pEngine::girEngine::backend::vulkan {
 
         initializeDearImGuiCommandBuffers();
 
-        initializeVulkanFramebuffers(creationInput);
+#ifdef _WIN32
+        ImGui_ImplWin32_Init(creationInput.hwnd);
+#endif
 
-        initializeDearImguiVulkanImplementation(creationInput);
+        VkPipelineRenderingCreateInfo guiPassDynamicPipelineRenderingInfo{
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+            .colorAttachmentCount = 1, // TODO -> allow multiple color attachments
+            .pColorAttachmentFormats = &creationInput.swapchainImageFormat,
+            // TODO -> depth for gui if needed
+        };
+
+        ImGui_ImplVulkan_InitInfo vulkanInitInfo = {
+            .Instance = instance,
+            .PhysicalDevice = physicalDevice,
+            .Device = logicalDevice,
+            .QueueFamily = graphicsAndPresentQueueFamilyIndex,
+            .Queue = graphicsAndPresentQueue,
+            .DescriptorPool = guiDescriptorPool,
+            .MinImageCount = numberOfSwapchainImages,
+            .ImageCount = numberOfSwapchainImages,
+            .MSAASamples = VK_SAMPLE_COUNT_1_BIT, // TODO -> enable gui multisampling
+            .UseDynamicRendering = true,
+            .PipelineRenderingCreateInfo = guiPassDynamicPipelineRenderingInfo,
+        };
+        if (const auto vulkanInitSuccessful = ImGui_ImplVulkan_Init(&vulkanInitInfo); vulkanInitSuccessful != true) {
+            //TODO-> log!
+        }
 
         initializeImmediateSubmissionFence();
 
@@ -63,42 +87,16 @@ namespace pEngine::girEngine::backend::vulkan {
 
     void DearImguiVulkanRenderPass::initializeImmediateSubmissionFence() {
         VkFenceCreateInfo dearImGuiCommandPoolFenceCreateInfo = {
-                VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-                nullptr,
-                0
+            VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            nullptr,
+            0
         };
 
         if (vkCreateFence(logicalDevice, &dearImGuiCommandPoolFenceCreateInfo, nullptr,
                           &guiCommandPoolImmediateSubmissionFence) != VK_SUCCESS) {
             throw std::runtime_error(
-                    "Error in DearImguiVulkanRenderPass creation: Unable to create VkFence to be used for immediate submission!");
+                "Error in DearImguiVulkanRenderPass creation: Unable to create VkFence to be used for immediate submission!");
         }
-    }
-
-    void DearImguiVulkanRenderPass::initializeDearImguiVulkanImplementation(
-            const DearImguiVulkanRenderPass::CreationInput &creationInput) {
-        ImGui_ImplVulkan_InitInfo imguiInitInfo = {};
-        imguiInitInfo.Instance = instance;
-        imguiInitInfo.Device = logicalDevice;
-        imguiInitInfo.PhysicalDevice = physicalDevice;
-        imguiInitInfo.ImageCount = creationInput.numberOfSwapchainImages;
-        imguiInitInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-        imguiInitInfo.Queue = graphicsAndPresentQueue;
-        imguiInitInfo.QueueFamily = graphicsAndPresentQueueFamilyIndex;
-        imguiInitInfo.DescriptorPool = guiDescriptorPool;
-        imguiInitInfo.Subpass = 0;
-        imguiInitInfo.PipelineCache = VK_NULL_HANDLE;
-        imguiInitInfo.MinImageCount = creationInput.numberOfSwapchainImages;
-        imguiInitInfo.Allocator = nullptr;
-        imguiInitInfo.CheckVkResultFn = nullptr;
-        // new update allows for dynamic rendering; we can skip it for now I think but it'll simplify things later
-        imguiInitInfo.RenderPass = guiRenderPass;
-        imguiInitInfo.UseDynamicRendering = false;
-        ImGui_ImplVulkan_Init(&imguiInitInfo);
-
-#ifdef _WIN32
-        ImGui_ImplWin32_Init(creationInput.hwnd);
-#endif
     }
 
     void DearImguiVulkanRenderPass::initializeVulkanDescriptorPool(unsigned int swapchainImages) {
@@ -108,7 +106,7 @@ namespace pEngine::girEngine::backend::vulkan {
         descriptorPoolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
         descriptorPoolCreateInfo.poolSizeCount = static_cast<uint32_t>(DESCRIPTOR_POOL_SIZES.size());
         descriptorPoolCreateInfo.pPoolSizes = DESCRIPTOR_POOL_SIZES.data();
-        descriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(swapchainImages);
+        descriptorPoolCreateInfo.maxSets = swapchainImages;
 
         auto result = vkCreateDescriptorPool(logicalDevice, &descriptorPoolCreateInfo, nullptr, &guiDescriptorPool);
         if (result != VK_SUCCESS) {
@@ -118,7 +116,7 @@ namespace pEngine::girEngine::backend::vulkan {
 
     void
     DearImguiVulkanRenderPass::initializeVulkanCommandPool(
-            const DearImguiVulkanRenderPass::CreationInput &creationInput) {
+        const CreationInput &creationInput) {
         VkCommandPoolCreateInfo guiPoolCreateInfo = {};
         guiPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         guiPoolCreateInfo.pNext = nullptr;
@@ -153,115 +151,23 @@ namespace pEngine::girEngine::backend::vulkan {
         }
     }
 
-    /**
-     * This setup code is taken mostly from an example I think; it should be okay for now,
-     * and I'll also be migrating out the initialization so that it happens externally (hence this private function)
-     *
-     * In the future I'll definitely want to come through and do a big untangling refactor that gets all the
-     * vulkan dear imgui data organized in a clean way. For now though, this'll do.
-     * @param swapchainImageFormat
-     * @param guiRenderPass
-     * @returns true if initialization succeeded, false if not
-     */
-    bool
-    DearImguiVulkanRenderPass::initializeVulkanRenderPass(const VkDevice &device, const VkFormat swapchainImageFormat,
-                                                          VkRenderPass &guiRenderPass) {
-        VkAttachmentDescription attachmentDescription = {};
-        attachmentDescription.flags = 0;
-        attachmentDescription.format = swapchainImageFormat;
-        attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
-        attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-        attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-        VkAttachmentReference attachmentReference = {};
-        attachmentReference.attachment = 0;
-        attachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-        VkSubpassDescription subpass = {};
-        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.colorAttachmentCount = 1;
-        subpass.pColorAttachments = &attachmentReference;
-
-        VkSubpassDependency subpassDependency = {};
-        subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        subpassDependency.dstSubpass = 0; // we only use one subpass
-        subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        subpassDependency.srcAccessMask = 0; // apparently could also set this to VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
-        subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-        VkRenderPassCreateInfo renderPassCreateInfo = {};
-        renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        renderPassCreateInfo.attachmentCount = 1;
-        renderPassCreateInfo.pAttachments = &attachmentDescription;
-        renderPassCreateInfo.subpassCount = 1;
-        renderPassCreateInfo.pSubpasses = &subpass;
-        renderPassCreateInfo.dependencyCount = 1;
-        renderPassCreateInfo.pDependencies = &subpassDependency;
-
-        if (vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &guiRenderPass) != VK_SUCCESS) {
-            throw std::runtime_error(
-                    "Error during DearImguiVulkanRenderPass creation: Unable to create IMGUI Render Pass!");
-            return false;
-        }
-        return true;
-    }
-
-    void
-    DearImguiVulkanRenderPass::initializeVulkanFramebuffers(
-            const DearImguiVulkanRenderPass::CreationInput &creationInput) {
-        std::vector<VkImageView> attachment(1);
-        VkFramebufferCreateInfo fbCreateInfo = {};
-        fbCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fbCreateInfo.pNext = nullptr;
-        fbCreateInfo.renderPass = guiRenderPass;
-        fbCreateInfo.attachmentCount = 1;
-        fbCreateInfo.pAttachments = attachment.data(); // set it to the temp var
-        fbCreateInfo.width = creationInput.swapchainImageSize.width;
-        fbCreateInfo.height = creationInput.swapchainImageSize.height;
-        fbCreateInfo.layers = 1;
-
-        auto numImages = creationInput.numberOfSwapchainImages;
-        std::vector<VkImageView> swapchainImageViews = creationInput.swapchainImageViews;
-        guiFramebuffers.resize(numImages);
-        for (uint32_t i = 0; i < guiFramebuffers.size(); i++) {
-            attachment[0] = swapchainImageViews[i];
-            auto result = vkCreateFramebuffer(logicalDevice, &fbCreateInfo, nullptr, &guiFramebuffers[i]);
-            if (result != VK_SUCCESS) {
-                throw std::runtime_error(
-                        "Error in DearImguiVulkanRenderPass creation: Unable to create imgui framebuffer!");
-            }
-        }
-    }
-
     void DearImguiVulkanRenderPass::initializeDearImguiFontsTexture() {
         if (!ImGui_ImplVulkan_CreateFontsTexture()) {
             throw std::runtime_error(
-                    "Error in DearImguiVulkanRenderPass creation: Unable to create ImGui Vulkan fonts texture!");
+                "Error in DearImguiVulkanRenderPass creation: Unable to create ImGui Vulkan fonts texture!");
         }
 
         ImGui_ImplVulkan_DestroyFontsTexture();
     }
 
-    /**
-     * WARNING: VERY SLOW! This functionality should probably be moved out of this class, but since I don't have any other
-     * places where I want to be submitting commands like this I'll just leave it in this class for now
-     *
-     * @param command
-     */
     void
-    DearImguiVulkanRenderPass::immediatelySubmitCommand(const std::function<void(VkCommandBuffer)> &command) {
-
+    DearImguiVulkanRenderPass::immediatelySubmitCommand(const std::function<void(VkCommandBuffer)> &command) const {
         VkCommandPool guiImmediateSubmissionCommandPool;
         VkCommandPoolCreateInfo guiImmediateSubmissionCommandPoolCreateInfo = {
-                VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                nullptr,
-                VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-                graphicsAndPresentQueueFamilyIndex
+            VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            nullptr,
+            VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+            graphicsAndPresentQueueFamilyIndex
         };
 
         auto result = vkCreateCommandPool(logicalDevice, &guiImmediateSubmissionCommandPoolCreateInfo, nullptr,
@@ -328,8 +234,8 @@ namespace pEngine::girEngine::backend::vulkan {
         executeDearImGuiCallbacksToDrawRenderables();
     }
 
-    void DearImguiVulkanRenderPass::beginRenderPassForCurrentFrame(VkCommandBuffer &commandBuffer,
-                                                                   unsigned int currentFrameIndex) {
+    void DearImguiVulkanRenderPass::beginRenderPassForCurrentFrame(const VkCommandBuffer &commandBuffer,
+                                                                   const uint32_t currentFrameIndex) const {
         VkRenderPassBeginInfo renderPassBeginInfo = {};
         renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassBeginInfo.pNext = nullptr;
@@ -357,9 +263,4 @@ namespace pEngine::girEngine::backend::vulkan {
 
         ImGui::NewFrame();
     }
-
-    bool DearImguiVulkanRenderPass::isDearImguiRenderPass() const {
-        return true;
-    }
-
 } // PGraphics

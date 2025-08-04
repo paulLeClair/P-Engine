@@ -7,14 +7,13 @@
 #include <stdexcept>
 
 namespace pEngine::girEngine::backend::vulkan {
-    VulkanBuffer::VulkanBuffer(const VulkanBuffer::CreationInput &createInfo) : vmaAllocator(createInfo.vmaAllocator),
-        buffer(nullptr),
-        bufferAllocation(nullptr),
-        vmaAllocationIsMappable(
-            createInfo.makeVmaAllocationMappable),
-        vmaAllocationHostAccessIsSequential(
-            createInfo.isVmaAllocationHostAccessSequential),
-        memoryIsCurrentlyMapped(false) {
+    VulkanBuffer::VulkanBuffer(const CreationInput &createInfo) : vmaAllocator(createInfo.vmaAllocator),
+                                                                  buffer(nullptr),
+                                                                  bufferAllocation(nullptr),
+                                                                  vmaAllocationIsMappable(
+                                                                      createInfo.makeVmaAllocationMappable),
+                                                                  vmaAllocationHostAccessIsSequential(
+                                                                      createInfo.isVmaAllocationHostAccessSequential) {
         VkBufferCreateInfo info = {
             VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
             nullptr,
@@ -35,8 +34,9 @@ namespace pEngine::girEngine::backend::vulkan {
                                                  : VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
         }
 
-        if (vmaCreateBuffer(vmaAllocator, &info, &vmaAllocationCreateInfo, &buffer, &bufferAllocation, nullptr) !=
-            VK_SUCCESS) {
+        VkResult result = vmaCreateBuffer(vmaAllocator, &info, &vmaAllocationCreateInfo, &buffer, &bufferAllocation,
+                                          nullptr);
+        if (result != VK_SUCCESS) {
             throw std::runtime_error("Unable to create VkBuffer!");
         }
     }
@@ -46,12 +46,12 @@ namespace pEngine::girEngine::backend::vulkan {
     }
 
 
-    const VkBuffer &VulkanBuffer::getBuffer() const {
+    VkBuffer &VulkanBuffer::getBuffer() {
         return buffer;
     }
 
 
-    VmaAllocation VulkanBuffer::getBufferAllocation() const {
+    VmaAllocation &VulkanBuffer::getBufferAllocation() {
         return bufferAllocation;
     }
 } // namespace PGraphics

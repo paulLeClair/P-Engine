@@ -14,35 +14,11 @@
 #include "../../../GraphicsIR/ResourceIR/BufferIR/BufferIR.hpp"
 #include "../VulkanBuffer/VulkanBuffer.hpp"
 #include "VulkanBufferSuballocation/VulkanBufferSuballocation.hpp"
+#include "VulkanBufferSuballocation/VulkanBufferSuballocationHandle.hpp"
 
 namespace pEngine::girEngine::backend::vulkan {
     /**
-     * Idea here: since we can't just amalgamate everything into a single buffer, we want to amalgamate
-     * into buffers based on VkBufferUsage - this way buffers that are used the same way are suballocated
-     * into one big buffer as is recommended.
      *
-     * I'm not entirely sure how to handle dynamic geometry - maybe a simple dynamic array approach where
-     * we double the size of the buffer and copy the old data into the new one whenever we want to add
-     * a buffer that is too large to fit inside the current buffer.
-     *
-     * As far as deletion of buffers, from what I've seen it's apparently good to just keep a list of
-     * free and used blocks - VMA doesn't support suballocation automatically so I'm gonna have to do it manually.
-     *
-     * I guess that means that I could go about this in a few ways - going for a super-simple dynamic array style allocator
-     * where it just doubles and copies everything over to the new buffer when an allocation is too big might be nice (however that will lead to
-     * lots of fragmentation if there are lots of freed buffers)
-     *
-     * If I have to worry about defragmentation anyway, it might make sense to just do a traditional allocator
-     * where it keeps track of free and occupied memory, plus the information about the individual allocations that make
-     * up the occupied memory. Then we just allocate new buffers on demand by looking for free memory, mapping&copying,
-     * and then boom you should have yourself something that can be attached to a descriptor set and bound to a command
-     * buffer!
-     *
-     * Buffers would also be able to be freed, and then you would just either amalgmate that freed memory with neighboring
-     * free memory, or you set it as free so that it might be used by something else. Upon freeing the buffer,
-     * we would also recompute the overall level of fragmentation, which could be defined as "amount of free memory that is fragmented"
-     * divided by "amount of free memory that is not fragmented" - if the proportion gets beyond a user-specified level
-     * it will defragment, probably by using a staging buffer to build the new contiguous buffer that we want
      */
     class VulkanBufferSuballocator {
     public:
@@ -51,8 +27,11 @@ namespace pEngine::girEngine::backend::vulkan {
 
             VkBufferUsageFlags bufferUsageFlags;
 
-            const std::vector<std::shared_ptr<gir::BufferIR> > &initialBuffers;
+            const std::vector<gir::BufferIR> &initialBuffers;
 
+            std::vector<unsigned> queueFamilyIndices;
+
+            uint32_t minimumBufferAlignment = 1;
             /**
              * This is the maximum percentage of fragmentation that is allowed before the suballocator will initiate
              * defragmentation, where fragmentation is just the number of fragmented empty bytes divided by the total
@@ -62,37 +41,41 @@ namespace pEngine::girEngine::backend::vulkan {
 
             // TODO - evaluate whether to include a max size and if so how to implement that
 
-            std::vector<unsigned> queueFamilyIndices;
-
             bool disableTransferDestinationBufferUsage = false;
             bool disableTransferSourceBufferUsage = false;
         };
 
         explicit VulkanBufferSuballocator(const CreationInput &creationInput)
-                : bufferUsageFlags(
-                // basically we just ensure that transfer source and destination usages are enabled unless specifically disabled
-                getInitialBufferUsageFlags(creationInput.disableTransferDestinationBufferUsage,
-                                           creationInput.disableTransferSourceBufferUsage)
-                | creationInput.bufferUsageFlags
-        ),
-                  defragmentationThreshold(creationInput.defragmentationThreshold),
-                  disableTransferDestinationBufferUsage(creationInput.disableTransferDestinationBufferUsage),
-                  disableTransferSourceBufferUsage(creationInput.disableTransferSourceBufferUsage),
-                  allocator(creationInput.allocator),
-                  bufferSize(0u),
-                  currentDefragmentationAmount(0u) {
+            : allocator(creationInput.allocator),
+              bufferUsageFlags(
+                  // basically we just ensure that transfer source and destination usages are enabled unless specifically disabled
+                  getInitialBufferUsageFlags(creationInput.disableTransferDestinationBufferUsage,
+                                             creationInput.disableTransferSourceBufferUsage)
+                  | creationInput.bufferUsageFlags),
+              defragmentationThreshold(creationInput.defragmentationThreshold),
+              disableTransferSourceBufferUsage(creationInput.disableTransferSourceBufferUsage),
+              disableTransferDestinationBufferUsage(creationInput.disableTransferDestinationBufferUsage),
+              minimumBufferAlignment(creationInput.minimumBufferAlignment),
+              bufferSize(0u),
+              currentDefragmentationAmount(0u) {
             // since we'll generally want to be able to copy data to/from buffers, the new approach will be to
             // have the user specifically enable/disable transfer operations with some simple bool flags.
             // i can modify this pretty easily later but for now it should be fine
+            allocator = creationInput.allocator;
 
-            suballocateBuffers(creationInput.initialBuffers);
+            // maybe we don't need this...
+            // suballocateBuffers(creationInput.initialBuffers);
         }
+
+        VulkanBufferSuballocator() = default;
 
         ~VulkanBufferSuballocator() = default;
 
-        void suballocateBuffers(const std::vector<std::shared_ptr<gir::BufferIR> > &buffersToSuballocate);
+        VulkanBufferSuballocator(const VulkanBufferSuballocator &other) = default;
 
-        void suballocateBuffer(const std::shared_ptr<gir::BufferIR> &bufferToSuballocate);
+        void suballocateBuffers(const std::vector<gir::BufferIR> &buffersToSuballocate);
+
+        void suballocateBuffer(const gir::BufferIR &bufferToSuballocate);
 
         void freeSuballocatedBuffer(const util::UniqueIdentifier &suballocatedBufferUid);
 
@@ -100,25 +83,38 @@ namespace pEngine::girEngine::backend::vulkan {
 
         void freeAllBufferSuballocations();
 
-        // TODO - modify this so that it doesn't use a unique identifier (?)
-        [[nodiscard]] const VulkanBufferSuballocation *findSuballocation(
-                const util::UniqueIdentifier &suballocationUid) const {
-            for (auto &suballocation: suballocations) {
-                if (suballocation->getUniqueIdentifier() == suballocationUid) {
-                    return suballocation.get();
-                }
+        /**
+         * I was initially thinking to just try and leverage the heck outta these vulkan buffer suballocations;
+         * I think that will work but it'll take modifications, or maybe a slight re-route into a new type that
+         * will provide information needed to actually bind a particular buffer suballocation to a command buffer,
+         * or whatever other shenanigans you might want to do with them.
+         *
+         * One way to avoid a new type though could be to have a static convenience method that takes a suballocator and a
+         * suballocation and gives you a struct with the vulkan buffer handle and the offset (plus anything else needed)
+         * for manipulating the buffer in Vulkan.
+         */
+        [[nodiscard]] boost::optional<VulkanBufferSuballocationHandle> findSuballocation(
+            const util::UniqueIdentifier &suballocationUid) {
+            if (!suballocations.count(suballocationUid)) {
+                return boost::none;
             }
-            return nullptr;
+            return {
+                obtainHandleForSuballocation(suballocations.at(suballocationUid))
+            };
         }
 
         [[nodiscard]] const VkBuffer &getBufferHandle() const {
             return buffer->getBuffer();
         }
 
-    private:
-        VmaAllocator allocator;
+        [[nodiscard]] VmaAllocation &getAllocation() {
+            return allocation;
+        }
 
-        std::vector<unsigned> queueFamilyIndices;
+    private:
+        VmaAllocator allocator = VK_NULL_HANDLE;
+
+        std::vector<unsigned> queueFamilyIndices = {};
 
         /**
          * This is the buffer that the VulkanBufferSuballocations are stored in; it will be dynamically
@@ -127,18 +123,34 @@ namespace pEngine::girEngine::backend::vulkan {
          */
         std::shared_ptr<VulkanBuffer> buffer;
 
-        std::vector<std::shared_ptr<VulkanBufferSuballocation> > suballocations = {};
-        std::unordered_map<util::UniqueIdentifier, size_t> suballocationUniqueIds;
+        VmaAllocation allocation = VK_NULL_HANDLE;
 
-        const VkBufferUsageFlags bufferUsageFlags;
+        /**
+         *
+         */
+        std::unordered_map<util::UniqueIdentifier, VulkanBufferSuballocation> suballocations = {};
 
-        const float defragmentationThreshold;
+        VkBufferUsageFlags bufferUsageFlags;
 
-        const bool disableTransferSourceBufferUsage;
-        const bool disableTransferDestinationBufferUsage;
+        float defragmentationThreshold;
+
+        bool disableTransferSourceBufferUsage;
+        bool disableTransferDestinationBufferUsage;
+
+        // HOME STRETCH (model demo):
+        // we now have to do a minor refactor of this damn suballocation stuff, where we just need to be
+        // respecting this "minimum buffer alignment" thing; this just means we have to allocate our memory
+        // in chunks of a certain size, and pad the last element
+        // ONE THING: we're suballocating into sub-chunks which have different sizes, so we may have to break this down
+        // so that we're padding the end of each allocated buffer and aligning them per-buffer in that way
+        uint32_t minimumBufferAlignment;
 
         size_t bufferSize;
 
+        /**
+         * This is the device memory block
+         * for a given suballocation (identified by the uid here)
+         */
         struct MemoryBlock {
             size_t offset;
             size_t size;
@@ -150,9 +162,9 @@ namespace pEngine::girEngine::backend::vulkan {
             }
 
             MemoryBlock(const size_t &offset, const size_t &size, const util::UniqueIdentifier &suballocation_uid)
-                    : offset(offset),
-                      size(size),
-                      suballocationUid(suballocation_uid) {
+                : offset(offset),
+                  size(size),
+                  suballocationUid(suballocation_uid) {
             }
         };
 
@@ -173,27 +185,42 @@ namespace pEngine::girEngine::backend::vulkan {
             return usageFlags;
         }
 
+        /**
+         * Given an existing suballocation, it should provide the handle that the external resource
+         * needs to be able to access the relevant device memory for drawing etc
+         */
+        [[nodiscard]] VulkanBufferSuballocationHandle
+        obtainHandleForSuballocation(VulkanBufferSuballocation &suballocation) {
+            if (!buffer || suballocation.resourceId.getValue().is_nil()) {
+                return {};
+            }
+            return {
+                suballocation,
+                buffer->getBuffer()
+            };
+        }
+
         void defragmentBuffer();
 
         void createVulkanBuffer();
 
-        void suballocateBuffer(const std::shared_ptr<gir::BufferIR> &bufferToSuballocate,
+        void suballocateBuffer(const gir::BufferIR &bufferToSuballocate,
                                size_t suballocationOffset);
 
         [[nodiscard]] size_t
-        computeNewBufferSize(const std::vector<std::shared_ptr<gir::BufferIR> > &buffersToSuballocate) const;
+        computeNewBufferSize(const std::vector<gir::BufferIR> &buffersToSuballocate) const;
 
-        void copyBufferDataToMappedVulkanBuffer(const std::shared_ptr<gir::BufferIR> &bufferToSuballocate,
+        void copyBufferDataToMappedVulkanBuffer(const gir::BufferIR &bufferToSuballocate,
                                                 size_t suballocationOffset);
 
-        void createNewSuballocationForBuffer(const std::shared_ptr<gir::BufferIR> &bufferToSuballocate,
+        void createNewSuballocationForBuffer(const gir::BufferIR &bufferToSuballocate,
                                              size_t suballocationOffset);
 
-        void createVulkanBufferIfItDoesNotAlreadyExist(size_t newBufferSize);
+        void createVulkanBufferIfNonexistent(size_t newBufferSize);
 
         // void validateNewBufferSize(size_t newBufferSize) const;
 
-        void suballocateBufferList(const std::vector<std::shared_ptr<gir::BufferIR> > &buffers);
+        void suballocateBufferList(const std::vector<gir::BufferIR> &buffers);
 
         void defragmentIfNeeded();
 

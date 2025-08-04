@@ -4,16 +4,15 @@
 
 #pragma once
 
+#include "../../../ResourceIR/ImageIR/ImageIR.hpp"
+
 namespace pEngine::girEngine::gir::renderPass {
-
-
     /**
      * This contains the relevant information for binding a texture
      * to a render pass; currently based mostly off of the Vulkan API's
      * requirements for information about textures/samplers etc.
      */
     struct TextureAttachment {
-
         using MipLevelOfDetailBias = float;
 
         using MaxAnisotropy = float;
@@ -64,32 +63,31 @@ namespace pEngine::girEngine::gir::renderPass {
         /**
          * From scene::Texture: the image being sampled
          */
-        std::shared_ptr<ImageIR> sampledImage;
+        ImageIR *sampledImage;
 
         std::vector<ShaderStage> shaderStages = {ShaderStage::FRAGMENT};
 
-        MipLevelOfDetailBias mipLevelOfDetailBias;
-        MaxAnisotropy maxAnisotropy;
+        MipLevelOfDetailBias mipLevelOfDetailBias = 0;
+        MaxAnisotropy maxAnisotropy = 0;
 
-        MagnificationFilterType magnificationFilterType;
-        MinificationFilterType minificationFilterType;
+        MagnificationFilterType magnificationFilterType = MagnificationFilterType::LINEAR_BLEND;
+        MinificationFilterType minificationFilterType = MinificationFilterType::LINEAR_BLEND;
 
-        SamplerMipmapMode samplerMipmapMode;
+        SamplerMipmapMode samplerMipmapMode = SamplerMipmapMode::LINEAR_BLEND;
 
-        OutOfBoundsTexelCoordinateAddressMode addressMode;
+        OutOfBoundsTexelCoordinateAddressMode addressMode = OutOfBoundsTexelCoordinateAddressMode::REPEAT;
 
-        PercentageCloserFilteringCompareOperation pcfCompareOperation;
+        PercentageCloserFilteringCompareOperation pcfCompareOperation =
+                PercentageCloserFilteringCompareOperation::NEVER;
 
-        bool isSamplerAnisotropyEnabled;
+        bool isSamplerAnisotropyEnabled = false;
 
-        float minimumLod;
+        float minimumLod = 0;
 
-        float maximumLod;
+        float maximumLod = 0;
 
-        bool isSamplerUsingUnnormalizedCoordinates;
+        bool isSamplerUsingUnnormalizedCoordinates = false;
 
-        bool isSamplerCompareEnabled;
-
+        bool isSamplerCompareEnabled = false;
     };
-
 } // gir::renderPass

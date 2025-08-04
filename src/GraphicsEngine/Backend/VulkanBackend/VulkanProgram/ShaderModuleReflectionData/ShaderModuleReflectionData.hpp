@@ -25,7 +25,7 @@ namespace pEngine::girEngine::backend::vulkan::program {
         };
         std::vector<DescriptorSetLayoutInfo> descriptorSetLayoutInfos;
 
-        std::vector<VkDescriptorSetLayout> descriptorSetLayouts = {};
+        [[maybe_unused]] std::vector<VkDescriptorSetLayout> descriptorSetLayouts = {};
 
         std::vector<VkPushConstantRange> pushConstantRanges;
     };

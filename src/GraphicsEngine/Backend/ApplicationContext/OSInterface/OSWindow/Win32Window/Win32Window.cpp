@@ -51,7 +51,7 @@ namespace pEngine::girEngine::backend::appContext::osInterface::osWindow::win32 
     }
 
     Win32Window::Win32Window(const CreationInput &createInfo) : windowText(createInfo.windowText) {
-        const auto CLASS_NAME = reinterpret_cast<LPCSTR const>( createInfo.windowClassName.c_str());
+        const auto CLASS_NAME = reinterpret_cast<LPCSTR const>(createInfo.windowClassName.c_str());
 
         if (createInfo.windowSystemPtr == nullptr) {
             throw std::runtime_error("Unable to create Win32Window: Provided pointer to window system is null!");
@@ -62,7 +62,7 @@ namespace pEngine::girEngine::backend::appContext::osInterface::osWindow::win32 
 
         WNDCLASS windowClass = {};
 
-        windowClass.lpfnWndProc = pEngine::girEngine::backend::appContext::osInterface::osWindow::win32::Win32Window::windowProc;
+        windowClass.lpfnWndProc = windowProc;
         windowClass.hInstance = win32Instance;
         windowClass.lpszClassName = CLASS_NAME;
 
@@ -71,13 +71,12 @@ namespace pEngine::girEngine::backend::appContext::osInterface::osWindow::win32 
 
         win32Window = CreateWindowEx(0,
                                      CLASS_NAME,
-//                                     windowText.c_str(), // TODO - get this to work
-                                     (LPCSTR) L"GirEngine Core Menu Demo",
+                                     (LPCSTR) L"GirEngine Demo",
                                      WS_OVERLAPPEDWINDOW,
                                      CW_USEDEFAULT,
                                      CW_USEDEFAULT,
-                                     CW_USEDEFAULT,
-                                     CW_USEDEFAULT,
+                                     createInfo.initialWindowWidth,
+                                     createInfo.initialWindowHeight,
                                      nullptr,
                                      nullptr,
                                      win32Instance,
@@ -86,7 +85,7 @@ namespace pEngine::girEngine::backend::appContext::osInterface::osWindow::win32 
         if (win32Window == nullptr) {
             auto lastError = GetLastError();
             throw std::runtime_error(
-                    "Unable to create Win32 HWND! Last Win32 error number: " + std::to_string(lastError));
+                "Unable to create Win32 HWND! Last Win32 error number: " + std::to_string(lastError));
         }
 
         // finally, store width and height (TODO - ensure this gets updated when resizing (not implemented yet))
@@ -102,13 +101,13 @@ namespace pEngine::girEngine::backend::appContext::osInterface::osWindow::win32 
             int showCommand = getWin32ShowCommand(command);
             ShowWindow(win32Window, showCommand);
         } catch (std::exception &exception) {
-            return OSWindow::ExecuteWindowCommandResult::FAILURE;
+            return ExecuteWindowCommandResult::FAILURE;
         }
 
-        return OSWindow::ExecuteWindowCommandResult::SUCCESS;
+        return ExecuteWindowCommandResult::SUCCESS;
     }
 
-    int Win32Window::getWin32ShowCommand(const OSWindow::WindowCommand &command) {
+    int Win32Window::getWin32ShowCommand(const WindowCommand &command) {
         int commandInteger = -1;
 
         switch (command) {
@@ -128,7 +127,7 @@ namespace pEngine::girEngine::backend::appContext::osInterface::osWindow::win32 
                 commandInteger = SW_SHOW;
                 break;
             }
-                // TODO - support any other commands as applicable
+            // TODO - support any other commands as applicable
             default:
                 throw std::runtime_error("Unable to determine Win32 command type!");
         }
@@ -139,6 +138,6 @@ namespace pEngine::girEngine::backend::appContext::osInterface::osWindow::win32 
     HWND Win32Window::getWinApiHWND() const {
         return win32Window;
     }
-}// namespace PGraphics
+} // namespace PGraphics
 
 #endif

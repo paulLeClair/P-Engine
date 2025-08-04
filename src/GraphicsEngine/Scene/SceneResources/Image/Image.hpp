@@ -5,13 +5,14 @@
 #pragma once
 
 #include "../SceneResource.hpp"
-#include "../../../../utilities/RawDataContainer/RawDataContainer.hpp"
-#include "../formats/TexelFormat/TexelFormat.hpp"
+#include "../../../../utilities/ByteArray/ByteArray.hpp"
 #include "../../../GraphicsIR/ResourceIR/ImageIR/ImageIR.hpp"
+#include "../formats/ResourceFormat/ResourceFormat.hpp"
 
 #include <unordered_map>
 #include <unordered_set>
 #include <memory>
+#include <boost/optional.hpp>
 
 using namespace pEngine::util;
 // the fact that we'd have to make each image class have a
@@ -19,7 +20,7 @@ using namespace pEngine::util;
 // image formats a no-go;
 
 namespace pEngine::girEngine::scene {
-    class Image : public scene::Resource {
+    class Image {
     public:
         // TODO - add configuration for 2D, 3D, 4D, ... images
 
@@ -29,12 +30,14 @@ namespace pEngine::girEngine::scene {
         };
 
         enum class ImageUsage : unsigned int {
+            UNDEFINED,
             SampledTextureImage,
             Storage,
             ColorAttachment,
             DepthStencilAttachment,
             TransientAttachment, // these are TODO for a while
-            InputAttachment
+            InputAttachment,
+            SwapchainRenderTarget
         };
 
         /**
@@ -57,9 +60,8 @@ namespace pEngine::girEngine::scene {
          *
          */
         struct MipMapConfiguration {
-            bool mipmapEnabled = false;
             unsigned int numberOfMipMapLevels = 0;
-            bool enableMipMapBlitting = true;
+            bool enableBlitting = true;
         };
 
         /**
@@ -68,39 +70,57 @@ namespace pEngine::girEngine::scene {
          * Default constructor / no specification should result in single layers only
          */
         struct ImageArrayConfiguration {
-            bool isArrayImage = false;
             unsigned int numberOfArrayLevels = 1;
             // TODO
         };
 
-        struct CreationInput : public Resource::CreationInput {
-            TexelFormat format;
+        /**
+         * TODO -> make a lot of these optional, provide reasonable defaults etc
+         */
+        struct CreationInput {
+            std::string name;
 
-            ImageExtent2D imageExtent;
+            util::UniqueIdentifier uid;
 
-            MipMapConfiguration mipMapConfiguration;
+            ResourceFormat format = ResourceFormat::UNDEFINED;
 
-            ImageArrayConfiguration arrayLevelConfiguration;
+            ImageUsage imageUsages = ImageUsage::UNDEFINED;
 
-            TexelTilingArrangement texelTiling;
+            uint32_t width = 0u;
+            uint32_t height = 0u;
 
-            unsigned int numberOfSamples;
+            uint8_t *initialImageData = nullptr;
+            uint32_t initialImageDataSizeInBytes = 0;
 
-            ImageUsage imageUsages;
+            boost::optional<ImageExtent2D> imageExtent = {};
 
-            unsigned char *initialImageData = nullptr;
-            unsigned long initialImageDataSizeInBytes = 0;
+            boost::optional<MipMapConfiguration> mipMapConfiguration = boost::none;
+
+            boost::optional<ImageArrayConfiguration> arrayLevelConfiguration = boost::none;
+
+            boost::optional<TexelTilingArrangement> texelTiling = boost::none;
+
+            boost::optional<unsigned int> numberOfSamples = boost::none;
+
+
+            boost::optional<uint32_t> swapchainIndex = boost::none;
         };
 
-        explicit Image(const CreationInput &createInfo) : Resource(createInfo),
+        explicit Image(const CreationInput &createInfo) : name(createInfo.name),
+                                                          uniqueIdentifier(createInfo.uid),
                                                           format(createInfo.format),
-                                                          imageDimensions(createInfo.imageExtent),
-                                                          numberOfSamples(createInfo.numberOfSamples),
+                                                          imageDimensions(createInfo.imageExtent.get_value_or({})),
+                                                          numberOfSamples(createInfo.numberOfSamples.get_value_or({})),
                                                           imageUsage(createInfo.imageUsages),
-                                                          texelTiling(createInfo.texelTiling),
-                                                          mipMapConfiguration(createInfo.mipMapConfiguration),
-                                                          imageArrayConfiguration(createInfo.arrayLevelConfiguration) {
-            imageData = std::make_unique<RawDataContainer>(RawDataContainer::CreationInput{
+                                                          texelTiling(createInfo.texelTiling.get_value_or({})),
+                                                          mipMapConfiguration(
+                                                              createInfo.mipMapConfiguration.get_value_or({})),
+                                                          imageArrayConfiguration(
+                                                              createInfo.arrayLevelConfiguration.get_value_or({})),
+                                                          width(createInfo.width),
+                                                          height(createInfo.height),
+                                                          swapchainIndex(createInfo.swapchainIndex) {
+            imageData = ByteArray(ByteArray::CreationInput{
                 createInfo.name,
                 createInfo.uid,
                 createInfo.initialImageData,
@@ -108,15 +128,25 @@ namespace pEngine::girEngine::scene {
             });
         }
 
-        ~Image() override = default;
-
-        UpdateResult update() override {
-            return UpdateResult::FAILURE;
+        Image() : Image(CreationInput{}) {
         }
 
-        [[nodiscard]] TexelFormat getImageFormat() const {
-            return format;
+        Image(const Image &other)
+            : name(other.name),
+              uniqueIdentifier(other.uniqueIdentifier),
+              format(other.format),
+              imageDimensions(other.imageDimensions),
+              numberOfSamples(other.numberOfSamples),
+              texelTiling(other.texelTiling),
+              mipMapConfiguration(other.mipMapConfiguration),
+              imageArrayConfiguration(other.imageArrayConfiguration),
+              imageUsage(other.imageUsage),
+              width(other.width),
+              height(other.height),
+              imageData(other.imageData) {
         }
+
+        ~Image() = default;
 
         [[nodiscard]] const ImageUsage &getImageUsages() const {
             return imageUsage;
@@ -138,7 +168,7 @@ namespace pEngine::girEngine::scene {
             return mipMapConfiguration;
         }
 
-        [[nodiscard]] TexelFormat getFormat() const {
+        [[nodiscard]] ResourceFormat getFormat() const {
             return format;
         }
 
@@ -150,7 +180,7 @@ namespace pEngine::girEngine::scene {
             return imageArrayConfiguration;
         }
 
-        [[nodiscard]] const std::unique_ptr<RawDataContainer> &getImageData() const {
+        [[nodiscard]] const ByteArray &getImageData() const {
             return imageData;
         }
 
@@ -161,30 +191,41 @@ namespace pEngine::girEngine::scene {
                 {ImageUsage::ColorAttachment, gir::ImageIR::ImageUsage::COLOR_ATTACHMENT},
                 {ImageUsage::DepthStencilAttachment, gir::ImageIR::ImageUsage::DEPTH_STENCIL_ATTACHMENT},
                 {ImageUsage::InputAttachment, gir::ImageIR::ImageUsage::INPUT_ATTACHMENT},
-                {ImageUsage::TransientAttachment, gir::ImageIR::ImageUsage::UNDEFINED}
+                {ImageUsage::TransientAttachment, gir::ImageIR::ImageUsage::UNDEFINED},
+                {ImageUsage::SwapchainRenderTarget, gir::ImageIR::ImageUsage::SWAPCHAIN_IMAGE}
             };
             return IMAGE_USAGE_CONVERSION_MAP.at(usage);
         }
 
-        std::shared_ptr<gir::GraphicsIntermediateRepresentation> bakeToGIR() override {
-            return std::make_shared<gir::ImageIR>(
+        gir::ImageIR bakeImage() const {
+            return gir::ImageIR(
                 gir::ImageIR::CreationInput{
-                    getName(),
-                    getUid(),
+                    name,
+                    uniqueIdentifier,
                     gir::GIRSubtype::IMAGE,
                     getGIRImageUsageFromSceneImageUsage(imageUsage),
+                    static_cast<const gir::resource::FormatIR>(format),
                     // TODO - probably just use GIR usages in this class so we don't have to pass by value
-                    imageData->getRawDataByteArray(),
-                    imageData->getRawDataSizeInBytes()
+                    imageData.getRawDataByteArray(),
+                    static_cast<uint32_t>(imageData.getRawDataSizeInBytes()),
+                    width,
+                    height,
+                    false,
+                    false,
+                    swapchainIndex
                 });
         }
 
+        std::string name;
+
+        UniqueIdentifier uniqueIdentifier;
+
     private:
-        TexelFormat format;
+        ResourceFormat format;
 
         ImageExtent2D imageDimensions;
 
-        unsigned int numberOfSamples;
+        uint32_t numberOfSamples = 0u;
 
         TexelTilingArrangement texelTiling;
 
@@ -194,6 +235,11 @@ namespace pEngine::girEngine::scene {
 
         ImageUsage imageUsage;
 
-        std::unique_ptr<RawDataContainer> imageData;
+        uint32_t width = 0u;
+        uint32_t height = 0u;
+
+        ByteArray imageData;
+
+        boost::optional<uint32_t> swapchainIndex = boost::none;
     };
 }

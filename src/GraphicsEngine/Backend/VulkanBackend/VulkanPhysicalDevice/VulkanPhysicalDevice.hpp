@@ -56,7 +56,7 @@ namespace pEngine::girEngine::backend::appContext::vulkan {
                 // todo when logging is implemented: give warning
             }
 
-            VkPhysicalDevice chosenPhysicalDevice = choosePhysicalDevice(availablePhysicalDevices, creationInput);
+            VkPhysicalDevice chosenPhysicalDevice = choosePhysicalDevice(availablePhysicalDevices);
             if (chosenPhysicalDevice == nullptr) {
                 throw std::runtime_error("Unable to choose a physical device!");
             }
@@ -80,8 +80,7 @@ namespace pEngine::girEngine::backend::appContext::vulkan {
 
         static std::vector<VkPhysicalDevice> enumeratePhysicalDevices(const VkInstance &instance);
 
-        static VkPhysicalDevice choosePhysicalDevice(const std::vector<VkPhysicalDevice> &availablePhysicalDevices,
-                                                     const CreationInput &info);
+        static VkPhysicalDevice choosePhysicalDevice(const std::vector<VkPhysicalDevice> &availablePhysicalDevices);
 
         static bool isNewBestPhysicalDeviceChoice(VkPhysicalDeviceLimits deviceToCheck,
                                                   VkPhysicalDeviceLimits currentBestDevice);

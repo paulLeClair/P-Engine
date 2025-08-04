@@ -5,9 +5,9 @@
 #pragma once
 
 #include <boost/optional/optional.hpp>
-#include "../../../../../../lib/glm/glm.hpp"
 
 #include "../../../../../GraphicsIR/VertexAttributeIR/VertexAttributeIR.hpp"
+#include "../../../formats/ResourceFormat/ResourceFormat.hpp"
 
 // TODO - have to maybe do a bit of refactoring of how we're tracking/representing vertex attributes
 // one potential option: just use templates and make it so that you can obtain various bits of info about the
@@ -52,34 +52,13 @@
 
 // this seems fairly simple i guess, and hopefully won't be a ton of extra work
 
+// ya this file needs a big overhaul methinks
+
 
 namespace pEngine::girEngine::scene::vertex {
-    // new design: pure abstract base class that provides a method for providing strides/etc for each attribute...
-    // not entirely sure the best design there
-
-    // this is tricky...
-    // on the one hand we could design it around having each group of attributes be logically tied to 1 buffer,
-    // but that's actually trash cause you might be doing other things with your organization of vertex data.
-
-    // I guess we can define vertex types that can provide information about each attribute
-    // and then from there you can bind buffers to each attribute...? or group of attributes...?
-
-    // this way if the layout info is specified we can just pull that in and then use the scene-level vertex buffer binding
-    // info to resolve that info, while allowing for dynamic resolution of layout info as well (if only buffer binding info is specified
-    // and shaders don't provide layout info)
 
     /**
-     * Hmm... okay so this seems to make a bit of sense... but I need to think about where this should be integrated
-     * and how the user should be made to provide this data.
-     *
-     * Certainly some of it would be best sourced from the vertex buffer itself; but on the other hand I gotta think about
-     * how you would facilitate easily creating more vertex buffers of a given vertex type; we wouldn't want to be
-     * specifying a lot of this stuff for every vertex buffer created.
-     *
-     * One idea that could bear fruit (if developed): add in another construct (something like a `VertexBufferBinding`) to the scene, probably
-     * in the render pass or something, where you specify the specific vertex buffers that are bound to specific groups of attributes.
-     *
-     *
+     * DEPRECATED
      */
     struct VertexAttributeDescription {
         // ideally this should match up with the attribute name in the actual shader; not sure if it'll be actually used
@@ -99,6 +78,10 @@ namespace pEngine::girEngine::scene::vertex {
          */
         boost::optional<unsigned> attributeShaderLocation = boost::none;
 
+        unsigned bindingIndex = 0;
+
+        ResourceFormat attributeFormat = ResourceFormat::UNDEFINED;
+
         /**
          * This should correspond to where this attribute is located inside the vertex element memory,
          * which will be used to access this particular attribute inside the vertex shader.\n\n
@@ -111,30 +94,7 @@ namespace pEngine::girEngine::scene::vertex {
          */
         unsigned attributeByteOffset = 0u;
 
-        gir::vertex::AttributeComponentSignedness componentSignedness = gir::vertex::AttributeComponentSignedness::UNKNOWN;
 
-        /**
-         * This describes the types of the individual components of this attribute.
-         */
-        gir::vertex::AttributeComponentSpace componentSpace = gir::vertex::AttributeComponentSpace::UNKNOWN;
-
-        /**
-         * This describes the specific component format of the attribute;
-         */
-        gir::vertex::AttributeComponentComposition componentComposition = gir::vertex::AttributeComponentComposition::UNKNOWN;
-
-        /**
-         * This should describe the size of the components in bytes; obviously this isn't a true
-         * catch-all because there are types with different component sizes b/w them, but they're generally
-         * special cases and I can avoid them for now... besides you can probably deduce whether to use those ones in other ways.
-         */
-        size_t individualComponentSizesInBytes = 0u;
-
-
-        /**
-         * This describes whether the attribute is packed / compressed in some way.
-         */
-        gir::vertex::AttributeDataPacking dataPacking = gir::vertex::AttributeDataPacking::NONE;
     };
 
 

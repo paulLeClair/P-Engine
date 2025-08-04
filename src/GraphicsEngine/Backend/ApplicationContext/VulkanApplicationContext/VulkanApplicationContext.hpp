@@ -11,7 +11,8 @@
 #include "../../VulkanBackend/VulkanInstance/VulkanInstance.hpp"
 #include "../../VulkanBackend/VulkanPhysicalDevice/VulkanPhysicalDevice.hpp"
 #include "../../VulkanBackend/VulkanLogicalDevice/VulkanLogicalDevice.hpp"
-#include "../../VulkanBackend/VulkanDearImguiContext/VulkanDearImguiContext.hpp"
+
+#define VK_LAYER_PRINTF_TO_STDOUT 1
 
 namespace pEngine::girEngine::backend::appContext::vulkan {
     class VulkanApplicationContext : public ApplicationContext {
@@ -63,17 +64,17 @@ namespace pEngine::girEngine::backend::appContext::vulkan {
             return logicalDevice;
         }
 
-        VkPhysicalDevice getPhysicalDevice() {
+        [[nodiscard]] VkPhysicalDevice getPhysicalDevice() const {
             return physicalDevice->getPhysicalDevice();
         }
 
-        VkInstance getInstance() {
+        [[nodiscard]] VkInstance getInstance() const {
             return vulkanInstance->getVkInstance();
         }
 
         // TODO - figure out where this render area rect should be living
 
-        VkQueue getGraphicsQueue() {
+        [[nodiscard]] VkQueue getGraphicsQueue() const {
             return logicalDevice->getGraphicsQueue();
         }
 
@@ -92,9 +93,7 @@ namespace pEngine::girEngine::backend::appContext::vulkan {
 
         std::shared_ptr<osInterface::vulkan::VulkanOSInterface> osInterface = nullptr;
 
-        std::shared_ptr<VulkanDearImguiContext> dearImguiContext = nullptr;
-
-        void initializeDearImguiContext(const CreationInput &input);
+        ImGuiContext *imGuiContext;
 
         static VkFormat obtainSwapchainImageFormat(VkFormat desiredFormat);
     };

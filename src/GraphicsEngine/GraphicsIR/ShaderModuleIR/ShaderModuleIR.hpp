@@ -33,7 +33,9 @@ namespace pEngine::girEngine::gir {
             // TODO - ray tracing stuff
         };
 
-        struct CreationInput : public GraphicsIntermediateRepresentation::CreationInput {
+        ShaderModuleIR() = default;
+
+        struct CreationInput : GraphicsIntermediateRepresentation::CreationInput {
             std::string shaderModuleFilename;
             IntermediateRepresentation girType = IntermediateRepresentation::UNKNOWN;
             ShaderUsage usage = ShaderUsage::UNKNOWN;
@@ -41,11 +43,11 @@ namespace pEngine::girEngine::gir {
         };
 
         explicit ShaderModuleIR(const CreationInput &creationInput)
-                : GraphicsIntermediateRepresentation(creationInput),
-                  shaderGirType(creationInput.girType),
-                  usage(creationInput.usage),
-                  shaderModuleFile(creationInput.shaderModuleFilename),
-                  shaderModuleEntryPointName(creationInput.shaderModuleEntryPointName) {
+            : GraphicsIntermediateRepresentation(creationInput),
+              shaderGirType(creationInput.girType),
+              usage(creationInput.usage),
+              shaderModuleFile(creationInput.shaderModuleFilename),
+              shaderModuleEntryPointName(creationInput.shaderModuleEntryPointName) {
         }
 
         [[nodiscard]] IntermediateRepresentation getTypeOfShaderIR() const {
@@ -65,8 +67,8 @@ namespace pEngine::girEngine::gir {
         }
 
     private:
-        IntermediateRepresentation shaderGirType;
-        ShaderUsage usage;
+        IntermediateRepresentation shaderGirType = IntermediateRepresentation::UNKNOWN;
+        ShaderUsage usage = ShaderUsage::UNKNOWN;
 
         /**
          * This should be the name of the spir-v module that the shader module corresponds to, without the file extension.

@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../../../../../src/GraphicsEngine/Scene/SceneResources/Renderable/TriangleMesh/TriangleMesh.hpp"
+#include "../../../../../src/GraphicsEngine/Scene/SceneResources/ShaderConstant/ShaderConstant.hpp"
 
 using namespace pEngine::girEngine::scene;
 
@@ -14,7 +14,7 @@ protected:
 TEST_F(ShaderConstantTest, BasicCreation) {
     ASSERT_NO_THROW(shaderConstant = std::make_unique<ShaderConstant>(ShaderConstant::CreationInput{
             "test",
-            UniqueIdentifier(),
+            pEngine::util::UniqueIdentifier(),
             {},
             0,
             0,

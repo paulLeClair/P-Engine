@@ -319,9 +319,9 @@ When `VulkanRenderer::renderFrame()` is called:
 
 1. a new swapchain image is acquired, and a semaphore is given to the corresponding `Frame` object to be used for rendering this frame
 
-2. we record amd submit our rendering commands, which are translated from the GIRs that the backend has consumed previously, as well as batching up all submission semaphores that the presentation engine must wait on
+2. we record and submit our rendering commands, which are translated from the GIRs that the backend has consumed previously, as well as acquiring all the submission semaphores that the presentation engine must wait on
 
-3. we present the image and return whether our rendering process succeeded
+3. we present the image using those semaphores and conclude the frame rendering process
 
 The backend code is a bit more verbose - it is Vulkan, after all! We have quite a few moving parts at this point, and they all came into being at different times, so these designs are going to need to be reworked so that they're more cohesive.
 
@@ -337,4 +337,6 @@ Until that big rework comes, the main components are:
 
 - a SPIR-V shader reflection class called `VulkanProgram`
 
-A more comprehensive writeup (probably in the form of a wiki) will be pushed to this public repository in a future update. However, the code is not that crazy, and you can dig through it now to see how it comes together.
+There are a bunch of other little bits and bobs that go into making the backend work, and will be described in the next writeup. 
+
+Said writeup (probably in the form of a wiki) will be pushed to this public repository in a future update. However, the code is not that crazy, and you can dig through it now to see how it comes together.

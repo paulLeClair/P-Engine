@@ -15,26 +15,10 @@ namespace pEngine::app {
     /**
      * The idea here is to group up the engine modes into an application;
      * this way we can just have the user specify the engine modes (and other info about how to transition
-     * between them) and then you just have to create one of these in your main() to run the engine.
-     *
-     * Seems like an easy way to do it, and probably pretty versatile I hope?
-     *
+     * between them) and then you just have to create one of these in your main() to run the engine
      * Note: a lot of required functionality for setting up complicated FSM type things with engine modes is still
      * very much TODO but coming soon
      *
-     * One issue I just realized might become ugly: what's the best way to pass in the higher-level engine core
-     * stuff to the engine modes? If the user builds them ahead of time, at some point we're going to have
-     * to pass in the EngineCore. Which means either uninitialized member variables that have to be set (ew),
-     * or we do something that has the application build the engine modes after it builds the core itself (which
-     * would probably be done by making the application something you subclass) (also ew).
-     *
-     * This is a tricky little knot to figure out... Honestly I think between passing in the engine core as an arg to
-     * the engine mode methods on one hand, and just having each engine mode have a handle to an engine core on the other,
-     * the second option is easiest.
-     *
-     * That way you can also potentially skip building an Application and just run a single engine mode if you want.
-     *
-     * I'm going to be trying to do this with templates
      */
     template<typename GirGeneratorType, typename BackendType>
     class Application {
@@ -48,9 +32,6 @@ namespace pEngine::app {
             std::string name;
             util::UniqueIdentifier uid;
 
-            /**
-             *
-             */
             std::shared_ptr<core::EngineCore<GirGeneratorType, BackendType>> engineCore;
 
             /**

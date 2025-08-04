@@ -104,27 +104,6 @@ namespace pEngine::girEngine::backend::vulkan {
          */
         VkRect2D defaultRenderArea = {};
 
-        // so it seems like we'll need to have this guy hold onto some synchronization primitives;
-        // I can probably make them more robust and efficient later but we basically need to have a
-        // semaphore or a fence to signal when an image is available;
-        // maybe I could even get fancy now and associate a semaphore with each swapchain image?
-        // not sure tho; keeping it simple to start seems the best as usual
-
-        // okay so one scheme I've found for synchronization works like this:
-        // 1. we use a semaphore to signal when an image has been acquired;
-        // 2. the image acquire semaphore is given as a *wait* semaphore for the graphics queue submission
-        // 3. we use another semaphore to signal when rendering to an acquired image has completed;
-        //    this "render complete semaphore" is used as a *signal* semaphore for the graphics queue submission (in addition to the image acquire as a wait semaphore)
-        // 4. we pass the render complete semaphore as a wait semaphore for the image presentation
-
-        // I think (?) it would make sense to have semaphores for each swapchain image, but I'm not entirely sure...
-        // on the one hand, it might be reasonable to just design it around having a single frame in-flight at a time (probably how it should be anyway)
-        // we could have a single "rendering complete" semaphore that exists somewhere or other, maybe here would make sense
-        // but it could probably go in the renderer too.
-
-        // so if we had the render complete semaphore in the renderer itself, there could be image acquire semaphores for
-        // each swapchain image in this class (maybe in a struct or something?)
-
         VkSemaphore imageAcquiredSemaphore;
 
         VkQueue presentQueue;

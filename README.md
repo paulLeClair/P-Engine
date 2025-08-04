@@ -1,6 +1,8 @@
-# GirEngine Public Repo
+# GirEngine - Animated Model Demo Interim Release
 
 > 07/2025 - This is the Interim Model Demo Release! Full version coming soon
+
+https://github.com/user-attachments/assets/60945336-603f-4c8e-b502-1e131d439952
 
 ## Overview
 
@@ -27,8 +29,6 @@ This interim release is meant to publish a bunch of stuff that's been integrated
 The purpose of this release is not specifically the demo itself, but to show how the game engine framework can be used to implement some particular application. Each release will probably involve a number of updates to engine's frontend and backend along with an increasingly more-involved demo application, since the purpose of the engine is to make it easier for a developer to build a graphical application as they see fit.
 
 ### Demo Features
-
-// insert a screen recording demoing all the features; maybe broken up into a few segments. Idea is to show that the features below are in place
 
 As the screen recording shows, the interim release GUI is minimal as far as practical features go, but the system is now able to handle animated models from frontend to backend.
 

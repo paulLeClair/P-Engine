@@ -24,7 +24,7 @@ For now, the engine is very Windows-centric, and focuses on Vulkan for its backe
 
 ## Animated Model Demo Interim Release
 
-https://github.com/user-attachments/assets/89930e6d-8fe3-40f2-95ed-3b7ee0a75562
+https://github.com/user-attachments/assets/f4ce208f-d2ec-4611-82cb-7837957c953f
 
 This interim release is meant to publish a bunch of stuff that's been integrated into the engine, bringing it from something that could only render DearImGui to the point where it can now use [Asset Importer Library]() to load a model along with its skeletal animation(s), and render the model. We also have a minimalistic GUI that allows you to interact with the model, with a partially-implemented animation editor where you can view and mess around with your keyframes.
 

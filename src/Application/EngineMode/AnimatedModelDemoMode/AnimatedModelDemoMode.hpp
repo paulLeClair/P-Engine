@@ -286,8 +286,7 @@ namespace pEngine::app::mode {
                 nullptr, // leaving this uninitialized cause the engine will handle updating it;
                 sizeof(Model::AnimationBonesUniformBufferData),
                 boost::optional<uint32_t>(sizeof(Model::AnimationBonesUniformBufferData)),
-                boost::optional<uint32_t>(0),
-                boost::optional<bool>(true)
+                boost::optional<uint32_t>(0)
             });
 
             space::position::Position firstLightPosition({-250.0f, 150.0f, 350.0f});
@@ -332,8 +331,7 @@ namespace pEngine::app::mode {
                 .initialDataPointer = (unsigned char *) &lightingData,
                 .initialDataSizeInBytes = (sizeof(LightingData)),
                 .optionalMaxBufferSize = (static_cast<uint32_t>(sizeof(LightingData))),
-                .descriptorSetIndex = 0,
-                .containsAnimationPoses = false,
+                .descriptorSetIndex = 0
             });
 
             CameraData cameraData = {
@@ -348,8 +346,7 @@ namespace pEngine::app::mode {
                 .initialDataPointer = (unsigned char *) &cameraData,
                 .initialDataSizeInBytes = sizeof(CameraData),
                 .optionalMaxBufferSize = sizeof(CameraData),
-                .descriptorSetIndex = 0,
-                .containsAnimationPoses = false,
+                .descriptorSetIndex = 0
             });
 
             // as a simple measure to keep the scene around, we'll move this out now

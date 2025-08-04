@@ -337,6 +337,6 @@ Until that big rework comes, the main components are:
 
 - a SPIR-V shader reflection class called `VulkanProgram`
 
-There are a bunch of other little bits and bobs that go into making the backend work, and will be described in the next writeup. 
+There are a bunch of other little bits and bobs that go into making the backend work, and they'll be described in the next writeup. 
 
 Said writeup (probably in the form of a wiki) will be pushed to this public repository in a future update. However, the code is not that crazy, and you can dig through it now to see how it comes together.

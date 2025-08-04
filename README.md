@@ -69,7 +69,7 @@ Obviously, it's going to take a ton of work before it truly matures into somethi
 
 I'll also be testing whether the framework is even remotely usable by trying to build a game on top of it, which I hope will be very informative as far as finding improvements that need to be made. That game will likely exist separately, but the tooling that I'll build to support it will be published here in incremental releases.
 
-NOTE: as a byproduct of shipbuilding at sea, there are tons of vestigial designs that will be removed as the system develops. We are also missing certain smaller things, mostly low-hanging fruit like a robust logging solution.
+NOTE: as a byproduct of shipbuilding at sea, there are tons of vestigial designs that will be removed as the system develops. We are also missing certain smaller things, mostly low-hanging fruit, such as a robust logging solution (for example).
 
 ### [`main.cpp`]()
 

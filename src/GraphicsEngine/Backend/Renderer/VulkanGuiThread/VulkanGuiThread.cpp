@@ -93,24 +93,8 @@ pEngine::gui::VulkanGuiThread::VulkanGuiThread(
 
 void pEngine::gui::VulkanGuiThread::recordDrawCommandsOnCurrentThread(
     backend::vulkan::Frame &frame, VkCommandBuffer &cb) {
-    // FOR NOW: to circumvent the existing code here (which needs expansion and tweaking) we'll use
-    // std async with the std::launch::async param to ensure that the recording happens on a new thread
-
-    // VkCommandBuffer guiCommandBuffer = VK_NULL_HANDLE;
-    // const VkCommandBufferAllocateInfo cmdBufferAllocateInfo = {
-    //     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-    //     .pNext = nullptr,
-    //     .commandPool = guiThreadCommandPools[parentRenderer.getCurrentFrameIndex()],
-    //     .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-    //     .commandBufferCount = 1,
-    // };
-    // auto result = vkAllocateCommandBuffers(applicationContext.getLogicalDevice()->getVkDevice(),
-    //                                        &cmdBufferAllocateInfo,
-    //                                        &guiCommandBuffer);
-    // if (result != VK_SUCCESS) {
-    //     // TODO -> log!
-    // }
-
+    // NOTE: async stuff is disabled for interim release
+    
     // NEW: this just takes in an external cb and renders directly into it without async
     renderCommands(cb, frame);
 
@@ -131,17 +115,6 @@ void pEngine::gui::VulkanGuiThread::renderCommands(VkCommandBuffer guiCommandBuf
         // TODO -> log!
         return;
     }
-    // LINEARIZATION: we just use the external cb here
-    // VkCommandBufferBeginInfo beginInfo = {
-    //     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-    //     .pNext = nullptr,
-    //     .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    //     .pInheritanceInfo = nullptr
-    // };
-    // auto result = vkBeginCommandBuffer(guiCommandBuffer, &beginInfo);
-    // if (result != VK_SUCCESS) {
-    //     // TODO -> log!
-    // }
 
     // 1. set up the dynamic rendering info we have to use the proper swapchain image view
     VkRenderingInfo dynamicRenderingInfo{

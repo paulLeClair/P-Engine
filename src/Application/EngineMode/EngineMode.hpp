@@ -11,39 +11,6 @@
 
 namespace pEngine::app::mode {
 
-    /**
-     * Okay so now we're finally rewriting this engine mode thing.
-     *
-     * The idea here is that we want to use these engine mode classes to be
-     * programmable "states" to be in for the overall application provided by the engine
-     *
-     * That kinda makes sense I think, and then it allows you to break up your application into chunks
-     * as well as define how different chunks can transition between each other.
-     *
-     * For games, you could do everything from a launcher to the main menu to whatever other general "modes" you want your
-     * application to be in.
-     *
-     * At least that's the hope lol, I'll have to give it a shot and see how it develops...
-     *
-     * For now, I think we can maybe keep it fairly simple:
-     * - each engine mode gets a pointer at creation time to the next engine mode that should be executed
-     * - the engine mode has access to the engine core (which should hold on to the thread pool most likely?) and the graphics engine itself
-     * - the engine mode should define a few methods, something like "setup() -> bake() -> run() -> finish()" sort of thing, which define how the engine mode proceeds
-     *
-     * Then all the juicy shit just happens inside these methods that have consistent usages across all engine modes.
-     *
-     *
-     * Another important thing to remember is that we want to overall be supporting applications with an
-     * "update() -> render()" loop; I think for versatility's sake it makes sense to provide
-     * general-purpose implementations of "bake()" and "finish()"; "setup()" is probably best left to be pure virtual
-     * so that the user has to define what happens there, and "run()" is a whole other beast.
-     *
-     * This might be where we want to make a class which provides a customizable infrastructure for writing
-     * the "update()->render()" loops that the user's application wants. That seems like a good thing to do,
-     * since we want it to be robust but it's also optional to use them if we break them out. The user should
-     * technically be free to define the "update()->render()" loop however they want.
-     *
-     */
     template<typename GirGeneratorType, typename BackendType>
     class EngineMode {
         /**

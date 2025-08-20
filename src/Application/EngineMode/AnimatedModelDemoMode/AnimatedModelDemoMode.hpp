@@ -4,19 +4,24 @@
 
 #pragma once
 
-#include "../EngineMode.hpp"
-#include "../../../../build/minsizerel/_deps/assimp-src/include/assimp/postprocess.h"
-#include "../../../GraphicsEngine/Scene/Scene.hpp"
+#include <assimp/postprocess.h>
 
-#include "../../../GraphicsEngine/Scene/RenderGraph/RenderGraph.hpp"
-#include "../../../GraphicsEngine/Backend/Renderer/PresentationEngine/VulkanPresentationEngine/VulkanPresentationEngine.hpp"
-#include "../../../GraphicsEngine/Backend/Renderer/VulkanRenderer/VulkanRenderer.hpp"
-#include "../../../GraphicsEngine/Scene/SceneSpace/Orientation/Orientation.hpp"
-#include "../../../GraphicsEngine/Scene/RenderGraph/RenderPass/DynamicRenderPass.hpp"
-#include "assimp/Importer.hpp"
 #include "../../../utilities/GuiWidget/assimp/AssimpAnimationEditor.hpp"
 
+#include "assimp/Importer.hpp"
+
 #include "../../../lib/dear_imgui/imgui.h"
+
+#include "../EngineMode.hpp"
+
+#include "../../../Application/OSInterface/OSInterface.hpp"
+#include "../../../GirEngine/Frontend/Scene/Scene.hpp"
+#include "../../../GirEngine/Frontend/Scene/RenderGraph/RenderGraph.hpp"
+#include "../../../GirEngine/Frontend/Scene/SceneSpace/Orientation/Orientation.hpp"
+#include "../../../GirEngine/Frontend/Scene/RenderGraph/RenderPass/DynamicRenderPass.hpp"
+#include "../../../GirEngine/Backend/VulkanBackend/VulkanPresentationEngine/VulkanPresentationEngine.hpp"
+#include "../../../GirEngine/Backend/VulkanBackend/VulkanRenderer/VulkanRenderer.hpp"
+#include "../../../GirEngine/Backend/VulkanBackend/VulkanOSInterface/VulkanOsInterface.hpp"
 
 #define MODEL_NAME "Dancing Animated Model from Mixamo"
 
@@ -51,25 +56,25 @@ namespace pEngine::app::mode {
         glm::vec3 cameraPosition;
     };
 
-    template<typename GirGeneratorType, typename BackendType>
-    class AnimatedModelDemoMode final : public EngineMode<GirGeneratorType, BackendType> {
+    class AnimatedModelDemoMode final : public EngineMode {
     public:
-        struct CreationInput : EngineMode<GirGeneratorType, BackendType>::CreationInput {
-            std::filesystem::path demoModelFileName;
+        struct CreationInput {
+            std::string name;
+            UniqueIdentifier uid;
+
+            std::filesystem::path demoModelFile;
+
+            Scene &frontend;
+
+            girEngine::backend::vulkan::VulkanBackend &backend;
         };
 
         explicit AnimatedModelDemoMode(const CreationInput &creationInput)
-            : EngineMode<GirGeneratorType, BackendType>(creationInput),
-              assimpModelPath(creationInput.demoModelFileName) {
-            // store a handle to the scene
-            scene = std::dynamic_pointer_cast<Scene>(
-                this->getEngineCore()->getGraphicsEngine().getScene()
-            );
-
-            // store a handle to the backend (this will be written with the vulkan backend; could be changed if there were other backends lol)
-            backend = std::dynamic_pointer_cast<backend::vulkan::VulkanBackend>(
-                this->getEngineCore()->getGraphicsEngine().getBackend()
-            );
+            : name(creationInput.name),
+              uid(creationInput.uid),
+              scene(creationInput.frontend),
+              backend(creationInput.backend),
+              assimpModelPath(creationInput.demoModelFile) {
         }
 
 
@@ -78,18 +83,20 @@ namespace pEngine::app::mode {
             prepareScene();
 
             // twice-bake the scene setup
-            auto sceneGirs = scene->bakeToGirs();
-            if (backend->bakeGirs(sceneGirs) == backend::GraphicsBackend::BakeResult::FAILURE) {
+            auto sceneGirs = ((girEngine::frontend::Frontend *) &scene)->bakeToGirs();
+            if (((girEngine::backend::Backend *) &backend)->consumeGirs(sceneGirs)
+                == girEngine::backend::Backend::ConsumeResult::FAILURE) {
                 // TODO - actual error handling, no throwing
                 throw std::runtime_error("Error in AnimatedModelDemoMode::begin() -> unable to bake scene!");
             }
 
             // show our window via the backend's OS interface
-            const auto appContext = std::dynamic_pointer_cast<backend::appContext::vulkan::VulkanApplicationContext>(
-                backend->getApplicationContext());
+            const auto appContext = std::dynamic_pointer_cast<
+                girEngine::backend::vulkan::VulkanApplicationContext>(
+                backend.getApplicationContext());
 
             if (const auto showWindowResult = appContext->getOSInterface()->showWindow();
-                showWindowResult != backend::appContext::osInterface::OSInterface::ShowWindowResult::SUCCESS) {
+                showWindowResult != girEngine::app::OSInterface::ShowWindowResult::SUCCESS) {
                 // TODO -> proper logging!
                 return;
             }
@@ -98,9 +105,12 @@ namespace pEngine::app::mode {
         }
 
     private:
+        std::string name;
+        UniqueIdentifier uid;
+
         // TODO -> these should probably be unique if they aren't needed externally afaik
-        std::shared_ptr<Scene> scene;
-        std::shared_ptr<backend::vulkan::VulkanBackend> backend;
+        Scene scene;
+        girEngine::backend::vulkan::VulkanBackend backend;
 
         std::filesystem::path assimpModelPath;
 
@@ -161,7 +171,7 @@ namespace pEngine::app::mode {
             // setup animation editor gui widget
             animationEditor = std::make_unique<util::gui::AssimpAnimationEditor>(
                 "animation editor",
-                const_cast<Model &>(scene->getModels().back()).getAnimation(),
+                const_cast<Model &>(scene.getModels().back()).getAnimation(),
                 activeKeyframeFlag
             );
 
@@ -174,9 +184,9 @@ namespace pEngine::app::mode {
 
             // TODO -> mouse-based camera look-at; for now camera orientation will be hardcoded
 
-            screenWidth = static_cast<float>(backend->getPresentationEngine().getSwapchain().
+            screenWidth = static_cast<float>(backend.getPresentationEngine().getSwapchain().
                 getSwapchainImageWidth());
-            screenHeight = static_cast<float>(backend->getPresentationEngine().getSwapchain().
+            screenHeight = static_cast<float>(backend.getPresentationEngine().getSwapchain().
                 getSwapchainImageHeight());
 
             // setup initial static camera variables
@@ -185,9 +195,9 @@ namespace pEngine::app::mode {
                                                defaultModelPosition.position, {0, 1, 0}));
             cameraPitch = pitch(quat);
             cameraYaw = yaw(quat);
-            scene->verticalFieldOfView = verticalFieldOfView;
-            scene->screenWidth = screenWidth;
-            scene->screenHeight = screenHeight;
+            scene.verticalFieldOfView = verticalFieldOfView;
+            scene.screenWidth = screenWidth;
+            scene.screenHeight = screenHeight;
         }
 
         void loadModelFromAssimpFile() {
@@ -296,7 +306,7 @@ namespace pEngine::app::mode {
                 .position = firstLightPosition,
                 .color = glm::vec3(1, 1, 1)
             };
-            scene->registerPointLight(simplePointLight);
+            scene.registerPointLight(simplePointLight);
 
             space::position::Position secondLightPosition({350.0f, 255.0f, 400.0f});
             auto anotherPointLight = light::PointLight{
@@ -331,7 +341,7 @@ namespace pEngine::app::mode {
                 .initialDataPointer = (unsigned char *) &lightingData,
                 .initialDataSizeInBytes = (sizeof(LightingData)),
                 .optionalMaxBufferSize = (static_cast<uint32_t>(sizeof(LightingData))),
-                .descriptorSetIndex = 0
+                .descriptorSetIndex = 0,
             });
 
             CameraData cameraData = {
@@ -346,7 +356,7 @@ namespace pEngine::app::mode {
                 .initialDataPointer = (unsigned char *) &cameraData,
                 .initialDataSizeInBytes = sizeof(CameraData),
                 .optionalMaxBufferSize = sizeof(CameraData),
-                .descriptorSetIndex = 0
+                .descriptorSetIndex = 0,
             });
 
             // as a simple measure to keep the scene around, we'll move this out now
@@ -378,7 +388,7 @@ namespace pEngine::app::mode {
                 {1.0, 1.0, 1.0, 1}
             });
 
-            scene->registerModel(*model);
+            scene.registerModel(*model);
 
             std::vector models = {*model};
             std::vector drawAttachments = {
@@ -404,12 +414,12 @@ namespace pEngine::app::mode {
 #endif
 
                         // NEW: externalized assimp animation data which samples the aiScene's animation directly
-                        if (scene->getModels().empty())
+                        if (scene.getModels().empty())
                             return {};
-                        if (scene->getModels().size() > 1) {
+                        if (scene.getModels().size() > 1) {
                             // TODO -> log a warning here!
                         }
-                        auto &currentModel = const_cast<Model &>(scene->getModels().back());
+                        auto &currentModel = const_cast<Model &>(scene.getModels().back());
 
                         auto &animation = currentModel.getAnimation();
                         std::vector<glm::mat4> animationPoses;
@@ -428,11 +438,11 @@ namespace pEngine::app::mode {
 
                         if (enableFrameByFrame && animation.cacheDebugInfo) {
                             switch (activeKeyframeFlag) {
-                                case util::gui::AssimpAnimationEditor::ActiveKeyframeFlag::PREVIOUS: {
+                                case gui::AssimpAnimationEditor::ActiveKeyframeFlag::PREVIOUS: {
                                     animationPoses = animation.cache.previousKeyframe.finalizedBonePoses;
                                     break;
                                 }
-                                case util::gui::AssimpAnimationEditor::ActiveKeyframeFlag::NEXT: {
+                                case gui::AssimpAnimationEditor::ActiveKeyframeFlag::NEXT: {
                                     animationPoses = animation.cache.nextKeyframe.finalizedBonePoses;
                                     break;
                                 }
@@ -470,8 +480,8 @@ namespace pEngine::app::mode {
                         handednessConversionMatrix[1][1] = -1;
 
                         modelMVPMatrix *= view::Camera::computePerspectiveTransform(
-                            scene->verticalFieldOfView,
-                            (float) scene->screenWidth / (float) scene->screenHeight,
+                            scene.verticalFieldOfView,
+                            (float) scene.screenWidth / (float) scene.screenHeight,
                             nearPlaneDistance,
                             farPlaneDistance
                         );
@@ -484,10 +494,10 @@ namespace pEngine::app::mode {
                             cameraPitch
                         );
 
-                        auto modelItr = std::ranges::find_if(scene->getModels(), [&](const Model &sceneModel) {
+                        auto modelItr = std::ranges::find_if(scene.getModels(), [&](const Model &sceneModel) {
                             return sceneModel.name == MODEL_NAME;
                         });
-                        if (modelItr == scene->getModels().end()) {
+                        if (modelItr == scene.getModels().end()) {
                             return {};
                         }
                         modelMVPMatrix *= modelItr->getModelMatrix();
@@ -534,16 +544,14 @@ namespace pEngine::app::mode {
 
             };
 
-
             auto modelRenderPass = std::make_shared<graph::renderPass::DynamicRenderPass>();
             setupModelRenderPass(vertexInputBindings, dynamicUniformBuffers, modelRenderPass);
-
-            scene->getRenderGraph().addDynamicRenderPass(*modelRenderPass);
+            scene.getRenderGraph().addDynamicRenderPass(*modelRenderPass);
         }
 
         void setupModelRenderPass(const std::vector<geometry::GeometryBinding> &vertexInputBindings,
                                   const std::vector<graph::renderPass::DynamicResourceBinding> &dynamicUniformBuffers,
-                                  const std::shared_ptr<graph::renderPass::DynamicRenderPass> &modelRenderPass) const {
+                                  const std::shared_ptr<graph::renderPass::DynamicRenderPass> &modelRenderPass) {
             // provide basic model render pass info
             modelRenderPass->name = "Model Pass";
             modelRenderPass->uid = UniqueIdentifier();
@@ -603,8 +611,8 @@ namespace pEngine::app::mode {
                     });
 
             // set up vertex and fragment shaders and
-            scene->registerShaderModule(*vertexShaderModule);
-            scene->registerShaderModule(*fragmentShaderModule);
+            scene.registerShaderModule(*vertexShaderModule);
+            scene.registerShaderModule(*fragmentShaderModule);
             modelRenderPass->vertexShaderAttachment = graph::renderPass::ShaderAttachment{
                 vertexShaderModule.get()
             };
@@ -614,9 +622,9 @@ namespace pEngine::app::mode {
 
             // attach swapchain image render target
             modelRenderPass->colorAttachments.push_back(graph::renderPass::ImageAttachment{
-                scene->getSwapchainRenderTarget().getSwapchainImage().uniqueIdentifier,
+                scene.getSwapchainRenderTarget().getSwapchainImage().uniqueIdentifier,
                 // MAKE SURE the format is actually set!
-                scene->getSwapchainRenderTarget().getSwapchainImage().getFormat(),
+                scene.getSwapchainRenderTarget().getSwapchainImage().getFormat(),
                 graph::renderPass::AttachmentState::SWAPCHAIN_COLOR_ATTACHMENT,
             });
 
@@ -627,18 +635,18 @@ namespace pEngine::app::mode {
                     .uid = UniqueIdentifier(),
                     .format = ResourceFormat::D32_SFLOAT,
                     .imageUsages = Image::ImageUsage::DepthStencilAttachment,
-                    .width = backend->getPresentationEngine().getSwapchain().getSwapchainImageWidth(),
-                    .height = backend->getPresentationEngine().getSwapchain().getSwapchainImageHeight(),
+                    .width = backend.getPresentationEngine().getSwapchain().getSwapchainImageWidth(),
+                    .height = backend.getPresentationEngine().getSwapchain().getSwapchainImageHeight(),
                     .initialImageData = nullptr,
                     .initialImageDataSizeInBytes = 0,
                     // TODO -> factor out this redundant extent (which can be obtained from width&height above)
                     .imageExtent = Image::ImageExtent2D{
-                        backend->getPresentationEngine().getSwapchain().getSwapchainImageWidth(),
-                        backend->getPresentationEngine().getSwapchain().getSwapchainImageHeight()
+                        backend.getPresentationEngine().getSwapchain().getSwapchainImageWidth(),
+                        backend.getPresentationEngine().getSwapchain().getSwapchainImageHeight()
                     }
                 }
             );
-            scene->registerImage(*depthImage);
+            scene.registerImage(*depthImage);
 
             // enable depth test stuff
             modelRenderPass->depthAttachment = graph::renderPass::ImageAttachment{
@@ -672,12 +680,12 @@ namespace pEngine::app::mode {
                 ImGui::Separator();
                 ImGui::Checkbox("Enable Frame-by-Frame Mode", &enableFrameByFrame);
 
-                if (scene->getModels().empty())
+                if (scene.getModels().empty())
                     return;
-                if (scene->getModels().size() > 1) {
+                if (scene.getModels().size() > 1) {
                     // TODO -> log a warning here!
                 }
-                auto &currentModel = const_cast<Model &>(scene->getModels().back());
+                auto &currentModel = const_cast<Model &>(scene.getModels().back());
                 assimp::SkeletalAnimation &animation = currentModel.getAnimation();
                 const auto *anim = animation.animation;
                 if (anim == nullptr) {
@@ -714,7 +722,7 @@ namespace pEngine::app::mode {
 
                 ImGui::End();
             };
-            backend->getRenderer().setGuiCallbacks({callbacks});
+            backend.getRenderer().setGuiCallbacks({callbacks});
         }
 
         void run() const {
@@ -736,8 +744,8 @@ namespace pEngine::app::mode {
                 }
 #endif
 
-                const auto drawFrameResult = backend->drawFrame();
-                keepRendering = drawFrameResult == backend::GraphicsBackend::DrawFrameResult::SUCCESS;
+                const auto drawFrameResult = ((girEngine::backend::Backend *) &backend)->drawFrame();
+                keepRendering = drawFrameResult == girEngine::backend::Backend::DrawFrameResult::SUCCESS;
             }
         }
     };

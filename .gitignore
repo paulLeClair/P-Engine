@@ -7,3 +7,4 @@ _deps/
 p-engine/
 assets/dev_screenshots/
 *.rdc
+*.drawio

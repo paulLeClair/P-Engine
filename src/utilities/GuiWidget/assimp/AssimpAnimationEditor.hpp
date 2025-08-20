@@ -13,7 +13,7 @@
 #include "../../dear_imgui/imgui.h"
 
 // only including this for the max bones macro
-#include "../../../GraphicsEngine/Scene/SceneResources/Model/Model.hpp"
+#include "../../../GirEngine/Frontend/Scene/SceneResources/Model/Model.hpp"
 
 
 namespace pEngine::util::gui {

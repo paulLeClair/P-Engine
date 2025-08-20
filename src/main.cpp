@@ -1,4 +1,3 @@
-#include <iostream>
 
 #ifdef _WIN32
 // WINDOWS ENTRY POINT
@@ -8,16 +7,12 @@
 
 #endif
 
-// application includes
+#include <iostream>
 #include "Application/Application.hpp"
-#include "EngineCore/EngineCore.hpp"
-#include "GraphicsEngine/Backend/VulkanBackend/VulkanBackend.hpp"
-#include "Application/EngineMode/CoreMenuEngineMode/CoreMenuEngineMode.hpp"
+#include "GirEngine/Backend/VulkanBackend/VulkanBackend.hpp"
 #include "Application/EngineMode/AnimatedModelDemoMode/AnimatedModelDemoMode.hpp"
 
-using namespace pEngine;
-using namespace pEngine::app;
-using namespace pEngine::core;
+using namespace pEngine::girEngine::backend::vulkan;
 
 void runApplication(const std::string &modelFilePath) {
     const auto scene = std::make_shared<Scene>(Scene::CreationInput{
@@ -25,14 +20,14 @@ void runApplication(const std::string &modelFilePath) {
         "Animated Model Demo Render Graph"
     });
 
-    const auto backendConfig = backend::vulkan::VulkanBackend::CreationInput{
+    const auto backendConfig = VulkanBackend::CreationInput{
         "Animated Model Viewer Demo",
         "GirEngine",
         nullptr, // ignore threadpool for now
         {
-            backend::appContext::vulkan::VulkanInstance::SupportedInstanceExtension::SURFACE_EXTENSION,
+            VulkanInstance::SupportedInstanceExtension::SURFACE_EXTENSION,
 #ifdef _WIN32
-            backend::appContext::vulkan::VulkanInstance::SupportedInstanceExtension::WINDOWS_SURFACE_EXTENSION
+            VulkanInstance::SupportedInstanceExtension::WINDOWS_SURFACE_EXTENSION
 #endif
 #ifdef __linux__
                     backend::appContext::vulkan::VulkanInstance::SupportedInstanceExtension::XLIB_SURFACE_EXTENSION
@@ -41,14 +36,14 @@ void runApplication(const std::string &modelFilePath) {
         {
 #ifndef DISABLE_VALIDATION_LAYER
             // re-enable validation layers while i just mess around with it (pre nsight capture)
-            backend::appContext::vulkan::VulkanInstance::SupportedLayers::VALIDATION_LAYER
+            VulkanInstance::SupportedLayers::VALIDATION_LAYER
 #endif
         },
         {
-            backend::appContext::vulkan::VulkanLogicalDevice::SupportedDeviceExtension::SWAPCHAIN_EXTENSION,
-            backend::appContext::vulkan::VulkanLogicalDevice::SupportedDeviceExtension::SYNC_2,
-            backend::appContext::vulkan::VulkanLogicalDevice::SupportedDeviceExtension::DYNAMIC_RENDERING,
-            backend::appContext::vulkan::VulkanLogicalDevice::SupportedDeviceExtension::NONSEMANTIC_SHADER_INFO,
+            VulkanLogicalDevice::SupportedDeviceExtension::SWAPCHAIN_EXTENSION,
+            VulkanLogicalDevice::SupportedDeviceExtension::SYNC_2,
+            VulkanLogicalDevice::SupportedDeviceExtension::DYNAMIC_RENDERING,
+            VulkanLogicalDevice::SupportedDeviceExtension::NONSEMANTIC_SHADER_INFO,
         },
         {},
         "Animated Model Demo - physical device",
@@ -64,7 +59,6 @@ void runApplication(const std::string &modelFilePath) {
         VK_FORMAT_B8G8R8A8_SRGB, // arbitrary SRGB format
         VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, // SRGB color space to go with srgb format
         VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
         VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
         VK_IMAGE_USAGE_TRANSFER_DST_BIT,
@@ -73,30 +67,22 @@ void runApplication(const std::string &modelFilePath) {
         1900,
         1080
     };
-    const auto backend = std::make_shared<backend::vulkan::VulkanBackend>(backendConfig);
-
-    const auto engineCore = std::make_shared<EngineCore<Scene, backend::vulkan::VulkanBackend> >(
-        EngineCore<Scene, backend::vulkan::VulkanBackend>::CreationInput{
-            "Engine Core for Animated Model Demo",
-            1, // single-threading for now
-            scene,
-            backend
-        }
-    );
+    const auto backend = std::make_shared<VulkanBackend>(backendConfig);
 
     // at this point we should be able to create the engine mode itself
-    const auto demoMode = std::make_shared<mode::AnimatedModelDemoMode<Scene, backend::vulkan::VulkanBackend> >(
-        mode::AnimatedModelDemoMode<Scene, backend::vulkan::VulkanBackend>::CreationInput{
+    auto demoMode = pEngine::app::mode::AnimatedModelDemoMode(
+        pEngine::app::mode::AnimatedModelDemoMode::CreationInput{
             "Animated Models Demo - Engine Mode",
-            engineCore,
-            nullptr,
+            UniqueIdentifier(),
             std::filesystem::path(
                 modelFilePath
-            )
+            ),
+            *scene,
+            *backend
         }
     );
 
-    demoMode->begin();
+    demoMode.begin();
 }
 
 #ifdef _WIN32

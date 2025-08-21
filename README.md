@@ -88,40 +88,30 @@ The actual `main()` function simply calls the following function:
 
 ~~~~C++
 void runApplication(const std::string &modelFilePath) {
-    const auto scene = std::make_shared<Scene>(Scene::CreationInput{
-        // ... scene configuration ... (for now, not much is needed)
+    auto scene = Scene(Scene::CreationInput{
+        // scene config (minimal for now)
     });
 
-    const auto backendConfig = backend::vulkan::VulkanBackend::CreationInput{
+
+    const auto backendConfig = VulkanBackend::CreationInput{
         /*
         * ... vulkan configuration, see source code for details ...
         */
     };
-    const auto backend = std::make_shared<backend::vulkan::VulkanBackend>(backendConfig);
+    const auto backend = VulkanBackend(backendConfig);
 
-    // NOTE: this engine core thing is pretty superfluous and will not last long
-    const auto engineCore = std::make_shared<EngineCore<Scene, backend::vulkan::VulkanBackend> >(
-        EngineCore<Scene, backend::vulkan::VulkanBackend>::CreationInput{
-            "Engine Core for Animated Model Demo",
-            1, // note -> WIP thread pool functionality has been excluded from this release
+    const auto demoMode = AnimatedModelDemoMode(
+        mode::AnimatedModelDemoMode::CreationInput{
+            "Animated Models Demo - Engine Mode",
+            std::filesystem::path(
+              modelFilePath
+            ),
             scene,
             backend
         }
     );
 
-    // NOTE: the actual design here will change a lot too
-    const auto demoMode = std::make_shared<mode::AnimatedModelDemoMode<Scene, backend::vulkan::VulkanBackend> >(
-        mode::AnimatedModelDemoMode<Scene, backend::vulkan::VulkanBackend>::CreationInput{
-            "Animated Models Demo - Engine Mode",
-            engineCore,
-            nullptr,
-            std::filesystem::path(
-              modelFilePath
-            )
-        }
-    );
-
-    demoMode->begin();
+    demoMode.begin();
 }
 ~~~~
 
@@ -313,6 +303,8 @@ We make use of a few basic constructions:
 Feel free to dive into those files for more information, but as far as their functionality goes, they're pretty straightforward.
 
 ### Rendering Code
+
+> This description can be considered a stub! It will be rewritten once an upcoming PR adds in a few important backend components
 
 For the current backend implementation, most of the rendering code lives in our `VulkanRenderer` and `Frame` classes. This design is mostly placeholder and will be refactored and reworked later on, but the overall process will be similar to how it works now.
 

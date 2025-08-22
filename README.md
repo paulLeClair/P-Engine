@@ -10,7 +10,7 @@ https://github.com/user-attachments/assets/60945336-603f-4c8e-b502-1e131d439952
 
 The engine is still in the research & development phase! Many components are under-developed and effectively placeholder, such as the build system. They will each be fleshed out one by one, though!
 
-There will be a big "re-architecture" PR that will be pushed soon where a lot of these overly OOP-y designs will be made more concrete and the APIs for each existing module will be finalized. Until then, there are a lot of parts that are Java-esque and overwrought. 
+There will be a big "re-architecture" PR that will be pushed soon where a lot of these overly OOP-y designs will be made more concrete and the APIs for each existing module will be finalized. Until then, there may be a few things that are overwrought or out of place which I may have missed while preparing the private repo for public release. 
 
 Note that until the engine becomes mature enough where it would be reasonable to use it for something practical, this repo is released without a license and therefore with all rights reserved.
 

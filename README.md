@@ -144,12 +144,9 @@ void begin() override {
     throw std::runtime_error("Error in AnimatedModelDemoMode::begin() -> unable to bake scene!");
   }
 
-  // show our window via the backend's OS interface
-  const auto appContext = std::dynamic_pointer_cast<backend::appContext::vulkan::VulkanApplicationContext>(
-  backend->getApplicationContext());
-
-  if (const auto showWindowResult = appContext->getOSInterface()->showWindow();
-    showWindowResult != ShowWindowResult::SUCCESS) {
+  // show our window via the backend's OS interface (currently janky but will be cleaned up)
+  if (const auto showWindowResult = backend.getApplicationContext()->getOSInterface()->showWindow();
+    showWindowResult != girEngine::app::OSInterface::ShowWindowResult::SUCCESS) {
     // TODO -> proper logging!
     return;
   }

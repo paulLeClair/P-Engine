@@ -325,9 +325,9 @@ Until that big rework comes, the main components are:
 
 - a `VulkanBufferSuballocator` class, which is a very basic buffer allocator that packs multiple resources of the same type into a single allocation of device memory
 
-- `VulkanDescriptorSetAllocator`, which hashes resource bindings to return a particular descriptor set; all layout information is reflected from the shaders to prevent the user from having to manually specify everything
+- `VulkanDescriptorSetAllocator`, which hashes resource bindings to return a particular descriptor set; all layout information is reflected from the shaders to prevent the user from having to manually specify everything (shout out to Themaister for this idea!)
 
-- a SPIR-V shader reflection class called `VulkanProgram`
+- a SPIR-V shader reflection class called `VulkanProgram` (another shout out to Themaister for this idea!)
 
 There are a bunch of other little bits and bobs that go into making the backend work, and they'll be described in the next writeup. 
 

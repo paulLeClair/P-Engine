@@ -18,7 +18,7 @@ Note that until the engine becomes mature enough where it would be reasonable to
 
 GirEngine is built around the concept of applying classic compiler architecture to realtime graphical applications. While I'm certainly not trying to write any kind of language here, the concepts of compiler frontends, backends, and intermediate representation are borrowed, if mostly in name (and high-level purpose). I do believe that there is probably a "perfect" way to represent graphics operations in a way that closely resembles an abstract syntax tree, but this engine is opting for a much simpler approach, at least for the forseeable future.
 
-The "Gir" in GirEngine is short for *Graphics Intermediate Representation*. These are just simple structs that label and package up rendering data and processes in a platform-agnostic way. Being an intermediary layer, it will likely change a lot as development proceeds, but simplicity is the biggest goal.
+The "Gir" in GirEngine is short for *Graphics Intermediate Representation*. These are just simple structs that label and package up rendering data and processes in a platform-agnostic way. Being an intermediary layer, it will likely change a lot as development proceeds, but I'm chasing simplicity and efficiency with this project.
 
 The framework provides the concept of a front-end which produces these GIR objects, as well as a backend which consumes them and implements the actual rendering code. The engine will also focus on providing machinery for efficiently directing information from the frontend to the backend (and vice versa) using the same GIR machinery.
 

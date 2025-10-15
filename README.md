@@ -299,7 +299,7 @@ Feel free to dive into those files for more information, but as far as their fun
 
 ### Rendering Code
 
-> This description can be considered a stub! It will be rewritten once an upcoming PR adds in a few important backend components
+> This description will be expanded soon :)
 
 For the current backend implementation, most of the rendering code lives in our `VulkanRenderer` and `Frame` classes. This design is mostly placeholder and will be refactored and reworked later on, but the overall process will be similar to how it works now.
 

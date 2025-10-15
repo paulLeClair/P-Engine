@@ -82,7 +82,7 @@ namespace pEngine::util {
             }
 
             Iterator &operator--() {
-                if (!node) {
+                if (!node || !node->prev) {
                     *this = Iterator();
                 } else {
                     node = node->prev;

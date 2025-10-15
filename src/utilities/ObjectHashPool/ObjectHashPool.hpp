@@ -50,7 +50,17 @@ namespace pEngine::util::objectPool {
      * For now this is intended to be a super baby-mode simplified version of Themaister's "temporary_hashmap" class
      * from his Granite engine.
      *
-     * The idea here will be to imitate the overall behavior of that class but much simpler overall
+     * It should pool allocated objects of some type, while providing an "update" cycle mechanism that allows you to 
+     * have this pool automatically free up allocations that have not been used for the number of update cycles that
+     * are provided through the MaxUpdateCount template parameter.
+     * 
+     * The main idea is that it will store allocated objects in a ring of lists, which are tied to the update cycle. When
+     * an object is used, it is "moved" (in a lightweight way) to the current ring. When "update()" is called, the current ring index is updated,
+     * and the next ring is guaranteed to be the one whose last update was the maximal number of updates ago. When a new ring becomes the current ring,
+     * all of its allocations are freed, and then any new allocations or reuses of previous allocations are brought into the current ring. This gives us a 
+     * customizable caching mechanism for allocated objects.
+     *
+     * ATOW this is only used for descriptor set allocations but can probably find other usages for resources that you want cleaned up after disuse.
      *
      */
     template<typename ObjectType, unsigned MaxUpdateCount = 8>

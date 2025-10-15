@@ -168,7 +168,7 @@ namespace pEngine::util::objectPool {
 
                 allocatedObject = std::make_unique<ObjectType>(
                     std::forward<ObjectConstructorArgs>(objectConstructorArgs)...);
-                return allocatedObject == nullptr; // BRO - the fucking unique pointer destructor got called???
+                return allocatedObject == nullptr;
             }
 
             void deleteAllocatedObject() {

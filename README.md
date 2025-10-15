@@ -1,7 +1,5 @@
 # GearEngine - Animated Model Demo Interim Release
 
-> 07/2025 - This is the Interim Model Demo Release! Full version coming soon
-
 https://github.com/user-attachments/assets/60945336-603f-4c8e-b502-1e131d439952
 
 ## Overview
